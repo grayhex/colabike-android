@@ -38,6 +38,8 @@ class YandexSignIn(
         if (
             url.scheme != "https" ||
                 url.host != expected.host ||
+                // An intent filter without a port matches every port: only the site's own counts.
+                url.port != expected.port ||
                 url.encodedPath != expected.encodedPath
         ) {
             return Return.NotOurs

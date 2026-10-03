@@ -121,6 +121,21 @@ class Navigator(private val state: NavigationState) {
         stack.add(Destination.Bike(id))
     }
 
+    /**
+     * Goes where a link points: the section that owns the destination, then the destination on its
+     * stack (a bike replaces the bike already shown). Back from it works as for any opened screen.
+     */
+    fun go(destination: Destination) {
+        when (destination) {
+            is Destination.Bike -> {
+                if (TopLevel.Bikes.root !in state.backStacks) return
+                state.topLevelRoute = TopLevel.Bikes.root
+                openBike(destination.id)
+            }
+            else -> Unit
+        }
+    }
+
     /** True when Back was used here; false when it belongs to the system. */
     fun back(): Boolean {
         val stack = state.currentStack

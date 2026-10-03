@@ -9,6 +9,7 @@
 - `./gradlew :app:recordRoborazziDebug :core:designsystem:recordRoborazziDebug` — перезаписать эталонные скриншоты после осознанного изменения UI. Затем посмотрите diff PNG.
 - `./gradlew :core:network:updateApiContract` — обновить снимок `api/openapi.json` и его SHA-256 из production. Затем проверьте diff контракта и сгенерированного клиента.
 - `./gradlew :app:assembleRelease` — release с R8 (без подписи).
+- `scripts/cert-fingerprint.sh <apk|keystore>` — SHA-256 сертификата подписи для `ANDROID_CERT_SHA256` на сайте (App Link Яндекса). Печатает только публичный отпечаток.
 - Нужны JDK 21 и Android SDK с platform 37: `sdk.dir` в `local.properties` или `ANDROID_HOME`.
 
 ## Skills

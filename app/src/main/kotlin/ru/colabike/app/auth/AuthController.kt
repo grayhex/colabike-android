@@ -55,8 +55,13 @@ class AuthController(
         CustomTabs.open(context, yandex.startUrl())
     }
 
-    /** An App Link reached the activity: finish the native flow if it is ours. */
+    /**
+     * An App Link reached the activity: finish the native flow if it is ours. Someone already
+     * signed in has no sign-in to finish; a stray return would only leave an error waiting for the
+     * next sign-in screen.
+     */
     fun handleLink(link: String) {
+        if (state.value is AuthState.SignedIn) return
         when (val result = yandex.handleReturn(link)) {
             is YandexSignIn.Return.Code ->
                 scope.launch {

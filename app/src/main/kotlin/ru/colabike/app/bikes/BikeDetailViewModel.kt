@@ -20,7 +20,8 @@ sealed interface BikeDetailUiState {
 
     data class Loaded(val bike: BikeDetail) : BikeDetailUiState
 
-    data class Failed(val message: UiText) : BikeDetailUiState
+    /** [notFound]: the bike is hidden, deleted or private to someone else; a guest may own it. */
+    data class Failed(val message: UiText, val notFound: Boolean = false) : BikeDetailUiState
 }
 
 class BikeDetailViewModel(private val repository: BikesRepository, private val id: BikeId) :
@@ -39,7 +40,7 @@ class BikeDetailViewModel(private val repository: BikesRepository, private val i
                 try {
                     BikeDetailUiState.Loaded(repository.bike(id))
                 } catch (e: DataError) {
-                    BikeDetailUiState.Failed(e.toUiText())
+                    BikeDetailUiState.Failed(e.toUiText(), notFound = e is DataError.NotFound)
                 }
         }
     }

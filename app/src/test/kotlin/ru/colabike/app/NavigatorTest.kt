@@ -119,4 +119,50 @@ class NavigatorTest {
         assertThat(TopLevel.shown).containsExactly(TopLevel.Bikes, TopLevel.Profile).inOrder()
         assertThat(TopLevel.shown).contains(TopLevel.start)
     }
+
+    @Test
+    fun `a link to a bike goes to the bikes section from any other`() {
+        navigator.select(profile)
+        navigator.open(Destination.Devices)
+
+        navigator.go(Destination.Bike("b9"))
+
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+        assertThat(state.currentStack).containsExactly(bikes, Destination.Bike("b9")).inOrder()
+        // What was open in the profile stays where it was.
+        assertThat(state.backStacks.getValue(profile))
+            .containsExactly(profile, Destination.Devices)
+            .inOrder()
+    }
+
+    @Test
+    fun `a link replaces the bike on screen and Back closes it`() {
+        navigator.openBike("b1")
+
+        navigator.go(Destination.Bike("b2"))
+        assertThat(state.currentStack).containsExactly(bikes, Destination.Bike("b2")).inOrder()
+
+        assertThat(navigator.back()).isTrue()
+        assertThat(state.currentStack).containsExactly(bikes)
+    }
+
+    @Test
+    fun `a destination with no place in the shell is ignored`() {
+        navigator.go(Destination.Profile)
+
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+        assertThat(state.currentStack).containsExactly(bikes)
+    }
+
+    @Test
+    fun `Back from a screen opened in the profile returns to the profile root`() {
+        navigator.select(profile)
+        navigator.open(Destination.About)
+        navigator.open(Destination.Licenses)
+
+        assertThat(navigator.back()).isTrue()
+        assertThat(state.currentStack).containsExactly(profile, Destination.About).inOrder()
+        assertThat(navigator.back()).isTrue()
+        assertThat(state.currentStack).containsExactly(profile)
+    }
 }

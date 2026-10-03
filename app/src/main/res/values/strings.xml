@@ -50,6 +50,7 @@
     <string name="bike_weight_value">%1$s кг</string>
     <string name="bike_mileage">Пробег</string>
     <string name="bike_mileage_value">%1$d км</string>
+    <string name="bike_private_hint">Если это приватный велосипед, войдите в свой аккаунт.</string>
     <string name="bike_private">Виден только вам</string>
 
     <string name="profile_title">Профиль</string>

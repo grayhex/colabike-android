@@ -57,6 +57,7 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 
 ## Настройки, ссылки на сайт и устройства
 
+- Входящие ссылки (`app/links`): `MainActivity` отдаёт `LinkHandler` только адрес из `ACTION_VIEW`. `AppLinkParser` разбирает его по allowlist (https, хост сайта, порт по умолчанию, формы адресов сайта), `AppLink.target` решает, куда он ведёт: экран приложения (`LinkTarget.InApp`, сейчас только велосипед по UUID), сайт (`OnSite`) или никуда. Экран, который нельзя открыть сразу, ждёт в `PendingNavigation` (SharedPreferences, 30 минут), `AppShell` выполняет его через `Navigator.go`. Подробности и пробелы API — в [ADR 0003](adr/0003-account-guest-and-web-flows.md).
 - `AppSettings` (`app/settings`): тема (`ThemeMode`: система, светлая, тёмная) и выбор гостя в SharedPreferences. Секретов там нет, резервные копии выключены. `MainActivity` берёт палитру из настройки и переустанавливает edge-to-edge под неё, чтобы значки системных панелей читались, даже когда приложение и система расходятся.
 - `SiteLinks` и `LinkOpener` (`app/links`): страницы сайта, куда приложение отправляет там, где у API v1 нет операции (регистрация, восстановление, управление аккаунтом, условия, политика). Открываются в Custom Tabs только по `https`, без токена. В тестах `LinkOpener` подменяется и запоминает адрес.
 - Устройства: `AccountSessionsRepository` (`core:model`) поверх `GET /auth/sessions` и `DELETE /auth/sessions/{id}`; `NetworkAccountSessionsRepository` ходит через клиент с `AuthInterceptor`. Хешей и токенов в ответе нет; браузерный сеанс называется по `User-Agent` (`describeUserAgent`), неизвестное значение не угадывается.
@@ -108,11 +109,11 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 | Где | Что | Чем |
 | --- | --- | --- |
 | `core:network` | маппинг, коды ошибок, `Retry-After`, `X-Request-ID`, медиа-URL, тело запроса без `null` | JUnit + MockWebServer |
-| `core:auth` | вход, single-flight refresh под параллельной нагрузкой, повтор, `invalid_token`, потерянный ответ, восстановление после рестарта, выход офлайн, PKCE, разбор App Link, отсутствие токенов в `toString` | JUnit + MockWebServer |
+| `core:auth` | вход, single-flight refresh под параллельной нагрузкой, повтор, `invalid_token`, потерянный ответ, сбой сервера, 429 и обрыв связи без потери сессии, восстановление после рестарта, выход офлайн, PKCE, разбор App Link (чужой хост, порт, путь), отсутствие токенов в `toString`, переход «вышел» | JUnit + MockWebServer |
 | `core:auth` androidTest | настоящий Keystore: шифрование, удалённый ключ | эмулятор |
 | `core:designsystem` | компоненты, панели навигации и мелкие части в обеих темах и с шрифтом 200 % | Robolectric + Roborazzi |
 | `app` | ViewModel с фейками, экраны в compact и expanded, обе темы, list-detail в две панели; состояния (загрузка, пусто, ошибка) | JUnit, Robolectric + Roborazzi |
-| `app` | вход как гость и с места гостя, закрытие входа, устройства (список, подтверждение, ошибка), тема, ссылки на сайт, лицензии; `SessionStores`, `AppSettings`, `describeUserAgent` | Robolectric + Compose, JUnit |
+| `app` | allowlist ссылок и их цели, ожидающий переход (срок, мусор, перезапуск), ссылка через вход и у гостя, `AuthController`; вход как гость и с места гостя, закрытие входа, устройства (список, подтверждение, ошибка), тема, ссылки на сайт, лицензии; `SessionStores`, `AppSettings`, `describeUserAgent` | Robolectric + Compose, JUnit |
 | `app` | `Navigator` без экрана; «Велосипед → другой раздел → Велосипед», прокрутка, повторное нажатие, «назад» | JUnit, Robolectric + Compose |
 | `app` androidTest | `StartupTest` — запуск на Android 17 до экрана входа; `LiveSmokeTest` — вход → `/bikes` → велосипед → `/me` → выход | эмулятор API 37, `smoke.yml` |
 
@@ -125,5 +126,6 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 
 ## Release и RuStore
 
+- Отпечаток подписи для сайта: `scripts/cert-fingerprint.sh <apk|keystore>` печатает SHA-256 сертификата, который оператор записывает в `ANDROID_CERT_SHA256` ([cola, развёртывание](https://github.com/grayhex/cola/blob/main/docs/operations/deployment.md)). Нужен отпечаток ключа устанавливаемой сборки (release для RuStore), ключ отладки добавляется только осознанно.
 - `release` собирается с R8 и сжатием ресурсов. Подпись в Git не входит: keystore и пароли хранит владелец. SHA-256 сертификата подписи нужен cola#324 для `assetlinks.json`, иначе App Link не пройдёт проверку.
 - Публикация — позже в RuStore. Google Play, Play Billing, Play Integrity и Play-зависимые API не подключаются.

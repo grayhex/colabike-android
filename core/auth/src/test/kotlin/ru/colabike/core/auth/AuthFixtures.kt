@@ -65,6 +65,12 @@ class FakeApi : AutoCloseable {
     @Volatile var refreshDelayMs = 0L
     @Volatile var dropNextRefreshAnswer = false
 
+    /** Refresh answers with this status (a fault or a throttle) without using up the token. */
+    @Volatile var refreshStatus: Int? = null
+
+    /** How many refresh answers are lost on the wire; the server did hand the pair out. */
+    val lostRefreshAnswers = AtomicInteger()
+
     val server =
         MockWebServer().apply {
             dispatcher =
@@ -107,7 +113,17 @@ class FakeApi : AutoCloseable {
             path == "/api/v1/auth/sessions/refresh" -> {
                 refreshCount.incrementAndGet()
                 Thread.sleep(refreshDelayMs)
+                refreshStatus?.let {
+                    return json(it, error("temporarily_unavailable"))
+                }
                 val token = Regex("cola_rt_[A-Za-z0-9]+").find(request.body!!.utf8())?.value
+                if (lostRefreshAnswers.get() > 0 && refreshes.containsKey(token)) {
+                    lostRefreshAnswers.decrementAndGet()
+                    // The answer is lost, the token is not used up: the server accepts it again.
+                    return MockResponse.Builder()
+                        .onResponseStart(mockwebserver3.SocketEffect.CloseSocket())
+                        .build()
+                }
                 val next = refreshes.remove(token) ?: return json(401, error("invalid_token"))
                 validAccess += "cola_at_$next"
                 refreshes["cola_rt_$next"] = next + "x"

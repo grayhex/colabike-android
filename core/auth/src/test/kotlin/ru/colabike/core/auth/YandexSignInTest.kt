@@ -61,4 +61,55 @@ class YandexSignInTest {
         assertThat(flow.handleReturn("https://colabike.ru/b/abc"))
             .isEqualTo(YandexSignIn.Return.NotOurs)
     }
+
+    @Test
+    fun `a link that only looks like ours is not ours and keeps the sign-in waiting`() {
+        flow.startUrl()
+        val verifier = pending.value
+
+        listOf(
+                "https://colabike.ru:8443/app/auth?code=$code", // a port the filter lets through
+                "https://colabike.ru.evil.example/app/auth?code=$code",
+                "https://evil.colabike.ru/app/auth?code=$code",
+                "https://colabike.ru@evil.example/app/auth?code=$code",
+                "https://colabike.ru/app/auth/extra?code=$code",
+                "https://colabike.ru/app/author?code=$code",
+                "javascript:alert(1)",
+                "not a url",
+            )
+            .forEach { link ->
+                assertThat(flow.handleReturn(link)).isEqualTo(YandexSignIn.Return.NotOurs)
+            }
+        // None of them spent the verifier of the sign-in that is really in progress.
+        assertThat(pending.value).isEqualTo(verifier)
+    }
+
+    @Test
+    fun `starting again replaces the verifier, and only the latest start can finish`() {
+        flow.startUrl()
+        val first = pending.value
+        flow.startUrl()
+        val second = pending.value
+
+        assertThat(second).isNotEqualTo(first)
+        val result = flow.handleReturn("https://colabike.ru/app/auth?code=$code")
+        assertThat((result as YandexSignIn.Return.Code).verifier).isEqualTo(second)
+    }
+
+    @Test
+    fun `a cancelled sign-in forgets its verifier, a late code finds nothing`() {
+        flow.startUrl()
+        flow.handleReturn("https://colabike.ru/app/auth?error=cancelled")
+
+        assertThat(flow.handleReturn("https://colabike.ru/app/auth?code=$code"))
+            .isEqualTo(YandexSignIn.Return.Failed(YandexSignIn.Reason.NoPendingSignIn))
+    }
+
+    @Test
+    fun `a return without a code or an error is a failure, not a crash`() {
+        flow.startUrl()
+
+        assertThat(flow.handleReturn("https://colabike.ru/app/auth"))
+            .isEqualTo(YandexSignIn.Return.Failed(YandexSignIn.Reason.Unknown))
+    }
 }

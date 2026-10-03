@@ -7,23 +7,23 @@ import java.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.AuthController
+import ru.colabike.app.links.PendingNavigation
+import ru.colabike.app.links.PreferencesPendingNavigation
 import ru.colabike.app.links.SiteLinks
 import ru.colabike.app.settings.AppSettings
 import ru.colabike.app.settings.PreferencesSettings
 import ru.colabike.core.auth.AuthInterceptor
-import ru.colabike.core.auth.AuthState
 import ru.colabike.core.auth.DeviceInfo
 import ru.colabike.core.auth.DeviceSession
 import ru.colabike.core.auth.EncryptedFileStore
 import ru.colabike.core.auth.KeystoreTokenCipher
 import ru.colabike.core.auth.YandexSignIn
+import ru.colabike.core.auth.signOuts
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikesRepository
@@ -43,6 +43,9 @@ interface AppDependencies {
     val auth: AuthActions
     val settings: AppSettings
     val links: SiteLinks
+
+    /** A place a link pointed at that the shell has not reached yet. */
+    val pending: PendingNavigation
 
     /** What time it is; a fixed clock in tests, so a screenshot does not age. */
     val clock: Clock
@@ -93,6 +96,11 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
         PreferencesSettings(context.getSharedPreferences("settings", Context.MODE_PRIVATE))
     override val links = SiteLinks(config.siteUrl)
     override val clock: Clock = Clock.systemUTC()
+    override val pending: PendingNavigation =
+        PreferencesPendingNavigation(
+            context.getSharedPreferences("pending-navigation", Context.MODE_PRIVATE),
+            clock,
+        )
     override val auth: AuthController =
         AuthController(
             session = session,
@@ -113,8 +121,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
 
     init {
         scope.launch { session.restore() }
-        scope.launch {
-            session.state.drop(1).filter { it == AuthState.SignedOut }.collect { onSignedOut() }
-        }
+        // Only a person leaving clears what they leave behind: a start without a session is no
+        // sign-out, and a guest's cached pictures survive it.
+        scope.launch { session.state.signOuts().collect { onSignedOut() } }
     }
 }

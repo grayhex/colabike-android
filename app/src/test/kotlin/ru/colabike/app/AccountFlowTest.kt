@@ -25,6 +25,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import ru.colabike.app.links.LinkOpener
 import ru.colabike.app.links.LocalLinkOpener
+import ru.colabike.app.navigation.Destination
 import ru.colabike.app.settings.ThemeMode
 import ru.colabike.app.ui.ColaBikeApp
 import ru.colabike.core.auth.AuthState
@@ -324,5 +325,104 @@ class AccountFlowTest {
         // The cards are long (the whole licence text); the rest are one scroll away.
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Apache License 2.0"))
         compose.onNodeWithText("Apache License 2.0").assertIsDisplayed()
+    }
+
+    // --- links through sign-in and a guest's view -------------------------------------------
+
+    @Test
+    fun `a link that arrived before sign-in is carried out after it`() {
+        val dependencies = FakeDependencies(auth = FakeAuth(initial = AuthState.SignedOut))
+        dependencies.pending.offer(Destination.Bike("b1"))
+        start(dependencies)
+        // Sign-in is on screen and the place waits.
+        compose.onNodeWithText("Вход в ColaBike").assertIsDisplayed()
+        assertThat(dependencies.pending.destination.value).isNotNull()
+
+        compose.onNodeWithText("Почта").performTextInput("rider@example.test")
+        compose.onNodeWithText("Пароль").performTextInput("password")
+        compose.onNodeWithText("Войти").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Описание").assertIsDisplayed()
+        assertThat(dependencies.pending.destination.value).isNull()
+    }
+
+    @Test
+    fun `a link that arrived before a guest chose to look around opens for the guest`() {
+        val dependencies = FakeDependencies(auth = FakeAuth(initial = AuthState.SignedOut))
+        dependencies.pending.offer(Destination.Bike("b1"))
+        start(dependencies)
+
+        compose.onNodeWithText("Смотреть без входа").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Описание").assertIsDisplayed()
+        assertThat(dependencies.pending.destination.value).isNull()
+    }
+
+    @Test
+    fun `a link while the app is open takes the person to the bike at once`() {
+        val dependencies = FakeDependencies()
+        start(dependencies)
+        section("Профиль").performClick()
+
+        dependencies.pending.offer(Destination.Bike("b2"))
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Описание").assertIsDisplayed()
+        // Back is the bikes list, not the profile the person came from.
+        Espresso.pressBack()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Велосипед 0", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a bike a guest cannot see offers to sign in, and signing in returns to it`() {
+        val dependencies =
+            FakeDependencies(
+                auth = FakeAuth(initial = AuthState.SignedOut),
+                settings = FakeSettings(guest = true),
+            )
+        dependencies.pending.offer(Destination.Bike("private-one"))
+        start(dependencies)
+
+        compose
+            .onNodeWithText("Если это приватный велосипед, войдите в свой аккаунт.")
+            .assertIsDisplayed()
+        compose.onNodeWithText("Войти").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Вход в ColaBike").assertIsDisplayed()
+
+        compose.onNodeWithContentDescription("Закрыть вход").performClick()
+        compose.waitForIdle()
+        // The guest is where they were.
+        compose
+            .onNodeWithText("Если это приватный велосипед, войдите в свой аккаунт.")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `a missing bike does not suggest signing in to someone who is signed in`() {
+        val dependencies = FakeDependencies()
+        dependencies.pending.offer(Destination.Bike("gone"))
+        start(dependencies)
+
+        compose.onNodeWithText("Не нашли: возможно, его скрыли или удалили.").assertIsDisplayed()
+        compose
+            .onNodeWithText("Если это приватный велосипед, войдите в свой аккаунт.")
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `when the session ends for good the person lands on sign-in`() {
+        val dependencies = FakeDependencies()
+        start(dependencies)
+        section("Профиль").performClick()
+
+        // The interceptor found invalid_token and ended the session: nobody pressed "Выйти".
+        dependencies.auth.state.value = AuthState.SignedOut
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Вход в ColaBike").assertIsDisplayed()
     }
 }
