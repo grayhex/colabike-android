@@ -3,7 +3,7 @@
     "info": {
         "title": "ColaBike API",
         "version": "1.0.0",
-        "description": "API ColaBike: вход устройств, текущий пользователь, чтение велосипедов, людей, журнала, покатушек и комментариев.\n\n**Вход.** Два способа. Браузер — HttpOnly cookie `cola_session`, которую выдаёт вход на сайте. Нативный клиент — сессия устройства: `POST /auth/sessions` возвращает пару непрозрачных токенов, токен доступа (`cola_at_…`, 15 минут) передаётся как `Authorization: Bearer`, одноразовый refresh-токен (`cola_rt_…`) обновляется через `POST /auth/sessions/refresh`. Cookie и Bearer в одном запросе — 400 `ambiguous_authentication`; другие схемы Authorization — 401 `unsupported_authentication`. Просроченный токен доступа — 401 `token_expired`, любой другой негодный — 401 `invalid_token`. CORS не включён.\n\n**Ошибки.** Тело ошибки — `{ \"error\": { \"code\", \"message\", \"details?\" } }`; клиент ветвится по `code`. Неизвестный адрес под `/api/v1` отвечает 404, неподдерживаемый метод — 405 с заголовком `Allow`. Каждый ответ несёт `X-Request-ID` для обращения в поддержку.\n\n**Кэш.** Ответы зависят от того, кто спрашивает, и не кэшируются (`Cache-Control: no-store`), кроме самого документа.\n\n**Видимость.** Публичный велосипед видят все, приватный — только владелец. Чужой приватный и несуществующий велосипед неотличимы: оба дают 404. Велосипеды заблокированных владельцев никому не видны.\n\n**Что не входит.** Личные ответы владельца о покатушках, участие в них, поиск, рынок и операции записи, а также нативный вход через внешних провайдеров — отдельные срезы.",
+        "description": "API ColaBike: вход устройств, текущий пользователь, чтение велосипедов, людей, журнала, покатушек и комментариев.\n\n**Вход.** Два способа. Браузер — HttpOnly cookie `cola_session`, которую выдаёт вход на сайте. Нативный клиент — сессия устройства: `POST /auth/sessions` возвращает пару непрозрачных токенов, токен доступа (`cola_at_…`, 15 минут) передаётся как `Authorization: Bearer`, одноразовый refresh-токен (`cola_rt_…`) обновляется через `POST /auth/sessions/refresh`. Cookie и Bearer в одном запросе — 400 `ambiguous_authentication`; другие схемы Authorization — 401 `unsupported_authentication`. Просроченный токен доступа — 401 `token_expired`, любой другой негодный — 401 `invalid_token`. CORS не включён.\n\n**Ошибки.** Тело ошибки — `{ \"error\": { \"code\", \"message\", \"details?\" } }`; клиент ветвится по `code`. Неизвестный адрес под `/api/v1` отвечает 404, неподдерживаемый метод — 405 с заголовком `Allow`. Каждый ответ несёт `X-Request-ID` для обращения в поддержку.\n\n**Кэш.** Ответы зависят от того, кто спрашивает, и не кэшируются (`Cache-Control: no-store`), кроме самого документа.\n\n**Изображения.** Адреса фото (`url`, `avatarUrl`, `coverUrl`) — пути сайта относительно его адреса. Публичные открываются без входа; приватные (фото закрытого велосипеда, картинки черновика журнала) — владельцу, с тем же `Authorization: Bearer` (или cookie), что и API; чужому и гостю — 404, недействительному токену — 401. Ответы зависят от зрителя (`Vary: Cookie, Authorization`), поддерживают `ETag`/304 и `?width=`.\n\n**Видимость.** Публичный велосипед видят все, приватный — только владелец. Чужой приватный и несуществующий велосипед неотличимы: оба дают 404. Велосипеды заблокированных владельцев никому не видны.\n\n**Что не входит.** Личные ответы владельца о покатушках, участие в них, поиск, рынок и операции записи, а также нативный вход через внешних провайдеров — отдельные срезы.",
         "license": {
             "name": "Пользовательское соглашение ColaBike",
             "url": "https://colabike.ru/legal/terms"
@@ -42,6 +42,10 @@
         {
             "name": "Comments",
             "description": "Комментарии к велосипедам, записям и покатушкам: один вид на всё."
+        },
+        {
+            "name": "Chat",
+            "description": "Мост к Stream Chat для нативного клиента: токен, каналы, кому написать, непрочитанные. Сообщения идут напрямую между клиентом и провайдером."
         },
         {
             "name": "Components",
@@ -103,6 +107,101 @@
                     },
                     "400": {
                         "description": "Одновременно cookie сессии и заголовок Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/feed": {
+            "get": {
+                "operationId": "getFeed",
+                "tags": [
+                    "Personal"
+                ],
+                "summary": "Моя лента",
+                "description": "Публикации тех, на кого подписан человек, и велосипедов, за которыми он следит: велосипеды, покатушки, записи журнала и объявления, новые сверху, курсор по `(время публикации, id)`. `type`: `all` (по умолчанию), `rides` или `journal`. Покатушка, к которой есть публичная запись журнала, в `all` не повторяется отдельной карточкой (есть запись). Отменённых покатушек нет. Каждая страница читается заново по видимости зрителя: скрытое между страницами не показывается. В каждом элементе заполнено одно поле из `bike`, `ride`, `journal`, `listing`.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "description": "`all` — всё; `rides` — только покатушки; `journal` — только записи журнала.",
+                        "schema": {
+                            "type": "string",
+                            "default": "all",
+                            "enum": [
+                                "all",
+                                "rides",
+                                "journal"
+                            ]
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/Limit"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Cursor"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Страница ленты.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FeedPage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный или повторённый параметр, неверный курсор либо cookie вместе с Authorization.",
                         "headers": {
                             "X-Request-ID": {
                                 "$ref": "#/components/headers/RequestId"
@@ -412,6 +511,161 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/MarketPage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный или повторённый параметр, неверный курсор либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/rides": {
+            "get": {
+                "operationId": "listMyRides",
+                "tags": [
+                    "Personal"
+                ],
+                "summary": "Мои покатушки",
+                "description": "Все свои покатушки в любом состоянии (состоявшиеся, запланированные, отменённые; публичные и нет), новые сверху, курсор по `(начало или дата добавления, id)`. Владельческие поля — `isPublic`, зона приватности, число точек. Геометрия и серии трека в списки не входят: карточка `/rides/{id}` отдаёт публичную геометрию.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Limit"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Cursor"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Страница своих покатушек.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OwnRidePage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный или повторённый параметр, неверный курсор либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/rides/upcoming": {
+            "get": {
+                "operationId": "listMyUpcomingRides",
+                "tags": [
+                    "Personal"
+                ],
+                "summary": "Мои ближайшие планы",
+                "description": "Свои планы, планы с ответами «еду» и «возможно», приглашения без ответа и недавние отмены дат, на которые человек отвечал: до 20 штук на 60 дней вперёд, ближайшие первыми, без курсора и без параметров. `role` говорит, кем человек в плане выступает. Точка встречи — по правилам участников. Имена ответивших не передаются.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ближайшие планы человека.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MyUpcomingRides"
                                 }
                             }
                         }
@@ -1372,6 +1626,169 @@
                         "$ref": "#/components/responses/InternalError"
                     }
                 }
+            },
+            "post": {
+                "operationId": "createBikeComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Написать комментарий к объекту: велосипеда",
+                "description": "Новый комментарий или ответ (`parentId`). Нужна подтверждённая почта. Бюджет новых комментариев общий с сайтом (20 за окно). С заголовком `Idempotency-Key` (UUID) повтор того же запроса в течение суток отдаёт тот же комментарий (заголовок `Idempotency-Replayed: true`), а не второй; тот же ключ с другим телом — 409 `conflict`. Права и уведомления те же, что на сайте: комментировать можно только публичное, заблокированный автор и заблокированный владелец — 404.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/BikeId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Комментарий создан.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "description": "`Idempotency-Key` уже использован с другим телом.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
             }
         },
         "/bikes/{id}/comments/{commentId}/replies": {
@@ -1551,6 +1968,169 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createJournalComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Написать комментарий к объекту: записи журнала",
+                "description": "Новый комментарий или ответ (`parentId`). Нужна подтверждённая почта. Бюджет новых комментариев общий с сайтом (20 за окно). С заголовком `Idempotency-Key` (UUID) повтор того же запроса в течение суток отдаёт тот же комментарий (заголовок `Idempotency-Replayed: true`), а не второй; тот же ключ с другим телом — 409 `conflict`. Права и уведомления те же, что на сайте: комментировать можно только публичное, заблокированный автор и заблокированный владелец — 404.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/JournalId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Комментарий создан.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "description": "`Idempotency-Key` уже использован с другим телом.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     },
                     "500": {
                         "$ref": "#/components/responses/InternalError"
@@ -2171,6 +2751,169 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createRideComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Написать комментарий к объекту: покатушки",
+                "description": "Новый комментарий или ответ (`parentId`). Нужна подтверждённая почта. Бюджет новых комментариев общий с сайтом (20 за окно). С заголовком `Idempotency-Key` (UUID) повтор того же запроса в течение суток отдаёт тот же комментарий (заголовок `Idempotency-Replayed: true`), а не второй; тот же ключ с другим телом — 409 `conflict`. Права и уведомления те же, что на сайте: комментировать можно только публичное, заблокированный автор и заблокированный владелец — 404.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Комментарий создан.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "description": "`Idempotency-Key` уже использован с другим телом.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     },
                     "500": {
                         "$ref": "#/components/responses/InternalError"
@@ -4355,6 +5098,169 @@
                         "$ref": "#/components/responses/InternalError"
                     }
                 }
+            },
+            "post": {
+                "operationId": "createComponentComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Написать комментарий к объекту: модели компонента",
+                "description": "Новый комментарий или ответ (`parentId`). Нужна подтверждённая почта. Бюджет новых комментариев общий с сайтом (20 за окно). С заголовком `Idempotency-Key` (UUID) повтор того же запроса в течение суток отдаёт тот же комментарий (заголовок `Idempotency-Replayed: true`), а не второй; тот же ключ с другим телом — 409 `conflict`. Права и уведомления те же, что на сайте: комментировать можно только публичное, заблокированный автор и заблокированный владелец — 404.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/ComponentModelId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Комментарий создан.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "description": "`Idempotency-Key` уже использован с другим телом.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
             }
         },
         "/component-models/{id}/comments/{commentId}/replies": {
@@ -5566,6 +6472,1713 @@
                     }
                 }
             }
+        },
+        "/bikes/{id}/comments/{commentId}": {
+            "patch": {
+                "operationId": "editBikeComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Исправить свой комментарий: велосипеда",
+                "description": "Правит текст своего комментария; чужой — 403, удалённый — 404. Комментарий должен принадлежать объекту из пути. Условного обновления (`If-Match`) нет: правит один автор, и последняя правка побеждает. Нужна подтверждённая почта.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/BikeId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CommentId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EditCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Комментарий после правки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteBikeComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Удалить комментарий: велосипеда",
+                "description": "Удаляет свой комментарий (администратор — любой, с записью в журнал аудита): остаётся «надгробие», пока под ним есть читаемые ответы. Повтор удаления тоже 204. Подтверждённая почта не нужна.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/BikeId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CommentId"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Комментарий удалён.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/journal/{id}/comments/{commentId}": {
+            "patch": {
+                "operationId": "editJournalComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Исправить свой комментарий: записи журнала",
+                "description": "Правит текст своего комментария; чужой — 403, удалённый — 404. Комментарий должен принадлежать объекту из пути. Условного обновления (`If-Match`) нет: правит один автор, и последняя правка побеждает. Нужна подтверждённая почта.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/JournalId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CommentId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EditCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Комментарий после правки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteJournalComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Удалить комментарий: записи журнала",
+                "description": "Удаляет свой комментарий (администратор — любой, с записью в журнал аудита): остаётся «надгробие», пока под ним есть читаемые ответы. Повтор удаления тоже 204. Подтверждённая почта не нужна.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/JournalId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CommentId"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Комментарий удалён.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/rides/{id}/comments/{commentId}": {
+            "patch": {
+                "operationId": "editRideComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Исправить свой комментарий: покатушки",
+                "description": "Правит текст своего комментария; чужой — 403, удалённый — 404. Комментарий должен принадлежать объекту из пути. Условного обновления (`If-Match`) нет: правит один автор, и последняя правка побеждает. Нужна подтверждённая почта.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CommentId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EditCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Комментарий после правки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteRideComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Удалить комментарий: покатушки",
+                "description": "Удаляет свой комментарий (администратор — любой, с записью в журнал аудита): остаётся «надгробие», пока под ним есть читаемые ответы. Повтор удаления тоже 204. Подтверждённая почта не нужна.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CommentId"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Комментарий удалён.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/component-models/{id}/comments/{commentId}": {
+            "patch": {
+                "operationId": "editComponentComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Исправить свой комментарий: модели компонента",
+                "description": "Правит текст своего комментария; чужой — 403, удалённый — 404. Комментарий должен принадлежать объекту из пути. Условного обновления (`If-Match`) нет: правит один автор, и последняя правка побеждает. Нужна подтверждённая почта.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/ComponentModelId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CommentId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EditCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Комментарий после правки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteComponentComment",
+                "tags": [
+                    "Comments"
+                ],
+                "summary": "Удалить комментарий: модели компонента",
+                "description": "Удаляет свой комментарий (администратор — любой, с записью в журнал аудита): остаётся «надгробие», пока под ним есть читаемые ответы. Повтор удаления тоже 204. Подтверждённая почта не нужна.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/ComponentModelId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CommentId"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Комментарий удалён.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/chat/token": {
+            "post": {
+                "operationId": "createChatToken",
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Токен для Stream Chat",
+                "description": "Подключает человека к чату: регистрирует его профиль у провайдера и выдаёт короткоживущий токен (5 минут) с публичным ключом приложения. Секрет приложения не возвращается никогда. Нужна подтверждённая почта; сессия проверяется ещё раз, отозванная — 401. Тела нет. Когда токен истёк, клиент запрашивает новый.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные для подключения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatToken"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры или тело не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос на изменение не с адреса сайта (нужен заголовок `Origin`) или почта не подтверждена (`email_verification_required`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много запросов; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    },
+                    "503": {
+                        "description": "Сообщения отключены или сервис чата недоступен (`service_unavailable`): основной сайт работает, повторите позже.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/channels": {
+            "post": {
+                "operationId": "createChatChannel",
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Создать или открыть канал",
+                "description": "Личный диалог открывается повторно тем же каналом; группа создаётся новой. Нельзя написать себе, заблокированному и тому, у кого не подтверждена почта (404). С заголовком `Idempotency-Key` (UUID) повтор того же запроса в течение суток отдаёт тот же канал (`Idempotency-Replayed: true`), а не вторую группу; тот же ключ с другим телом — 409 `conflict`. Бюджет — 10 за окно, общий с сайтом.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateChatChannelRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Канал создан или открыт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры или тело не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос на изменение не с адреса сайта (нужен заголовок `Origin`) или почта не подтверждена (`email_verification_required`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Участник недоступен для сообщений.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "`Idempotency-Key` уже использован с другим телом.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 4096 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много запросов; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    },
+                    "503": {
+                        "description": "Сообщения отключены или сервис чата недоступен (`service_unavailable`): основной сайт работает, повторите позже.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/people": {
+            "get": {
+                "operationId": "listChatPeople",
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Кому написать",
+                "description": "Без `q` — те, на кого подписан человек; с `q` (от 2 знаков, до 80) — поиск по имени и логину, не больше 20 человек. Только подтверждённые и не заблокированные.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": false,
+                        "description": "Часть имени или логина; пусто — те, на кого вы подписаны.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 80
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Люди, которым можно написать.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatPeople"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры или тело не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос на изменение не с адреса сайта (нужен заголовок `Origin`) или почта не подтверждена (`email_verification_required`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много запросов; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    },
+                    "503": {
+                        "description": "Сообщения отключены или сервис чата недоступен (`service_unavailable`): основной сайт работает, повторите позже.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/unread": {
+            "get": {
+                "operationId": "getChatUnread",
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Непрочитанные сообщения",
+                "description": "Общее число непрочитанных у провайдера; 0, пока человек не подключался к чату.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Число непрочитанных.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatUnread"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры или тело не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос на изменение не с адреса сайта (нужен заголовок `Origin`) или почта не подтверждена (`email_verification_required`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много запросов; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    },
+                    "503": {
+                        "description": "Сообщения отключены или сервис чата недоступен (`service_unavailable`): основной сайт работает, повторите позже.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -6188,7 +8801,8 @@
                     "payload_too_large",
                     "unsupported_media_type",
                     "rate_limited",
-                    "internal_error"
+                    "internal_error",
+                    "service_unavailable"
                 ],
                 "description": "Известные коды ошибок. Набор открыт: клиент обязан обработать неизвестный код по HTTP-статусу. Схема `Error` намеренно хранит код строкой, а не этим перечислением, чтобы новый код не ломал разбор у выпущенных приложений."
             },
@@ -7639,6 +10253,322 @@
                 "additionalProperties": false,
                 "description": "Страница покатушек."
             },
+            "OwnRideSummary": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "completed",
+                            "planned",
+                            "cancelled"
+                        ],
+                        "description": "Состоявшаяся, запланированная или отменённая."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "recorded",
+                            "planned"
+                        ],
+                        "description": "Откуда данные: запись трека или план покатушки."
+                    },
+                    "startedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Начало состоявшейся покатушки; null у плана и у трека без времени."
+                    },
+                    "scheduledAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Ближайшая дата плана (у еженедельной серии — следующая); у состоявшейся покатушки null."
+                    },
+                    "recurrence": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "weekly"
+                        ]
+                    },
+                    "hasTrack": {
+                        "type": "boolean"
+                    },
+                    "metrics": {
+                        "$ref": "#/components/schemas/RideMetrics"
+                    },
+                    "bike": {
+                        "$ref": "#/components/schemas/BikeRef"
+                    },
+                    "author": {
+                        "$ref": "#/components/schemas/Author"
+                    },
+                    "likes": {
+                        "type": "integer"
+                    },
+                    "comments": {
+                        "type": "integer"
+                    },
+                    "liked": {
+                        "type": "boolean",
+                        "description": "Поставил ли лайк вошедший зритель; для гостя false."
+                    },
+                    "participants": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RideParticipants"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Количество ответивших на план, без имён; у состоявшейся null."
+                    },
+                    "isPublic": {
+                        "type": "boolean"
+                    },
+                    "privacyEnabled": {
+                        "type": "boolean",
+                        "description": "Включена ли зона приватности вокруг начала и конца трека."
+                    },
+                    "privacyRadiusM": {
+                        "type": "integer",
+                        "description": "Радиус зоны приватности, метры."
+                    },
+                    "pointCount": {
+                        "type": "integer",
+                        "description": "Число точек загруженного трека."
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "status",
+                    "kind",
+                    "startedAt",
+                    "scheduledAt",
+                    "recurrence",
+                    "hasTrack",
+                    "metrics",
+                    "bike",
+                    "author",
+                    "likes",
+                    "comments",
+                    "liked",
+                    "participants",
+                    "isPublic",
+                    "privacyEnabled",
+                    "privacyRadiusM",
+                    "pointCount"
+                ],
+                "additionalProperties": false,
+                "description": "Своя покатушка в списке владельца: любое состояние, публичная или нет. Владельческие поля (`isPublic`, зона приватности, число точек) есть только здесь, в публичном `RideSummary` их нет."
+            },
+            "OwnRidePage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OwnRideSummary"
+                        }
+                    },
+                    "nextCursor": {
+                        "description": "Курсор следующей страницы или null, если страниц больше нет.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "items",
+                    "nextCursor"
+                ],
+                "additionalProperties": false,
+                "description": "Страница своих покатушек, новые сверху."
+            },
+            "MyUpcomingRide": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "planned",
+                            "cancelled"
+                        ],
+                        "description": "`cancelled` — весь план отменён, а человек на него отвечал."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "recorded",
+                            "planned"
+                        ],
+                        "description": "Откуда данные: запись трека или план покатушки."
+                    },
+                    "startedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Начало состоявшейся покатушки; null у плана и у трека без времени."
+                    },
+                    "scheduledAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Ближайшая дата плана (у еженедельной серии — следующая); у состоявшейся покатушки null."
+                    },
+                    "recurrence": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "weekly"
+                        ]
+                    },
+                    "hasTrack": {
+                        "type": "boolean"
+                    },
+                    "metrics": {
+                        "$ref": "#/components/schemas/RideMetrics"
+                    },
+                    "bike": {
+                        "$ref": "#/components/schemas/BikeRef"
+                    },
+                    "author": {
+                        "$ref": "#/components/schemas/Author"
+                    },
+                    "likes": {
+                        "type": "integer"
+                    },
+                    "comments": {
+                        "type": "integer"
+                    },
+                    "liked": {
+                        "type": "boolean",
+                        "description": "Поставил ли лайк вошедший зритель; для гостя false."
+                    },
+                    "participants": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RideParticipants"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Количество ответивших на план, без имён; у состоявшейся null."
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "organizer",
+                            "accepted",
+                            "maybe",
+                            "invited",
+                            "cancelled"
+                        ],
+                        "description": "Роль человека: организатор, «еду», «возможно», приглашён без ответа или ответил на отменённую дату."
+                    },
+                    "occurrenceCancelled": {
+                        "type": "boolean",
+                        "description": "Отменена одна дата серии, на которую человек отвечал; сама серия идёт дальше."
+                    },
+                    "changedAfterAnswer": {
+                        "type": "boolean",
+                        "description": "Условия плана изменились после ответа человека: ответ нужно подтвердить."
+                    },
+                    "meetingPoint": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "meetingHidden": {
+                        "type": "boolean",
+                        "description": "Точка встречи есть, но человеку пока не показывается."
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "status",
+                    "kind",
+                    "startedAt",
+                    "scheduledAt",
+                    "recurrence",
+                    "hasTrack",
+                    "metrics",
+                    "bike",
+                    "author",
+                    "likes",
+                    "comments",
+                    "liked",
+                    "participants",
+                    "role",
+                    "occurrenceCancelled",
+                    "changedAfterAnswer",
+                    "meetingPoint",
+                    "meetingHidden"
+                ],
+                "additionalProperties": false,
+                "description": "Ближайший план человека и его роль в нём. Точка встречи — по правилам участников: скрыта, пока человек не принял условия."
+            },
+            "MyUpcomingRides": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MyUpcomingRide"
+                        }
+                    }
+                },
+                "required": [
+                    "items"
+                ],
+                "additionalProperties": false,
+                "description": "Ближайшие планы человека: свои, принятые, «возможно», приглашения и недавние отмены; до 20 штук на 60 дней вперёд, ближайшие первыми. Без курсора."
+            },
             "RideAnalysisPoint": {
                 "type": "object",
                 "properties": {
@@ -8097,7 +11027,7 @@
                     },
                     "isPublic": {
                         "type": "boolean",
-                        "const": true
+                        "description": "Всегда `true`: приватный велосипед в ссылку не попадает."
                     }
                 },
                 "required": [
@@ -8678,6 +11608,280 @@
                 ],
                 "additionalProperties": false,
                 "description": "Число непрочитанных: считается до 100; при `capped` их не меньше 100."
+            },
+            "FeedItem": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "bike",
+                            "ride",
+                            "journal",
+                            "market"
+                        ]
+                    },
+                    "publishedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Когда опубликовано: по этому времени лента упорядочена."
+                    },
+                    "bike": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/BikeSummary"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "ride": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RideSummary"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "journal": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/JournalSummary"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "listing": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/MarketListing"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "publishedAt",
+                    "bike",
+                    "ride",
+                    "journal",
+                    "listing"
+                ],
+                "additionalProperties": false,
+                "description": "Публикация в ленте: ровно одно из полей `bike`, `ride`, `journal`, `listing` заполнено, остальные null; какое — говорит `type`. Это те же карточки, что в списках (`BikeSummary`, `RideSummary`, `JournalSummary`, `MarketListing`)."
+            },
+            "FeedPage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FeedItem"
+                        }
+                    },
+                    "nextCursor": {
+                        "description": "Курсор следующей страницы или null, если страниц больше нет.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "items",
+                    "nextCursor"
+                ],
+                "additionalProperties": false,
+                "description": "Страница ленты, новые сверху. Лента состоит из публикаций тех, на кого подписан человек (и велосипедов, за которыми он следит); страница читается заново по видимости зрителя, поэтому скрытое между страницами не показывается."
+            },
+            "CreateCommentRequest": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000,
+                        "description": "Текст, от 1 до 1000 знаков после обрезки пробелов."
+                    },
+                    "parentId": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "body"
+                ],
+                "additionalProperties": false,
+                "description": "Новый комментарий. `parentId` — комментарий того же объекта, на который отвечают; чужой или недоступный комментарий — 404."
+            },
+            "EditCommentRequest": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                    }
+                },
+                "required": [
+                    "body"
+                ],
+                "additionalProperties": false,
+                "description": "Новый текст своего комментария."
+            },
+            "ChatToken": {
+                "type": "object",
+                "properties": {
+                    "apiKey": {
+                        "type": "string",
+                        "description": "Публичный ключ приложения Stream Chat."
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "description": "Идентификатор человека в Stream Chat (не идентификатор ColaBike)."
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "image": {
+                                "description": "Полный адрес аватара или null.",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "name",
+                            "image"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "token": {
+                        "type": "string",
+                        "description": "JWT человека в Stream Chat; живёт недолго, при истечении запросите новый."
+                    },
+                    "expiresAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Когда токен перестаёт действовать."
+                    },
+                    "channelType": {
+                        "type": "string",
+                        "description": "Тип каналов ColaBike в Stream Chat: с ним клиент открывает и создаёт каналы."
+                    }
+                },
+                "required": [
+                    "apiKey",
+                    "user",
+                    "token",
+                    "expiresAt",
+                    "channelType"
+                ],
+                "additionalProperties": false,
+                "description": "Всё, что нужно нативному клиенту Stream Chat, чтобы подключить человека: публичный ключ приложения, его профиль в чате и короткоживущий токен. Секрет приложения сюда никогда не попадает."
+            },
+            "CreateChatChannelRequest": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "dm",
+                            "group"
+                        ]
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                    },
+                    "members": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Другие участники (UUID людей ColaBike)."
+                    }
+                },
+                "required": [
+                    "kind",
+                    "members"
+                ],
+                "additionalProperties": false,
+                "description": "Новый канал. Личный диалог (`dm`): ровно один собеседник, без названия; повторный запрос откроет тот же диалог. Группа (`group`): название до 80 знаков и от 2 до 7 других участников. Нельзя включить себя, повторы, заблокированных и тех, у кого не подтверждена почта."
+            },
+            "ChatChannel": {
+                "type": "object",
+                "properties": {
+                    "cid": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "cid"
+                ],
+                "additionalProperties": false,
+                "description": "Созданный или открытый канал: `cid` вида `тип:id`, по нему клиент Stream Chat открывает канал."
+            },
+            "ChatPeople": {
+                "type": "object",
+                "properties": {
+                    "people": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Author"
+                        }
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "following",
+                            "search"
+                        ]
+                    }
+                },
+                "required": [
+                    "people",
+                    "mode"
+                ],
+                "additionalProperties": false,
+                "description": "Кому можно написать. Без запроса — те, на кого подписан человек; с запросом (от 2 знаков) — поиск по имени и логину. Только подтверждённые и не заблокированные; право написать проверяется ещё раз при создании канала."
+            },
+            "ChatUnread": {
+                "type": "object",
+                "properties": {
+                    "unread": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "unread"
+                ],
+                "additionalProperties": false,
+                "description": "Число непрочитанных сообщений во всех каналах человека."
             }
         },
         "parameters": {
