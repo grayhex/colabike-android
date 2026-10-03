@@ -9,7 +9,7 @@
 
 - [AGENTS.md](AGENTS.md) — команды, границы, запреты, definition of done.
 - [docs/architecture.md](docs/architecture.md) — модули, поток данных, навигация, токены, контракт API.
-- [DESIGN.md](DESIGN.md) — Figma, токены, адаптивность, состояния, доступность.
+- [DESIGN.md](DESIGN.md) — тема по токенам сайта, компоненты, адаптивность, состояния, доступность.
 - [docs/adr/0001-platform-baseline.md](docs/adr/0001-platform-baseline.md) — принятые решения о платформе.
 
 Публикация — позже в RuStore. Google Play не цель.

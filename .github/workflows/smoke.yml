@@ -47,9 +47,12 @@ jobs:
         run: scripts/emulator.sh start
       - name: Instrumented tests
         run: |
-          ./gradlew connectedDebugAndroidTest \
-            -Pandroid.testInstrumentationRunnerArguments.smokeEmail="$SMOKE_EMAIL" \
-            -Pandroid.testInstrumentationRunnerArguments.smokePassword="$SMOKE_PASSWORD"
+          args=()
+          if [ -n "$SMOKE_EMAIL" ] && [ -n "$SMOKE_PASSWORD" ]; then
+            args+=("-Pandroid.testInstrumentationRunnerArguments.smokeEmail=$SMOKE_EMAIL")
+            args+=("-Pandroid.testInstrumentationRunnerArguments.smokePassword=$SMOKE_PASSWORD")
+          fi
+          ./gradlew connectedDebugAndroidTest "${args[@]}"
       - name: Stop the emulator
         if: always()
         run: scripts/emulator.sh stop
