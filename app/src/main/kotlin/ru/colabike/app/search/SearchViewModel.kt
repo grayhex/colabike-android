@@ -75,8 +75,9 @@ class SearchViewModel(
     private val bikes: BikesRepository,
     private val people: PeopleRepository,
     private val debounceMs: Long = DEBOUNCE_MS,
+    startTab: SearchTab = SearchTab.Bikes,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(SearchUiState())
+    private val mutableState = MutableStateFlow(SearchUiState(tab = startTab))
     val state: StateFlow<SearchUiState> = mutableState.asStateFlow()
 
     private var typing: Job? = null

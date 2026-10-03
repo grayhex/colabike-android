@@ -165,7 +165,7 @@ fun PhotoTile(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Counter(icon: Int, value: Int, liked: Boolean = false) {
+internal fun Counter(icon: Int, value: Int, liked: Boolean = false) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),

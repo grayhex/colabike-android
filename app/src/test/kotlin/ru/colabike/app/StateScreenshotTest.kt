@@ -29,6 +29,13 @@ import ru.colabike.app.bikes.BikesScreen
 import ru.colabike.app.bikes.BikesUiState
 import ru.colabike.app.devices.DevicesScreen
 import ru.colabike.app.devices.DevicesUiState
+import ru.colabike.app.feed.FeedActions
+import ru.colabike.app.feed.FeedScreen
+import ru.colabike.app.feed.FeedUiState
+import ru.colabike.app.journal.JournalActions
+import ru.colabike.app.journal.JournalListScreen
+import ru.colabike.app.journal.JournalScreen
+import ru.colabike.app.journal.JournalUiState
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListScreen
 import ru.colabike.app.people.PeopleListUiState
@@ -42,6 +49,7 @@ import ru.colabike.app.search.SearchScreen
 import ru.colabike.app.search.SearchTab
 import ru.colabike.app.search.SearchUiState
 import ru.colabike.app.settings.ThemeMode
+import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.UiText
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
@@ -49,6 +57,9 @@ import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
+import ru.colabike.core.model.FeedFilter
+import ru.colabike.core.model.JournalStatus
+import ru.colabike.core.model.JournalSummary
 import ru.colabike.core.model.Relationship
 
 /** The states a screen has besides its content (DESIGN.md): loading, empty, error, an odd bike. */
@@ -75,6 +86,16 @@ enum class ScreenState(val file: String) {
     SearchPeople("search_people"),
     SearchPeopleEmpty("search_people_empty"),
     SearchError("search_error"),
+    FeedEmpty("feed_empty"),
+    FeedEmptyRides("feed_empty_rides"),
+    FeedError("feed_error"),
+    FeedLoadingMore("feed_loading_more"),
+    JournalListEmpty("journal_list_empty"),
+    JournalListError("journal_list_error"),
+    SavedEmpty("saved_empty"),
+    JournalDraft("journal_draft"),
+    JournalNotFoundGuest("journal_not_found_guest"),
+    JournalSaved("journal_saved"),
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -312,6 +333,60 @@ private fun Content(state: ScreenState) {
                     bikes = Results(asked = true, error = UiText.Res(R.string.error_offline)),
                 )
             )
+        ScreenState.FeedEmpty -> FeedWith(FeedUiState(page = PagedState(loading = false)))
+        ScreenState.FeedEmptyRides ->
+            FeedWith(FeedUiState(FeedFilter.Rides, PagedState(loading = false)))
+        ScreenState.FeedError ->
+            FeedWith(
+                FeedUiState(
+                    page = PagedState(loading = false, error = UiText.Res(R.string.error_offline))
+                )
+            )
+        ScreenState.FeedLoadingMore ->
+            FeedWith(
+                FeedUiState(
+                    FeedFilter.Journal,
+                    PagedState(
+                        items = listOf(feedJournal(1), feedJournal(2)),
+                        nextCursor = "c1",
+                        loading = false,
+                        moreError = UiText.Res(R.string.error_offline),
+                    ),
+                )
+            )
+        ScreenState.JournalListEmpty -> JournalListWith(PagedState(loading = false), saved = false)
+        ScreenState.JournalListError ->
+            JournalListWith(
+                PagedState(loading = false, error = UiText.Res(R.string.error_offline)),
+                saved = false,
+            )
+        ScreenState.SavedEmpty -> JournalListWith(PagedState(loading = false), saved = true)
+        ScreenState.JournalDraft ->
+            JournalWith(
+                JournalUiState.Loaded(
+                    journalEntry(0, body = "Пока только заметки.\n\n1. Снять педали\n2. Смазать")
+                        .let {
+                            it.copy(
+                                summary =
+                                    it.summary.copy(
+                                        status = JournalStatus.Draft,
+                                        kind = "other",
+                                        eventDate = null,
+                                        mileageKm = null,
+                                    ),
+                                components = emptyList(),
+                            )
+                        },
+                    saved = null,
+                )
+            )
+        ScreenState.JournalNotFoundGuest ->
+            JournalWith(
+                JournalUiState.Failed(UiText.Res(R.string.error_not_found), notFound = true),
+                onSignIn = {},
+            )
+        ScreenState.JournalSaved ->
+            JournalWith(JournalUiState.Loaded(journalEntry(0), saved = true))
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),
@@ -321,6 +396,40 @@ private fun Content(state: ScreenState) {
             )
     }
 }
+
+@Composable
+private fun FeedWith(state: FeedUiState) =
+    FeedScreen(
+        state = state,
+        actions = FeedActions({}, {}, {}, {}),
+        onFilter = {},
+        onRefresh = {},
+        onRetry = {},
+        onLoadMore = {},
+    )
+
+@Composable
+private fun JournalListWith(page: PagedState<JournalSummary>, saved: Boolean) =
+    JournalListScreen(
+        title = if (saved) "Сохранённое" else "Журнал",
+        subtitle = if (saved) null else "Городской Трэвел",
+        saved = saved,
+        state = page,
+        onBack = {},
+        onRefresh = {},
+        onRetry = {},
+        onLoadMore = {},
+        onOpen = {},
+    )
+
+@Composable
+private fun JournalWith(state: JournalUiState, onSignIn: (() -> Unit)? = null) =
+    JournalScreen(
+        state = state,
+        actions = JournalActions({}, {}, {}),
+        onRetry = {},
+        onSignIn = onSignIn,
+    )
 
 @Composable
 private fun PersonWith(state: PersonUiState) =

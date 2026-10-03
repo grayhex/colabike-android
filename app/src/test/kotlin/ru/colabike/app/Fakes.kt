@@ -21,15 +21,24 @@ import ru.colabike.core.model.Account
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
+import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeQuery
+import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.FeedFilter
+import ru.colabike.core.model.FeedItem
+import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.FollowChange
 import ru.colabike.core.model.FollowState
+import ru.colabike.core.model.JournalEntry
+import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.JournalRepository
+import ru.colabike.core.model.JournalSummary
 import ru.colabike.core.model.LikeChange
 import ru.colabike.core.model.LikeState
 import ru.colabike.core.model.Page
@@ -39,6 +48,7 @@ import ru.colabike.core.model.PersonSummary
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.Relationship
+import ru.colabike.core.model.SavedChange
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UserId
@@ -268,6 +278,130 @@ class FakePeople(
     }
 }
 
+/** A journal entry the way a list shows it; `n` makes the title and the id. */
+fun journalSummary(n: Int, bike: BikeRef = BikeRef(BikeId("b1"), "Городской Трэвел")) =
+    PreviewData.journal.copy(
+        id = JournalId("j$n"),
+        title = "Запись $n",
+        bike = bike,
+        excerpt = "Начало записи $n.",
+    )
+
+fun journals(from: Int, count: Int): List<JournalSummary> =
+    (from until from + count).map { journalSummary(it) }
+
+fun journalEntry(
+    n: Int,
+    body: String =
+        "## Что сделал\n\nЗаменил **цепь** и кассету, смазал _всё_ остальное. Подробности: " +
+            "[инструкция](https://example.test/chain).\n\n- цепь KMC\n- кассета Deore\n\n" +
+            "> Цепь меняют вместе с кассетой.",
+    components: List<BikeComponent> =
+        listOf(
+            BikeComponent(
+                "jc1",
+                "build",
+                "Трансмиссия",
+                "KMC X10",
+                "114 звеньев",
+                priceRub = 1800.0,
+            )
+        ),
+) =
+    JournalEntry(
+        summary = journalSummary(n).copy(excerpt = ""),
+        body = body,
+        components = components,
+        photos = emptyList(),
+    )
+
+/** Feed pages by cursor (null = first); a queued error is thrown by the next call. */
+class FakeFeed(var pages: Map<String?, Page<FeedItem>> = mapOf(null to Page(emptyList(), null))) :
+    FeedRepository {
+    val calls = mutableListOf<Pair<FeedFilter, String?>>()
+    var nextError: DataError? = null
+    var answer: (suspend (FeedFilter, String?) -> Page<FeedItem>)? = null
+
+    override suspend fun feed(filter: FeedFilter, cursor: String?, limit: Int): Page<FeedItem> {
+        calls += filter to cursor
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+        answer?.let {
+            return it(filter, cursor)
+        }
+        return pages[cursor] ?: Page(emptyList(), null)
+    }
+}
+
+fun feedBike(n: Int) =
+    FeedItem.Bike(bikes(n, 1).single(), Instant.parse("2026-09-21T09:00:00Z").minusSeconds(n * 60L))
+
+fun feedJournal(n: Int) =
+    FeedItem.Journal(journalSummary(n), Instant.parse("2026-09-21T09:00:00Z").minusSeconds(n * 60L))
+
+/** The journals of bikes, the entries and the saved list, with the saved state the API lacks. */
+class FakeJournal(
+    var pages: Map<String?, Page<JournalSummary>> = mapOf(null to Page(journals(0, 3), null)),
+    var savedPages: Map<String?, Page<JournalSummary>> = mapOf(null to Page(emptyList(), null)),
+    var entries: Map<String, JournalEntry> = (0..9).associate { "j$it" to journalEntry(it) },
+) : JournalRepository {
+    val bikeCalls = mutableListOf<Pair<BikeId, String?>>()
+    val savedCalls = mutableListOf<String?>()
+    val saves = mutableListOf<Pair<JournalId, Boolean>>()
+    var entryCalls = 0
+    var nextError: DataError? = null
+    var saveError: DataError? = null
+    private val known = mutableMapOf<String, Boolean>()
+    private val changes = MutableSharedFlow<SavedChange>(extraBufferCapacity = 16)
+    override val savedChanges: SharedFlow<SavedChange> = changes
+
+    private fun fail() {
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+
+    fun know(id: String, saved: Boolean) {
+        known[id] = saved
+    }
+
+    override suspend fun ofBike(bike: BikeId, cursor: String?, limit: Int): Page<JournalSummary> {
+        bikeCalls += bike to cursor
+        fail()
+        return pages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun entry(id: JournalId): JournalEntry {
+        entryCalls++
+        fail()
+        return entries[id.value] ?: throw DataError.NotFound()
+    }
+
+    override suspend fun saved(cursor: String?, limit: Int): Page<JournalSummary> {
+        savedCalls += cursor
+        fail()
+        return (savedPages[cursor] ?: Page(emptyList(), null)).also { page ->
+            page.items.forEach { known[it.id.value] = true }
+        }
+    }
+
+    override fun isSaved(id: JournalId): Boolean? = known[id.value]
+
+    override suspend fun setSaved(id: JournalId, saved: Boolean): Boolean {
+        saves += id to saved
+        saveError?.let {
+            saveError = null
+            throw it
+        }
+        known[id.value] = saved
+        changes.tryEmit(SavedChange(id, saved))
+        return saved
+    }
+}
+
 class FakeAccount(var result: () -> Account = { account }) : AccountRepository {
     /** How many times the account was asked for: a guest asks nothing. */
     var calls = 0
@@ -355,6 +489,8 @@ class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
     override val people: FakePeople = FakePeople(),
+    override val feed: FakeFeed = FakeFeed(),
+    override val journal: FakeJournal = FakeJournal(),
     override val sessions: FakeSessions = FakeSessions(),
     override val auth: FakeAuth = FakeAuth(),
     override val settings: FakeSettings = FakeSettings(),

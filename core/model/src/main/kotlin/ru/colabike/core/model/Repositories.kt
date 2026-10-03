@@ -55,3 +55,34 @@ interface PeopleRepository {
     /** Emitted after every subscription that went through. */
     val followChanges: SharedFlow<FollowChange>
 }
+
+/**
+ * The feed of the signed-in person: what the people they follow and the bikes they watch published,
+ * newest first. A guest has none (the API answers 401). Implementations throw [DataError].
+ */
+interface FeedRepository {
+    suspend fun feed(filter: FeedFilter, cursor: String? = null, limit: Int = 24): Page<FeedItem>
+}
+
+/** Bike journals and the entries a person saved. Implementations throw [DataError] on failure. */
+interface JournalRepository {
+    /** The owner sees drafts too; everyone else only what is published and public. */
+    suspend fun ofBike(bike: BikeId, cursor: String? = null, limit: Int = 24): Page<JournalSummary>
+
+    suspend fun entry(id: JournalId): JournalEntry
+
+    /** The signed-in person's saved entries, newest saves first. Hidden entries are not listed. */
+    suspend fun saved(cursor: String? = null, limit: Int = 24): Page<JournalSummary>
+
+    /**
+     * Whether an entry is saved, as far as this session knows: from the saved list pages and from
+     * earlier answers. The API has no such flag on an entry, so null means "not known".
+     */
+    fun isSaved(id: JournalId): Boolean?
+
+    /** Idempotent; the answer is the state to show. Only public published entries can be saved. */
+    suspend fun setSaved(id: JournalId, saved: Boolean): Boolean
+
+    /** Emitted after every change that went through. */
+    val savedChanges: SharedFlow<SavedChange>
+}

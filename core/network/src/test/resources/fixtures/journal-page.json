@@ -1,0 +1,30 @@
+{
+  "items": [
+    {
+      "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+      "kind": "service",
+      "title": "Замена цепи и кассеты",
+      "status": "published",
+      "isPublic": true,
+      "eventDate": "2026-09-14",
+      "mileage": 4200,
+      "createdAt": "2026-09-14T18:30:00Z",
+      "updatedAt": "2026-09-15T08:00:00Z",
+      "bike": {
+        "id": "6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31",
+        "name": "Городской Трэвел"
+      },
+      "author": {
+        "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": "/api/avatars/8d9e0f1a"
+      },
+      "likes": 5,
+      "comments": 2,
+      "liked": false,
+      "excerpt": "Цепь вытянулась на 0,75 %, поставил новую."
+    }
+  ],
+  "nextCursor": null
+}

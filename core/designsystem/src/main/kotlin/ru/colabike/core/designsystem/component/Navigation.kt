@@ -24,6 +24,7 @@ import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,11 +32,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import ru.colabike.core.designsystem.theme.PillShape
 import ru.colabike.core.designsystem.theme.Spacing
@@ -87,25 +90,45 @@ fun ColaNavigationBar(
             shadowElevation = 8.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Row(
-                Modifier.padding(horizontal = Spacing.s, vertical = Spacing.xs).selectableGroup(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                val labelAll = items.size <= MaxLabelledItems
-                items.forEachIndexed { index, item ->
-                    val selected = index == selectedIndex
-                    BarItem(
-                        item,
-                        selected = selected,
-                        showLabel = labelAll || selected,
-                        weight = if (selected && !labelAll) SelectedWeight else 1f,
-                        onClick = { onSelect(index) },
-                    )
+            CappedFontScale {
+                Row(
+                    Modifier.padding(horizontal = Spacing.s, vertical = Spacing.xs)
+                        .selectableGroup(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    val labelAll = items.size <= MaxLabelledItems
+                    items.forEachIndexed { index, item ->
+                        val selected = index == selectedIndex
+                        BarItem(
+                            item,
+                            selected = selected,
+                            showLabel = labelAll || selected,
+                            weight = if (selected && !labelAll) SelectedWeight else 1f,
+                            onClick = { onSelect(index) },
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+/**
+ * The section names are short labels under icons, a third of the screen wide each: at the largest
+ * system font they would be cut. They stop growing at 1.3 times (Material's own guidance for
+ * navigation); TalkBack reads them in full whatever the size.
+ */
+@Composable
+private fun CappedFontScale(content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides
+            Density(density.density, density.fontScale.coerceAtMost(NavFontScale)),
+        content = content,
+    )
+}
+
+private const val NavFontScale = 1.3f
 
 @Composable
 private fun RowScope.BarItem(
@@ -177,33 +200,35 @@ fun ColaNavigationRail(
     header: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
-    NavigationRail(
-        modifier = modifier,
-        containerColor = Color.Transparent,
-        header = header,
-    ) {
-        items.forEachIndexed { index, item ->
-            val selected = index == selectedIndex
-            NavigationRailItem(
-                selected = selected,
-                onClick = { onSelect(index) },
-                icon = {
-                    Icon(
-                        painterResource(if (selected) item.selectedIcon else item.icon),
-                        contentDescription = null,
-                    )
-                },
-                label = { Text(item.label) },
-                alwaysShowLabel = true,
-                colors =
-                    NavigationRailItemDefaults.colors(
-                        selectedIconColor = scheme.onPrimaryContainer,
-                        selectedTextColor = scheme.primary,
-                        indicatorColor = scheme.primaryContainer,
-                        unselectedIconColor = scheme.onSurfaceVariant,
-                        unselectedTextColor = scheme.onSurfaceVariant,
-                    ),
-            )
+    CappedFontScale {
+        NavigationRail(
+            modifier = modifier,
+            containerColor = Color.Transparent,
+            header = header,
+        ) {
+            items.forEachIndexed { index, item ->
+                val selected = index == selectedIndex
+                NavigationRailItem(
+                    selected = selected,
+                    onClick = { onSelect(index) },
+                    icon = {
+                        Icon(
+                            painterResource(if (selected) item.selectedIcon else item.icon),
+                            contentDescription = null,
+                        )
+                    },
+                    label = { Text(item.label) },
+                    alwaysShowLabel = true,
+                    colors =
+                        NavigationRailItemDefaults.colors(
+                            selectedIconColor = scheme.onPrimaryContainer,
+                            selectedTextColor = scheme.primary,
+                            indicatorColor = scheme.primaryContainer,
+                            unselectedIconColor = scheme.onSurfaceVariant,
+                            unselectedTextColor = scheme.onSurfaceVariant,
+                        ),
+                )
+            }
         }
     }
 }

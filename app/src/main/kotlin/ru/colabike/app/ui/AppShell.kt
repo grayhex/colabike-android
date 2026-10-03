@@ -41,6 +41,12 @@ import ru.colabike.app.about.LicensesRoute
 import ru.colabike.app.bikes.BikeDetailRoute
 import ru.colabike.app.bikes.BikesRoute
 import ru.colabike.app.devices.DevicesRoute
+import ru.colabike.app.feed.FeedActions
+import ru.colabike.app.feed.FeedRoute
+import ru.colabike.app.journal.JournalActions
+import ru.colabike.app.journal.JournalListRoute
+import ru.colabike.app.journal.JournalRoute
+import ru.colabike.app.journal.JournalSource
 import ru.colabike.app.navigation.Destination
 import ru.colabike.app.navigation.Navigator
 import ru.colabike.app.navigation.TopLevel
@@ -59,6 +65,7 @@ import ru.colabike.core.designsystem.component.ColaNavigationRail
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.JournalId
 
 /**
  * The signed-in shell. The window decides the navigation: a floating bar below the medium width, a
@@ -133,6 +140,71 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                     entries =
                         state.toDecoratedEntries(
                             entryProvider {
+                                entry<Destination.Feed> {
+                                    FeedRoute(
+                                        feed = dependencies.feed,
+                                        bikes = dependencies.bikes,
+                                        auth = dependencies.auth,
+                                        actions =
+                                            FeedActions(
+                                                onOpenBike = { id -> navigator.openBike(id.value) },
+                                                onOpenJournal = { id ->
+                                                    navigator.open(Destination.Journal(id.value))
+                                                },
+                                                onFindPeople = {
+                                                    navigator.open(
+                                                        Destination.Search(people = true)
+                                                    )
+                                                },
+                                                onBrowseBikes = {
+                                                    navigator.select(Destination.Bikes)
+                                                },
+                                            ),
+                                        scrollToTop =
+                                            remember(navigator) {
+                                                navigator.reselects(Destination.Feed)
+                                            },
+                                    )
+                                }
+                                entry<Destination.Journal> { key ->
+                                    JournalRoute(
+                                        repository = dependencies.journal,
+                                        auth = dependencies.auth,
+                                        id = JournalId(key.id),
+                                        actions =
+                                            JournalActions(
+                                                onBack = { navigator.back() },
+                                                onOpenBike = { id -> navigator.openBike(id.value) },
+                                                onOpenAuthor = { ref ->
+                                                    navigator.open(Destination.Person(ref))
+                                                },
+                                            ),
+                                    )
+                                }
+                                entry<Destination.BikeJournal> { key ->
+                                    JournalListRoute(
+                                        repository = dependencies.journal,
+                                        source = JournalSource.OfBike(BikeId(key.bikeId)),
+                                        title = stringResource(R.string.journal_of_bike),
+                                        subtitle = key.bikeName,
+                                        onBack = { navigator.back() },
+                                        onOpen = { id ->
+                                            navigator.open(Destination.Journal(id.value))
+                                        },
+                                    )
+                                }
+                                entry<Destination.SavedJournal> {
+                                    JournalListRoute(
+                                        repository = dependencies.journal,
+                                        source = JournalSource.Saved,
+                                        title = stringResource(R.string.journal_saved_title),
+                                        subtitle = null,
+                                        onBack = { navigator.back() },
+                                        onOpen = { id ->
+                                            navigator.open(Destination.Journal(id.value))
+                                        },
+                                    )
+                                }
                                 entry<Destination.Bikes>(
                                     metadata =
                                         ListDetailSceneStrategy.listPane(
@@ -143,7 +215,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         dependencies.bikes,
                                         dependencies.auth,
                                         onOpen = { id -> navigator.openBike(id.value) },
-                                        onSearch = { navigator.open(Destination.Search) },
+                                        onSearch = { navigator.open(Destination.Search()) },
                                         scrollToTop =
                                             remember(navigator) {
                                                 navigator.reselects(Destination.Bikes)
@@ -170,6 +242,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         onBack = { navigator.back() },
                                         onOpenAuthor = { ref ->
                                             navigator.open(Destination.Person(ref))
+                                        },
+                                        onOpenJournal = { id, name ->
+                                            navigator.open(Destination.BikeJournal(id.value, name))
                                         },
                                     )
                                 }
@@ -212,8 +287,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         },
                                     )
                                 }
-                                entry<Destination.Search> {
+                                entry<Destination.Search> { key ->
                                     SearchRoute(
+                                        startOnPeople = key.people,
                                         bikes = dependencies.bikes,
                                         people = dependencies.people,
                                         onBack = { navigator.back() },
@@ -231,6 +307,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         onOpenPublicProfile = { id ->
                                             navigator.open(Destination.Person(id))
                                         },
+                                        onOpenSaved = { navigator.open(Destination.SavedJournal) },
                                     )
                                 }
                                 entry<Destination.Devices> {
