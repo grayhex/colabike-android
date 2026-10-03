@@ -69,9 +69,14 @@ start)
   mkdir -p "$ANDROID_AVD_HOME"
   echo no | "$AVDMANAGER" create avd --force --name "$AVD" --package "$IMAGE" --device "pixel_7"
   [ -f "$ANDROID_AVD_HOME/$AVD.ini" ] || fail "avdmanager did not create $AVD in $ANDROID_AVD_HOME"
+  # On the runner the AVD got an 800 MB /data that the first boot of API 37 fills up: system_server
+  # restarts and no APK installs. Size /data and RAM (2 GB in the pixel_7 profile) explicitly.
+  config="$(sed -n 's/^path=//p' "$ANDROID_AVD_HOME/$AVD.ini")/config.ini"
+  [ -f "$config" ] || fail "no AVD config at $config"
+  sed -i '/^disk\.dataPartition\.size=/d; /^hw\.ramSize=/d' "$config"
+  printf '%s\n' "disk.dataPartition.size=6G" "hw.ramSize=4096" >>"$config"
   "$EMULATOR" -accel-check || true
-  # 4 GB as the API 37 image asks; the pixel_7 profile alone gives 2 GB.
-  nohup "$EMULATOR" -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot -memory 4096 \
+  nohup "$EMULATOR" -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data \
     -gpu swiftshader_indirect -camera-back none -camera-front none >"$LOG" 2>&1 &
   echo $! >"$PID"
   # Poll instead of `adb wait-for-device`: a dead emulator fails the step at once
@@ -89,6 +94,11 @@ start)
   wait_until_ready
   echo "API level $(device getprop ro.build.version.sdk || true)"
   device df -h /data || true
+  free_kb="$(device df -k /data | awk 'NR == 2 { print $4 }' || true)"
+  case "$free_kb" in
+  '' | *[!0-9]*) fail "could not read the free space on /data" ;;
+  esac
+  [ "$free_kb" -ge 1048576 ] || fail "/data has $((free_kb / 1024)) MB free; the tests need at least 1 GB"
   # Animations off: the tests wait for state, not for transitions.
   for setting in window_animation_scale transition_animation_scale animator_duration_scale; do
     "$ADB" shell settings put global "$setting" 0
@@ -107,7 +117,7 @@ diagnose)
   timeout 30 "$ADB" logcat -d -b crash 2>/dev/null | tail -n 200 || true
   echo "--- system events"
   timeout 30 "$ADB" logcat -d -b main,system 2>/dev/null |
-    grep -E -i 'watchdog|fatal|system_server|zygote|surfaceflinger|lowmemorykiller|lmkd|storagemanager|vold|not enough space' |
+    grep -E -i 'watchdog|fatal|died|lowmemorykiller|lmkd|no space left|not enough space|low on storage|devicestoragemonitor' |
     tail -n 200 || true
   ;;
 stop)
