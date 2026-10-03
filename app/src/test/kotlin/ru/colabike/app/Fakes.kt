@@ -7,6 +7,7 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.YandexFailure
 import ru.colabike.app.links.PendingNavigation
@@ -22,10 +23,12 @@ import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
-import ru.colabike.core.model.BikeScope
+import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.LikeChange
+import ru.colabike.core.model.LikeState
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
@@ -79,17 +82,32 @@ fun bikes(from: Int, count: Int): List<BikeSummary> =
 class FakeBikes(
     var pages: Map<String?, Page<BikeSummary>> = mapOf(null to Page(bikes(0, 3), null))
 ) : BikesRepository {
-    val calls = mutableListOf<Pair<BikeScope, String?>>()
+    val calls = mutableListOf<Pair<BikeQuery, String?>>()
     var nextError: DataError? = null
+
+    /** Answers every page request by its own rule (a search, a held answer), instead of [pages]. */
+    var answer: (suspend (BikeQuery, String?) -> Page<BikeSummary>)? = null
 
     /** How many times a bike's details were requested: a ViewModel that survived asks once. */
     var detailCalls = 0
 
-    override suspend fun bikes(scope: BikeScope, cursor: String?, limit: Int): Page<BikeSummary> {
-        calls += scope to cursor
+    /** What the server says to the next like; thrown if it is an error. */
+    var likeError: DataError? = null
+    val likes = mutableListOf<Pair<BikeId, Boolean>>()
+    private val changes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
+    override val likeChanges: SharedFlow<LikeChange> = changes
+
+    /** Details by id; a bike without an entry gets a plain page made from its summary. */
+    var details: Map<String, BikeDetail> = emptyMap()
+
+    override suspend fun bikes(query: BikeQuery, cursor: String?, limit: Int): Page<BikeSummary> {
+        calls += query to cursor
         nextError?.let {
             nextError = null
             throw it
+        }
+        answer?.let {
+            return it(query, cursor)
         }
         return pages[cursor] ?: Page(emptyList(), null)
     }
@@ -100,28 +118,25 @@ class FakeBikes(
             nextError = null
             throw it
         }
+        details[id.value]?.let {
+            return it
+        }
         val summary =
             pages.values.flatMap { it.items }.firstOrNull { it.id == id }
                 ?: throw DataError.NotFound()
-        return BikeDetail(
-            summary = summary,
-            description = "Надёжный городской велосипед для поездок круглый год.",
-            color = "Графит",
-            size = "L",
-            weightKg = 14.2,
-            mileageKm = 1200,
-            photos = listOfNotNull(summary.cover),
-            components =
-                listOf(
-                    ru.colabike.core.model.BikeComponent(
-                        "c1",
-                        "build",
-                        "Рама",
-                        "Cube Aluminium Superlite",
-                        "",
-                    )
-                ),
-        )
+        return PreviewData.bikeDetail.copy(summary = summary)
+    }
+
+    override suspend fun setLiked(id: BikeId, liked: Boolean): LikeState {
+        likes += id to liked
+        likeError?.let {
+            likeError = null
+            throw it
+        }
+        val current = pages.values.flatMap { it.items }.firstOrNull { it.id == id }?.likes ?: 0
+        return LikeState(liked, (current + if (liked) 1 else -1).coerceAtLeast(0)).also {
+            changes.tryEmit(LikeChange(id, it))
+        }
     }
 }
 

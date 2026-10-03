@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="cola_no_photo">Нет фото</string>
+    <string name="cola_photo_unavailable">Фото недоступно</string>
+    <string name="cola_like">Нравится</string>
+    <string name="cola_share">Поделиться</string>
+    <string name="cola_close">Закрыть</string>
     <string name="cola_former_bike">Бывший</string>
     <string name="cola_open">Открыть</string>
     <string name="cola_back">Назад</string>

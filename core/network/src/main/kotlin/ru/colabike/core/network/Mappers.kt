@@ -1,8 +1,10 @@
 package ru.colabike.core.network
 
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import ru.colabike.api.models.AccountSession as AccountSessionDto
 import ru.colabike.api.models.Author as AuthorDto
 import ru.colabike.api.models.Bike as BikeDto
+import ru.colabike.api.models.BikeClassification as ClassificationDto
 import ru.colabike.api.models.BikeComponent as BikeComponentDto
 import ru.colabike.api.models.BikePage as BikePageDto
 import ru.colabike.api.models.BikePhoto as BikePhotoDto
@@ -10,6 +12,7 @@ import ru.colabike.api.models.BikeSummary as BikeSummaryDto
 import ru.colabike.api.models.Me as MeDto
 import ru.colabike.core.model.Account
 import ru.colabike.core.model.AccountSession
+import ru.colabike.core.model.BikeClassification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
@@ -34,6 +37,7 @@ internal fun BikeSummaryDto.toModel(media: MediaUrls): BikeSummary =
         model = model,
         year = year.takeIf { it > 0 },
         category = category,
+        classification = classification.toModel(),
         cover = coverPhoto?.toModel(media),
         photoCount = photoCount,
         author = author?.toModel(media),
@@ -43,6 +47,16 @@ internal fun BikeSummaryDto.toModel(media: MediaUrls): BikeSummary =
         isOwner = isOwner,
         isPublic = isPublic,
         isFormer = isFormer,
+    )
+
+internal fun ClassificationDto.toModel(): BikeClassification =
+    BikeClassification(
+        category = category,
+        subtype = subtype,
+        suspension = suspension,
+        construction = construction,
+        electric = electric,
+        fatbike = fatbike,
     )
 
 internal fun BikeDto.toModel(media: MediaUrls): BikeDetail =
@@ -55,6 +69,7 @@ internal fun BikeDto.toModel(media: MediaUrls): BikeDetail =
                 model = model,
                 year = year.takeIf { it > 0 },
                 category = category,
+                classification = classification.toModel(),
                 cover = coverPhoto?.toModel(media),
                 photoCount = photoCount,
                 author = author?.toModel(media),
@@ -65,11 +80,16 @@ internal fun BikeDto.toModel(media: MediaUrls): BikeDetail =
                 isPublic = isPublic,
                 isFormer = isFormer,
             ),
+        trim = trim,
         description = description,
         color = color,
         size = propertySize,
         weightKg = weight,
         mileageKm = mileage,
+        manufacturerUrl = httpsOrNull(manufacturerUrl),
+        purposes = purposes.filter { it.isNotBlank() },
+        priceRub = price,
+        groupOrder = groupOrder,
         photos = photos.mapNotNull { it.toModel(media) },
         components = components.map { it.toModel() },
     )
@@ -90,7 +110,22 @@ internal fun BikeComponentDto.toModel(): BikeComponent =
         category = category,
         name = name,
         notes = notes,
+        url = httpsOrNull(url),
+        groupId = groupId,
+        sortOrder = sortOrder,
+        priceRub = price,
     )
+
+/**
+ * A link from the server is shown only if it is a plain `https` address, never `javascript:` etc.
+ */
+internal fun httpsOrNull(value: String?): String? =
+    value
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?.toHttpUrlOrNull()
+        ?.takeIf { it.scheme == "https" }
+        ?.toString()
 
 /** Public for core:auth: a token grant carries the same `Me`. */
 fun MeDto.toAccount(media: MediaUrls): Account =

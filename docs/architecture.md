@@ -108,12 +108,12 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 
 | Где | Что | Чем |
 | --- | --- | --- |
-| `core:network` | маппинг, коды ошибок, `Retry-After`, `X-Request-ID`, медиа-URL, тело запроса без `null` | JUnit + MockWebServer |
+| `core:network` | маппинг (классификация, цены, ссылки только `https`), поиск и типы в запросе, лайк PUT/DELETE и его объявление, коды ошибок, `Retry-After`, `X-Request-ID`, медиа-URL, тело запроса без `null` | JUnit + MockWebServer |
 | `core:auth` | вход, single-flight refresh под параллельной нагрузкой, повтор, `invalid_token`, потерянный ответ, сбой сервера, 429 и обрыв связи без потери сессии, восстановление после рестарта, выход офлайн, PKCE, разбор App Link (чужой хост, порт, путь), отсутствие токенов в `toString`, переход «вышел» | JUnit + MockWebServer |
 | `core:auth` androidTest | настоящий Keystore: шифрование, удалённый ключ | эмулятор |
 | `core:designsystem` | компоненты, панели навигации и мелкие части в обеих темах и с шрифтом 200 % | Robolectric + Roborazzi |
 | `app` | ViewModel с фейками, экраны в compact и expanded, обе темы, list-detail в две панели; состояния (загрузка, пусто, ошибка) | JUnit, Robolectric + Roborazzi |
-| `app` | allowlist ссылок и их цели, ожидающий переход (срок, мусор, перезапуск), ссылка через вход и у гостя, `AuthController`; вход как гость и с места гостя, закрытие входа, устройства (список, подтверждение, ошибка), тема, ссылки на сайт, лицензии; `SessionStores`, `AppSettings`, `describeUserAgent` | Robolectric + Compose, JUnit |
+| `app` | поиск и фильтры списка (отмена старого запроса, сброс курсора), лайк (оптимистичный, откат), группы компонентов, галерея, цены, «Поделиться»; allowlist ссылок и их цели, ожидающий переход (срок, мусор, перезапуск), ссылка через вход и у гостя, `AuthController`; вход как гость и с места гостя, закрытие входа, устройства (список, подтверждение, ошибка), тема, ссылки на сайт, лицензии; `SessionStores`, `AppSettings`, `describeUserAgent` | Robolectric + Compose, JUnit |
 | `app` | `Navigator` без экрана; «Велосипед → другой раздел → Велосипед», прокрутка, повторное нажатие, «назад» | JUnit, Robolectric + Compose |
 | `app` androidTest | `StartupTest` — запуск на Android 17 до экрана входа; `LiveSmokeTest` — вход → `/bikes` → велосипед → `/me` → выход | эмулятор API 37, `smoke.yml` |
 

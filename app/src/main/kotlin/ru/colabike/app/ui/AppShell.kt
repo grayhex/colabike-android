@@ -150,6 +150,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                     BikeDetailRoute(
                                         repository = dependencies.bikes,
                                         auth = dependencies.auth,
+                                        links = dependencies.links,
                                         id = BikeId(key.id),
                                         showBack = !twoPane,
                                         onBack = { navigator.back() },

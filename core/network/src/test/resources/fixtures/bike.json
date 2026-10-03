@@ -3,36 +3,111 @@
   "name": "Городской Трэвел",
   "brand": "Cube",
   "model": "Travel SL",
-  "trim": "",
+  "trim": "Pro",
   "year": 2020,
   "category": "urban_touring",
-  "classification": {"category": "urban_touring", "subtype": null, "suspension": null, "construction": null, "uses": [], "electric": false, "fatbike": false},
+  "classification": {
+    "category": "urban_touring",
+    "subtype": null,
+    "suspension": null,
+    "construction": null,
+    "uses": [],
+    "electric": false,
+    "fatbike": false
+  },
   "isFormer": false,
   "isPublic": true,
   "isOwner": false,
-  "coverPhoto": {"id": "0b7e6a52-1c2d-4e3f-8a9b-1c2d3e4f5a6b", "isCover": true, "url": "/api/photos/0b7e6a52?width=640", "sourcePageUrl": null},
+  "coverPhoto": {
+    "id": "0b7e6a52-1c2d-4e3f-8a9b-1c2d3e4f5a6b",
+    "isCover": true,
+    "url": "/api/photos/0b7e6a52?width=640",
+    "sourcePageUrl": null
+  },
   "photoCount": 2,
-  "author": {"id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6", "username": "test-rider", "name": "", "avatarUrl": "/api/avatars/8d9e0f1a"},
+  "author": {
+    "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+    "username": "test-rider",
+    "name": "",
+    "avatarUrl": "/api/avatars/8d9e0f1a"
+  },
   "likes": 4,
   "liked": true,
   "comments": 1,
-  "scores": {"completeness": 0.6, "upgrade": 0},
+  "scores": {
+    "completeness": 0.6,
+    "upgrade": 0
+  },
   "description": "Описание для проверки клиента.",
   "color": "Графит",
   "size": "L",
   "weight": 14.2,
   "mileage": 1200,
-  "manufacturerUrl": "",
-  "purposes": [],
-  "groupOrder": [],
-  "price": null,
-  "priceVisibility": null,
+  "manufacturerUrl": "https://www.cube.eu/travel-sl",
+  "purposes": [
+    "commuting",
+    "touring"
+  ],
+  "groupOrder": [
+    "drivetrain",
+    "frame"
+  ],
+  "price": 85000,
+  "priceVisibility": {
+    "bike": true,
+    "components": true,
+    "accessories": false
+  },
   "components": [
-    {"id": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f", "modelId": null, "section": "build", "category": "Рама", "name": "Cube Aluminium Superlite", "notes": "", "url": "", "groupId": "", "sortOrder": 0, "price": null},
-    {"id": "4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a", "modelId": null, "section": "luggage", "category": "Багажник", "name": "Секция из будущей версии", "notes": "", "url": "", "groupId": "", "sortOrder": 1, "price": null}
+    {
+      "id": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f",
+      "modelId": null,
+      "section": "build",
+      "category": "Рама",
+      "name": "Cube Aluminium Superlite",
+      "notes": "",
+      "url": "javascript:alert(1)",
+      "groupId": "frame",
+      "sortOrder": 0,
+      "price": null
+    },
+    {
+      "id": "9a8b7c6d-5e4f-4a3b-9c2d-1e0f9a8b7c6e",
+      "modelId": null,
+      "section": "build",
+      "category": "Трансмиссия",
+      "name": "Shimano Deore 10-speed",
+      "notes": "Кассета 11-42",
+      "url": "https://bike-components.example/deore",
+      "groupId": "drivetrain",
+      "sortOrder": 1,
+      "price": 12500
+    },
+    {
+      "id": "4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a",
+      "modelId": null,
+      "section": "luggage",
+      "category": "Багажник",
+      "name": "Секция из будущей версии",
+      "notes": "",
+      "url": "",
+      "groupId": "",
+      "sortOrder": 1,
+      "price": null
+    }
   ],
   "photos": [
-    {"id": "0b7e6a52-1c2d-4e3f-8a9b-1c2d3e4f5a6b", "isCover": true, "url": "/api/photos/0b7e6a52?width=640", "sourcePageUrl": null},
-    {"id": "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b", "isCover": false, "url": "javascript:alert(1)", "sourcePageUrl": null}
+    {
+      "id": "0b7e6a52-1c2d-4e3f-8a9b-1c2d3e4f5a6b",
+      "isCover": true,
+      "url": "/api/photos/0b7e6a52?width=640",
+      "sourcePageUrl": null
+    },
+    {
+      "id": "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b",
+      "isCover": false,
+      "url": "javascript:alert(1)",
+      "sourcePageUrl": null
+    }
   ]
 }

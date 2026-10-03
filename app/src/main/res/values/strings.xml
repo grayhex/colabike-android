@@ -37,6 +37,11 @@
     <string name="bikes_empty_public">Публичные велосипеды сообщества появятся здесь.</string>
     <string name="bikes_empty_mine_title">В гараже пусто</string>
     <string name="bikes_empty_mine">Добавьте велосипед на сайте — он появится здесь.</string>
+    <string name="bikes_search_hint">Название, бренд, автор</string>
+    <string name="bikes_search_clear">Очистить поиск</string>
+    <string name="bikes_search_empty_title">Ничего не нашли</string>
+    <string name="bikes_search_empty">Попробуйте другой запрос или уберите фильтры.</string>
+    <string name="bikes_search_reset">Сбросить</string>
     <string name="bikes_pick">Выберите велосипед, чтобы увидеть подробности</string>
     <string name="bike_title">Велосипед</string>
     <string name="bike_description">Описание</string>
@@ -50,6 +55,14 @@
     <string name="bike_weight_value">%1$s кг</string>
     <string name="bike_mileage">Пробег</string>
     <string name="bike_mileage_value">%1$d км</string>
+    <string name="bike_price">Цена</string>
+    <string name="bike_price_value">%1$s&#160;₽</string>
+    <string name="bike_photo_open">Открыть на весь экран</string>
+    <string name="cola_photo_n_of_m_short">%1$d / %2$d</string>
+    <string name="cola_photo_n_of_m">Фото %1$d из %2$d</string>
+    <string name="bike_component_link">Страница компонента «%1$s» на сайте производителя</string>
+    <string name="bike_manufacturer">Страница производителя</string>
+    <string name="bike_manufacturer_hint">Откроется в браузере</string>
     <string name="bike_private_hint">Если это приватный велосипед, войдите в свой аккаунт.</string>
     <string name="bike_private">Виден только вам</string>
 

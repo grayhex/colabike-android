@@ -84,7 +84,7 @@ class AccountFlowTest {
         // "Mine" needs an account.
         compose.onNodeWithText("Мои").assertDoesNotExist()
         // A guest asked nothing of the account.
-        assertThat(dependencies.bikes.calls.map { it.first })
+        assertThat(dependencies.bikes.calls.map { it.first.scope })
             .containsExactly(ru.colabike.core.model.BikeScope.Public)
     }
 

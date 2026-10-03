@@ -1,6 +1,9 @@
 package ru.colabike.core.designsystem.component
 
 import java.time.Instant
+import ru.colabike.core.model.BikeClassification
+import ru.colabike.core.model.BikeComponent
+import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.Person
@@ -22,6 +25,15 @@ object PreviewData {
             model = "Travel SL",
             year = 2020,
             category = "urban_touring",
+            classification =
+                BikeClassification(
+                    category = "urban_touring",
+                    subtype = "touring",
+                    suspension = null,
+                    construction = null,
+                    electric = false,
+                    fatbike = false,
+                ),
             cover = Photo("p1", "https://example.test/photo.jpg"),
             photoCount = 3,
             author = rider,
@@ -31,6 +43,73 @@ object PreviewData {
             isOwner = false,
             isPublic = true,
             isFormer = false,
+        )
+
+    /** A full bike page: photos, a passport, a price the owner shows, the build in two groups. */
+    val bikeDetail =
+        BikeDetail(
+            summary =
+                bike.copy(
+                    classification =
+                        BikeClassification(
+                            category = "mtb",
+                            subtype = "trail",
+                            suspension = "full_suspension",
+                            construction = null,
+                            electric = false,
+                            fatbike = false,
+                        ),
+                    photoCount = 3,
+                ),
+            trim = "Pro",
+            description = "Надёжный горный велосипед для поездок круглый год.",
+            color = "Графит",
+            size = "L",
+            weightKg = 14.2,
+            mileageKm = 1200,
+            manufacturerUrl = "https://www.cube.eu/travel-sl",
+            purposes = listOf("trail"),
+            priceRub = 85_000.0,
+            groupOrder = listOf("drivetrain", "frame"),
+            photos =
+                listOf(
+                    Photo("p1", "https://example.test/photo-1.jpg"),
+                    Photo("p2", "https://example.test/photo-2.jpg"),
+                    Photo("p3", "https://example.test/photo-3.jpg"),
+                ),
+            components =
+                listOf(
+                    BikeComponent(
+                        "c1",
+                        "build",
+                        "Рама",
+                        "Cube Aluminium Superlite",
+                        "Алюминий, 17.5\"",
+                        groupId = "frame",
+                        sortOrder = 0,
+                    ),
+                    BikeComponent(
+                        "c2",
+                        "build",
+                        "Трансмиссия",
+                        "Shimano Deore 10-speed",
+                        "Кассета 11-42",
+                        url = "https://example.test/deore",
+                        groupId = "drivetrain",
+                        sortOrder = 1,
+                        priceRub = 12_500.0,
+                    ),
+                    BikeComponent(
+                        "c3",
+                        "build",
+                        "Трансмиссия",
+                        "Shimano Deore, цепь",
+                        "",
+                        groupId = "drivetrain",
+                        sortOrder = 2,
+                    ),
+                    BikeComponent("c4", "accessories", "Звонок", "Латунный", ""),
+                ),
         )
 
     val bikeWithoutPhoto =

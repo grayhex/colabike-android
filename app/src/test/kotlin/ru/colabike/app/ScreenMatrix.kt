@@ -30,6 +30,10 @@ enum class Screen(val file: String) {
     Login("login"),
     Bikes("bikes"),
     BikeDetail("bike_detail"),
+
+    /** The rest of the bike page below the first screen: the passport, the build in groups. */
+    BikeDetailPassport("bike_detail_passport"),
+    BikeDetailBuild("bike_detail_build"),
     Profile("profile"),
 
     /** What a guest sees on the profile tab, and the rest of the profile below the fold. */
@@ -100,6 +104,14 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
     when (screen) {
         Screen.BikeDetail ->
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+        Screen.BikeDetailPassport -> {
+            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            onNodeWithText("Характеристики").performScrollTo()
+        }
+        Screen.BikeDetailBuild -> {
+            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            onNodeWithText("Shimano Deore 10-speed").performScrollTo()
+        }
         Screen.Profile,
         Screen.ProfileGuest -> onNodeWithText("Профиль").performClick()
         Screen.ProfileMore -> {

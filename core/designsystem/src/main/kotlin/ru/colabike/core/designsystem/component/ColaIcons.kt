@@ -45,4 +45,7 @@ object ColaIcons {
     @DrawableRes val Description = R.drawable.cola_ic_description
     @DrawableRes val Policy = R.drawable.cola_ic_policy
     @DrawableRes val PersonAdd = R.drawable.cola_ic_person_add
+    @DrawableRes val Share = R.drawable.cola_ic_share
+    @DrawableRes val Close = R.drawable.cola_ic_close
+    @DrawableRes val Search = R.drawable.cola_ic_search
 }
