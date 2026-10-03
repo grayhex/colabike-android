@@ -26,6 +26,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       # The same single command as AGENTS.md: nothing in CI that a contributor cannot run.
       - run: ./gradlew verify
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: colabike-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
       - name: Reports on failure
         if: failure()
         uses: actions/upload-artifact@v7
