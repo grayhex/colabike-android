@@ -1,0 +1,102 @@
+package ru.colabike.app
+
+import android.content.Context
+import android.os.Build
+import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.auth.AuthController
+import ru.colabike.core.auth.AuthInterceptor
+import ru.colabike.core.auth.AuthState
+import ru.colabike.core.auth.DeviceInfo
+import ru.colabike.core.auth.DeviceSession
+import ru.colabike.core.auth.EncryptedFileStore
+import ru.colabike.core.auth.KeystoreTokenCipher
+import ru.colabike.core.auth.YandexSignIn
+import ru.colabike.core.model.AccountRepository
+import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.network.ApiConfig
+import ru.colabike.core.network.ColaBikeApi
+import ru.colabike.core.network.HttpClients
+import ru.colabike.core.network.MediaUrls
+import ru.colabike.core.network.NetworkAccountRepository
+import ru.colabike.core.network.NetworkBikesRepository
+
+/** What screens get: repositories and auth actions, never HTTP clients (AGENTS.md). */
+interface AppDependencies {
+    val bikes: BikesRepository
+    val account: AccountRepository
+    val auth: AuthActions
+}
+
+/**
+ * The object graph, built by hand: few enough parts that a DI framework would only hide them. One
+ * instance per process, owned by [ColaBikeApplication].
+ */
+class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : AppDependencies {
+    private val config =
+        ApiConfig(siteUrl = BuildConfig.SITE_URL, appVersion = BuildConfig.VERSION_NAME)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val media = MediaUrls(config.siteUrl)
+    private val baseClient = HttpClients.base(config)
+    private val secrets = File(context.noBackupFilesDir, "session")
+
+    private val session =
+        DeviceSession(
+            plainSessions = ColaBikeApi(config, baseClient).sessions,
+            store =
+                EncryptedFileStore(
+                    File(secrets, "refresh.bin"),
+                    KeystoreTokenCipher("colabike.refresh.v1"),
+                ),
+            device =
+                DeviceInfo(
+                    name = "${Build.MANUFACTURER} ${Build.MODEL}".trim(),
+                    appVersion = config.appVersion,
+                ),
+            media = media,
+        )
+
+    /** The client for everything after sign-in, images included. */
+    val httpClient: OkHttpClient =
+        baseClient
+            .newBuilder()
+            .addInterceptor(AuthInterceptor(session, config.siteUrl.toHttpUrl().host))
+            .build()
+
+    private val api = ColaBikeApi(config, httpClient)
+
+    override val bikes: BikesRepository = NetworkBikesRepository(api.bikes, media)
+    override val account: AccountRepository = NetworkAccountRepository(api.account, media)
+    override val auth: AuthController =
+        AuthController(
+            session = session,
+            yandex =
+                YandexSignIn(
+                    siteUrl = config.siteUrl,
+                    returnUrl = BuildConfig.NATIVE_AUTH_RETURN_URL,
+                    pending =
+                        EncryptedFileStore(
+                            File(secrets, "pkce.bin"),
+                            KeystoreTokenCipher("colabike.pkce.v1"),
+                        ),
+                ),
+            yandexEnabled = BuildConfig.YANDEX_SIGN_IN,
+            revoke = { api.sessions.revokeCurrentSession() },
+            scope = scope,
+        )
+
+    init {
+        scope.launch { session.restore() }
+        scope.launch {
+            session.state.drop(1).filter { it == AuthState.SignedOut }.collect { onSignedOut() }
+        }
+    }
+}

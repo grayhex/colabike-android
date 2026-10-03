@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window only: Compose draws everything; the system splash uses the brand canvas. -->
+    <style name="Theme.ColaBike" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/cola_canvas</item>
+        <item name="android:windowSplashScreenBackground">@color/cola_canvas</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/cola_yellow</item>
+    </style>
+</resources>

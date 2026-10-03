@@ -1,0 +1,4 @@
+Official Android agent skills from https://github.com/android/skills
+Commit: 42dc2270e96032bd860bb94511e440aa00a43125 (2026-09-25)
+Licence: Apache 2.0, see LICENSE-android-skills.txt. Do not edit the copies:
+update them with scripts/update-android-skills.sh.

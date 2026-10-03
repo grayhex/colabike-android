@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cola_no_photo">Нет фото</string>
+    <string name="cola_former_bike">Бывший</string>
+    <string name="cola_open">Открыть</string>
+    <string name="cola_retry">Повторить</string>
+    <string name="cola_loading">Загрузка</string>
+    <string name="cola_ride_planned">План</string>
+    <string name="cola_ride_completed">Состоялась</string>
+    <string name="cola_by_author">Автор: %1$s</string>
+    <string name="cola_username">\@%1$s</string>
+    <string name="cola_distance_km">%1$s км</string>
+    <string name="cola_duration_hours_minutes">%1$d ч %2$d мин</string>
+    <string name="cola_duration_minutes">%1$d мин</string>
+    <string name="cola_avatar_of">Фото профиля: %1$s</string>
+    <plurals name="cola_likes">
+        <item quantity="one">%d лайк</item>
+        <item quantity="few">%d лайка</item>
+        <item quantity="many">%d лайков</item>
+        <item quantity="other">%d лайка</item>
+    </plurals>
+    <plurals name="cola_comments">
+        <item quantity="one">%d комментарий</item>
+        <item quantity="few">%d комментария</item>
+        <item quantity="many">%d комментариев</item>
+        <item quantity="other">%d комментария</item>
+    </plurals>
+</resources>

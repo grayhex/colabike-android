@@ -1,0 +1,25 @@
+name: API contract drift
+
+# The build uses api/openapi.json, pinned by its checksum. This job compares it with the live
+# production contract weekly; a red run means: refresh the snapshot in a PR and review the diff.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew :core:network:checkApiContractDrift

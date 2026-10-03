@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">ColaBike</string>
+
+    <string name="nav_bikes">Велосипеды</string>
+    <string name="nav_profile">Профиль</string>
+
+    <string name="login_title">Вход в ColaBike</string>
+    <string name="login_subtitle">Гаражи, покатушки и велосипеды сообщества</string>
+    <string name="login_email">Почта</string>
+    <string name="login_password">Пароль</string>
+    <string name="login_show_password">Показать пароль</string>
+    <string name="login_hide_password">Скрыть пароль</string>
+    <string name="login_submit">Войти</string>
+    <string name="login_or">или</string>
+    <string name="login_yandex">Войти через Яндекс ID</string>
+    <string name="login_empty_fields">Введите почту и пароль</string>
+    <string name="login_wrong_credentials">Неверная почта или пароль</string>
+    <string name="login_yandex_cancelled">Вход через Яндекс ID отменён</string>
+    <string name="login_yandex_blocked">Аккаунт заблокирован</string>
+    <string name="login_yandex_registration_closed">Регистрация закрыта. Войдите в существующий аккаунт.</string>
+    <string name="login_yandex_email_exists">Аккаунт с этой почтой уже есть. Войдите по паролю и привяжите Яндекс ID на сайте.</string>
+    <string name="login_yandex_failed">Не удалось войти через Яндекс ID. Попробуйте ещё раз.</string>
+
+    <string name="bikes_title">Велосипеды</string>
+    <string name="bikes_scope_public">Все</string>
+    <string name="bikes_scope_mine">Мои</string>
+    <string name="bikes_empty_title">Пока пусто</string>
+    <string name="bikes_empty_public">Публичных велосипедов ещё нет.</string>
+    <string name="bikes_empty_mine">Добавьте велосипед на сайте — он появится здесь.</string>
+    <string name="bikes_pick">Выберите велосипед, чтобы увидеть подробности</string>
+    <string name="bike_back">Назад</string>
+    <string name="bike_description">Описание</string>
+    <string name="bike_specs">Характеристики</string>
+    <string name="bike_build">Комплектация</string>
+    <string name="bike_accessories">Аксессуары</string>
+    <string name="bike_other_components">Другое</string>
+    <string name="bike_color">Цвет</string>
+    <string name="bike_size">Размер рамы</string>
+    <string name="bike_weight">Вес</string>
+    <string name="bike_weight_value">%1$s кг</string>
+    <string name="bike_mileage">Пробег</string>
+    <string name="bike_mileage_value">%1$d км</string>
+    <string name="bike_private">Виден только вам</string>
+
+    <string name="profile_title">Профиль</string>
+    <string name="profile_unverified">Почта не подтверждена. Подтвердить её можно на сайте.</string>
+    <string name="profile_sign_out">Выйти</string>
+
+    <string name="error_offline">Нет соединения. Проверьте интернет и повторите.</string>
+    <string name="error_not_found">Не нашли: возможно, его скрыли или удалили.</string>
+    <string name="error_rate_limited">Слишком много запросов. Попробуйте через %1$d мин.</string>
+    <string name="error_rate_limited_soon">Слишком много запросов. Попробуйте чуть позже.</string>
+    <string name="error_server">Сервер не ответил. Код для поддержки: %1$s</string>
+    <string name="error_server_plain">Сервер не ответил. Попробуйте позже.</string>
+    <string name="error_unexpected">Что-то пошло не так. Повторите.</string>
+</resources>
