@@ -1,0 +1,46 @@
+{
+  "items": [
+    {
+      "id": "6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31",
+      "name": "Городской Трэвел",
+      "brand": "Cube",
+      "model": "Travel SL",
+      "trim": "",
+      "year": 2020,
+      "category": "urban_touring",
+      "classification": {"category": "urban_touring", "subtype": null, "suspension": null, "construction": null, "uses": [], "electric": false, "fatbike": false},
+      "isFormer": false,
+      "isPublic": true,
+      "isOwner": false,
+      "coverPhoto": {"id": "0b7e6a52-1c2d-4e3f-8a9b-1c2d3e4f5a6b", "isCover": true, "url": "/api/photos/0b7e6a52?width=640", "sourcePageUrl": null},
+      "photoCount": 3,
+      "author": {"id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6", "username": "test-rider", "name": "Тестовый Райдер", "avatarUrl": null},
+      "likes": 4,
+      "liked": false,
+      "comments": 1,
+      "scores": {"completeness": 0.6, "upgrade": 0},
+      "addedInAFutureVersion": {"anything": [1, 2]}
+    },
+    {
+      "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "name": "Без года",
+      "brand": "",
+      "model": "",
+      "trim": "",
+      "year": 0,
+      "category": "mtb",
+      "classification": {"category": "mtb", "subtype": "trail", "suspension": "full", "construction": null, "uses": ["trail"], "electric": false, "fatbike": false},
+      "isFormer": true,
+      "isPublic": true,
+      "isOwner": true,
+      "coverPhoto": null,
+      "photoCount": 0,
+      "author": null,
+      "likes": 0,
+      "liked": false,
+      "comments": 0,
+      "scores": {"completeness": 0.1, "upgrade": 0.2}
+    }
+  ],
+  "nextCursor": "eyJjIjoiMjAyNi0xMC0wMyJ9"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31",
+  "name": "Городской Трэвел",
+  "brand": "Cube",
+  "model": "Travel SL",
+  "trim": "",
+  "year": 2020,
+  "category": "urban_touring",
+  "classification": {"category": "urban_touring", "subtype": null, "suspension": null, "construction": null, "uses": [], "electric": false, "fatbike": false},
+  "isFormer": false,
+  "isPublic": true,
+  "isOwner": false,
+  "coverPhoto": {"id": "0b7e6a52-1c2d-4e3f-8a9b-1c2d3e4f5a6b", "isCover": true, "url": "/api/photos/0b7e6a52?width=640", "sourcePageUrl": null},
+  "photoCount": 2,
+  "author": {"id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6", "username": "test-rider", "name": "", "avatarUrl": "/api/avatars/8d9e0f1a"},
+  "likes": 4,
+  "liked": true,
+  "comments": 1,
+  "scores": {"completeness": 0.6, "upgrade": 0},
+  "description": "Описание для проверки клиента.",
+  "color": "Графит",
+  "size": "L",
+  "weight": 14.2,
+  "mileage": 1200,
+  "manufacturerUrl": "",
+  "purposes": [],
+  "groupOrder": [],
+  "price": null,
+  "priceVisibility": null,
+  "components": [
+    {"id": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f", "modelId": null, "section": "build", "category": "Рама", "name": "Cube Aluminium Superlite", "notes": "", "url": "", "groupId": "", "sortOrder": 0, "price": null},
+    {"id": "4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a", "modelId": null, "section": "luggage", "category": "Багажник", "name": "Секция из будущей версии", "notes": "", "url": "", "groupId": "", "sortOrder": 1, "price": null}
+  ],
+  "photos": [
+    {"id": "0b7e6a52-1c2d-4e3f-8a9b-1c2d3e4f5a6b", "isCover": true, "url": "/api/photos/0b7e6a52?width=640", "sourcePageUrl": null},
+    {"id": "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b", "isCover": false, "url": "javascript:alert(1)", "sourcePageUrl": null}
+  ]
+}

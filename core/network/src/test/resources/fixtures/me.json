@@ -1,0 +1,12 @@
+{
+  "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+  "username": "test-rider",
+  "name": "Тестовый Райдер",
+  "email": "rider@example.test",
+  "role": "user",
+  "bio": "",
+  "location": "Москва",
+  "avatarUrl": null,
+  "createdAt": "2026-09-01T10:00:00.000Z",
+  "emailVerifiedAt": null
+}
