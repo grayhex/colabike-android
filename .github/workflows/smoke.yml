@@ -1,9 +1,9 @@
 name: Android 17 smoke
 
 # Live smoke on an Android 17 emulator against production (#325): sign in with the dedicated
-# smoke account, /bikes, a bike, /me, sign out. Also runs the Keystore instrumented tests.
-# Without the COLABIKE_SMOKE_EMAIL / COLABIKE_SMOKE_PASSWORD secrets the live test is skipped
-# and says so; it never passes on fake data.
+# smoke account, /bikes, a bike, /me, sign out. Also runs the Keystore and startup instrumented
+# tests. Without the COLABIKE_SMOKE_EMAIL / COLABIKE_SMOKE_PASSWORD secrets the live test is
+# skipped and says so; it never passes on fake data.
 
 on:
   push:
@@ -40,20 +40,27 @@ jobs:
       - name: Smoke credentials
         run: |
           if [ -z "$SMOKE_EMAIL" ] || [ -z "$SMOKE_PASSWORD" ]; then
-            echo "::notice title=Live smoke skipped::COLABIKE_SMOKE_EMAIL / COLABIKE_SMOKE_PASSWORD are not set; only the Keystore tests run."
+            echo "::notice title=Live smoke skipped::COLABIKE_SMOKE_EMAIL / COLABIKE_SMOKE_PASSWORD are not set; only the Keystore and startup tests run."
           fi
       - run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :core:auth:assembleDebugAndroidTest
       - name: Start the Android 17 emulator
         timeout-minutes: 20
         run: scripts/emulator.sh start
       - name: Instrumented tests
+        shell: bash
         run: |
           args=()
           if [ -n "$SMOKE_EMAIL" ] && [ -n "$SMOKE_PASSWORD" ]; then
             args+=("-Pandroid.testInstrumentationRunnerArguments.smokeEmail=$SMOKE_EMAIL")
             args+=("-Pandroid.testInstrumentationRunnerArguments.smokePassword=$SMOKE_PASSWORD")
           fi
-          ./gradlew connectedDebugAndroidTest "${args[@]}"
+          ./gradlew connectedDebugAndroidTest "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/connected.log"
+      # The task stays green when an APK does not install; the reports say whether tests ran.
+      - name: Tests ran on the device
+        run: scripts/check-connected-tests.sh "$RUNNER_TEMP/connected.log"
+      - name: Device diagnostics
+        if: failure()
+        run: scripts/emulator.sh diagnose
       - name: Stop the emulator
         if: always()
         run: scripts/emulator.sh stop

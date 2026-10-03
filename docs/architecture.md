@@ -100,10 +100,13 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 | `core:auth` androidTest | настоящий Keystore: шифрование, удалённый ключ | эмулятор |
 | `core:designsystem` | компоненты в обеих темах и с шрифтом 200 % | Robolectric + Roborazzi |
 | `app` | ViewModel с фейками, экраны в compact и expanded, обе темы, list-detail в две панели | JUnit, Robolectric + Roborazzi |
-| `app` androidTest | live smoke на Android 17: вход → `/bikes` → велосипед → `/me` → выход | эмулятор API 37, `smoke.yml` |
+| `app` androidTest | запуск на Android 17 до экрана входа; live smoke: вход → `/bikes` → велосипед → `/me` → выход | эмулятор API 37, `smoke.yml` |
 
 - `ci.yml` запускает `./gradlew verify` на каждый PR и push в `main`.
 - `smoke.yml` поднимает эмулятор API 37 (`google_apis`, x86_64, KVM) и выполняет `connectedDebugAndroidTest`. Учётные данные приходят из secrets `COLABIKE_SMOKE_EMAIL` и `COLABIKE_SMOKE_PASSWORD`, без них live-тест пропускается с пометкой.
+  - `scripts/emulator.sh start` после `sys.boot_completed` ждёт, пока package manager отвечает, внутренний том смонтирован, а `system_server` 20 секунд не перезапускается. Иначе установка APK падает с «not enough space» или «Can't find service: package».
+  - Зелёная задача ещё не значит, что тесты прошли: если APK не установился, test engine AGP 9.4 пишет «AndroidTestRunner failed» и завершается успешно с нулём тестов. Поэтому `scripts/check-connected-tests.sh` по отчётам требует от каждого модуля с `src/androidTest` хотя бы один выполненный, не пропущенный тест и ноль падений.
+  - При сбое `scripts/emulator.sh diagnose` выводит состояние устройства и отфильтрованный logcat в лог job, а не в артефакт: GitHub маскирует секреты только в логах.
 
 ## Release и RuStore
 
