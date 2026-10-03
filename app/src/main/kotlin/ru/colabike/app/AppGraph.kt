@@ -27,6 +27,8 @@ import ru.colabike.core.auth.signOuts
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.FeedRepository
+import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.network.ApiConfig
 import ru.colabike.core.network.ColaBikeApi
@@ -35,6 +37,8 @@ import ru.colabike.core.network.MediaUrls
 import ru.colabike.core.network.NetworkAccountRepository
 import ru.colabike.core.network.NetworkAccountSessionsRepository
 import ru.colabike.core.network.NetworkBikesRepository
+import ru.colabike.core.network.NetworkFeedRepository
+import ru.colabike.core.network.NetworkJournalRepository
 import ru.colabike.core.network.NetworkPeopleRepository
 
 /** What screens get: repositories and auth actions, never HTTP clients (AGENTS.md). */
@@ -42,6 +46,8 @@ interface AppDependencies {
     val bikes: BikesRepository
     val account: AccountRepository
     val people: PeopleRepository
+    val feed: FeedRepository
+    val journal: JournalRepository
     val sessions: AccountSessionsRepository
     val auth: AuthActions
     val settings: AppSettings
@@ -94,6 +100,9 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val bikes: BikesRepository = NetworkBikesRepository(api.bikes, api.search, media)
     override val account: AccountRepository = NetworkAccountRepository(api.account, media)
     override val people: PeopleRepository = NetworkPeopleRepository(api.users, api.search, media)
+    override val feed: FeedRepository = NetworkFeedRepository(api.personal, media)
+    private val journalRepository = NetworkJournalRepository(api.journal, api.personal, media)
+    override val journal: JournalRepository = journalRepository
     override val sessions: AccountSessionsRepository =
         NetworkAccountSessionsRepository(api.sessions)
     override val settings: AppSettings =
@@ -127,6 +136,12 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
         scope.launch { session.restore() }
         // Only a person leaving clears what they leave behind: a start without a session is no
         // sign-out, and a guest's cached pictures survive it.
-        scope.launch { session.state.signOuts().collect { onSignedOut() } }
+        scope.launch {
+            session.state.signOuts().collect {
+                // What the session knew about saved entries is the person's, not the next one's.
+                journalRepository.forget()
+                onSignedOut()
+            }
+        }
     }
 }

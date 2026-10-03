@@ -75,8 +75,15 @@ fun SearchRoute(
     onBack: () -> Unit,
     onOpenBike: (BikeId) -> Unit,
     onOpenPerson: (String) -> Unit,
+    startOnPeople: Boolean = false,
 ) {
-    val viewModel = viewModel { SearchViewModel(bikes, people) }
+    val viewModel = viewModel {
+        SearchViewModel(
+            bikes,
+            people,
+            startTab = if (startOnPeople) SearchTab.People else SearchTab.Bikes,
+        )
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     SearchScreen(
         state = state,

@@ -7,6 +7,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -22,7 +24,9 @@ import ru.colabike.app.login.LoginUiState
 import ru.colabike.app.ui.AppShell
 import ru.colabike.app.ui.UiText
 import ru.colabike.core.auth.AuthState
+import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
+import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.Page
 
 /** Every screen of the app, as AGENTS.md requires it in screenshots. */
@@ -50,12 +54,26 @@ enum class Screen(val file: String) {
 
     /** The search as it opens: the field, the tabs, the facets, and what to type. */
     SearchStart("search_start"),
+
+    /** The feed of a member, and what a guest sees in its place. */
+    Feed("feed"),
+    FeedGuest("feed_guest"),
+
+    /** A bike's journal, and an entry: text with structure, components, the save. */
+    JournalList("journal_list"),
+    Journal("journal"),
 }
 
 enum class Look(val dark: Boolean, val fontScale: Float, val file: String) {
     Light(dark = false, fontScale = 1f, file = "light"),
     Dark(dark = true, fontScale = 1f, file = "dark"),
     LargeText(dark = false, fontScale = 2f, file = "font200"),
+}
+
+/** From the list to the first bike's page and from there to its journal. */
+private fun ComposeContentTestRule.openJournal() {
+    onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+    onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
 }
 
 /** From the list to the first bike's page and from there to its author. */
@@ -98,7 +116,8 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                             onYandex = {},
                             onBrowseAsGuest = {},
                         )
-                    Screen.ProfileGuest ->
+                    Screen.ProfileGuest,
+                    Screen.FeedGuest ->
                         AppShell(
                             FakeDependencies(
                                 auth = FakeAuth(initial = AuthState.SignedOut),
@@ -108,7 +127,28 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                     else ->
                         AppShell(
                             FakeDependencies(
-                                bikes = FakeBikes(mapOf(null to Page(bikes(0, 6), "c1")))
+                                bikes = FakeBikes(mapOf(null to Page(bikes(0, 6), "c1"))),
+                                feed =
+                                    FakeFeed(
+                                        mapOf(
+                                            null to
+                                                Page(
+                                                    listOf(
+                                                        feedBike(0),
+                                                        feedJournal(1),
+                                                        FeedItem.Ride(
+                                                            PreviewData.ride,
+                                                            PreviewData.ride.time!!,
+                                                        ),
+                                                        FeedItem.Listing(
+                                                            PreviewData.listing,
+                                                            PreviewData.ride.time!!,
+                                                        ),
+                                                    ),
+                                                    null,
+                                                )
+                                        )
+                                    ),
                             )
                         )
                 }
@@ -147,6 +187,13 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithContentDescription("Подписчики, 12").performClick()
         }
         Screen.SearchStart -> onNodeWithContentDescription("Поиск").performClick()
+        Screen.Feed,
+        Screen.FeedGuest -> onNode(hasText("Лента") and hasClickAction()).performClick()
+        Screen.JournalList -> openJournal()
+        Screen.Journal -> {
+            openJournal()
+            onNodeWithContentDescription("Запись 0", substring = true).performClick()
+        }
         else -> Unit
     }
     mainClock.advanceTimeBy(3_000)

@@ -114,9 +114,11 @@ class NavigatorTest {
 
     @Test
     fun `only sections with a screen are shown, and the app starts on one of them`() {
-        // Enabling Feed, Rides or Messages is part of the slice that builds it: update this list
+        // Enabling Rides or Messages is part of the slice that builds it: update this list
         // together with the flag in TopLevel.
-        assertThat(TopLevel.shown).containsExactly(TopLevel.Bikes, TopLevel.Profile).inOrder()
+        assertThat(TopLevel.shown)
+            .containsExactly(TopLevel.Feed, TopLevel.Bikes, TopLevel.Profile)
+            .inOrder()
         assertThat(TopLevel.shown).contains(TopLevel.start)
     }
 

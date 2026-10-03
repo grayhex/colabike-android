@@ -1,0 +1,185 @@
+{
+  "items": [
+    {
+      "type": "bike",
+      "publishedAt": "2026-09-21T09:00:00Z",
+      "bike": {
+        "id": "6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31",
+        "name": "Городской Трэвел",
+        "brand": "Cube",
+        "model": "Travel SL",
+        "trim": "",
+        "year": 2020,
+        "category": "urban_touring",
+        "classification": {
+          "category": "urban_touring",
+          "subtype": null,
+          "suspension": null,
+          "construction": null,
+          "uses": [],
+          "electric": false,
+          "fatbike": false
+        },
+        "isFormer": false,
+        "isPublic": true,
+        "isOwner": false,
+        "coverPhoto": {
+          "id": "0b7e6a52-1c2d-4e3f-8a9b-1c2d3e4f5a6b",
+          "isCover": true,
+          "url": "/api/photos/0b7e6a52?width=640",
+          "sourcePageUrl": null
+        },
+        "photoCount": 3,
+        "author": {
+          "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+          "username": "test-rider",
+          "name": "Тестовый Райдер",
+          "avatarUrl": null
+        },
+        "likes": 4,
+        "liked": false,
+        "comments": 1,
+        "scores": {
+          "completeness": 0.6,
+          "upgrade": 0
+        },
+        "addedInAFutureVersion": {
+          "anything": [
+            1,
+            2
+          ]
+        }
+      },
+      "ride": null,
+      "journal": null,
+      "listing": null
+    },
+    {
+      "type": "journal",
+      "publishedAt": "2026-09-20T09:00:00Z",
+      "bike": null,
+      "ride": null,
+      "journal": {
+        "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+        "kind": "service",
+        "title": "Замена цепи и кассеты",
+        "status": "published",
+        "isPublic": true,
+        "eventDate": "2026-09-14",
+        "mileage": 4200,
+        "createdAt": "2026-09-14T18:30:00Z",
+        "updatedAt": "2026-09-15T08:00:00Z",
+        "bike": {
+          "id": "6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31",
+          "name": "Городской Трэвел"
+        },
+        "author": {
+          "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+          "username": "test-rider",
+          "name": "Тестовый Райдер",
+          "avatarUrl": "/api/avatars/8d9e0f1a"
+        },
+        "likes": 5,
+        "comments": 2,
+        "liked": false,
+        "excerpt": "Цепь вытянулась на 0,75 %, поставил новую."
+      },
+      "listing": null
+    },
+    {
+      "type": "ride",
+      "publishedAt": "2026-09-19T09:00:00Z",
+      "bike": null,
+      "ride": {
+        "id": "d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f60",
+        "title": "Вечерняя по набережной",
+        "status": "completed",
+        "kind": "recorded",
+        "startedAt": "2026-09-20T16:00:00Z",
+        "scheduledAt": null,
+        "recurrence": "none",
+        "hasTrack": true,
+        "metrics": {
+          "distanceM": 32450,
+          "elapsedTimeS": 6000,
+          "movingTimeS": 5400,
+          "avgSpeedMps": 6.0,
+          "elevationGainM": 120.0
+        },
+        "bike": {
+          "id": "6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31",
+          "name": "Городской Трэвел"
+        },
+        "author": {
+          "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+          "username": "test-rider",
+          "name": "Тестовый Райдер",
+          "avatarUrl": "/api/avatars/8d9e0f1a"
+        },
+        "likes": 3,
+        "comments": 0,
+        "liked": true,
+        "participants": null
+      },
+      "journal": null,
+      "listing": null
+    },
+    {
+      "type": "market",
+      "publishedAt": "2026-09-18T09:00:00Z",
+      "bike": null,
+      "ride": null,
+      "journal": null,
+      "listing": {
+        "id": "e3f4a5b6-c7d8-4e9f-a0b1-2c3d4e5f6071",
+        "title": "Втулка Shimano Deore",
+        "description": "Почти новая",
+        "category": "components",
+        "listingType": "sale",
+        "condition": "used",
+        "price": 2500.0,
+        "currency": "RUB",
+        "location": "Москва",
+        "hasContact": true,
+        "status": "active",
+        "expired": false,
+        "createdAt": "2026-09-18T10:00:00Z",
+        "publishedAt": "2026-09-18T10:00:00Z",
+        "path": "/market/e3f4a5b6",
+        "photos": [
+          {
+            "id": "f4a5b6c7-d8e9-4fa0-b1c2-3d4e5f607182",
+            "url": "/api/market-photos/f4a5b6c7"
+          }
+        ],
+        "author": {
+          "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+          "username": "test-rider",
+          "name": "Тестовый Райдер",
+          "avatarUrl": "/api/avatars/8d9e0f1a"
+        },
+        "isOwner": false,
+        "componentModel": null,
+        "bikeModel": null,
+        "linkedBike": null
+      }
+    },
+    {
+      "type": "poll",
+      "publishedAt": "2026-09-17T09:00:00Z",
+      "bike": null,
+      "ride": null,
+      "journal": null,
+      "listing": null
+    },
+    {
+      "type": "journal",
+      "publishedAt": "2026-09-16T09:00:00Z",
+      "bike": null,
+      "ride": null,
+      "journal": null,
+      "listing": null
+    }
+  ],
+  "nextCursor": "eyJ0IjoiMjAyNi0wOS0xNiJ9"
+}

@@ -65,6 +65,7 @@ fun ProfileRoute(
     onOpenDevices: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenPublicProfile: (id: String) -> Unit = {},
+    onOpenSaved: () -> Unit = {},
 ) {
     val viewModel = viewModel { ProfileViewModel(dependencies.account, dependencies.auth) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -81,6 +82,7 @@ fun ProfileRoute(
         onRegister = { opener.open(dependencies.links.register) },
         onOpenDevices = onOpenDevices,
         onOpenPublicProfile = onOpenPublicProfile,
+        onOpenSaved = onOpenSaved,
         onManageOnWeb = { opener.open(dependencies.links.account) },
         onOpenAbout = onOpenAbout,
     )
@@ -99,6 +101,7 @@ fun ProfileScreen(
     onManageOnWeb: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenPublicProfile: (id: String) -> Unit = {},
+    onOpenSaved: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -141,6 +144,7 @@ fun ProfileScreen(
                                     MemberSections(
                                         state,
                                         onOpenPublicProfile = onOpenPublicProfile,
+                                        onOpenSaved = onOpenSaved,
                                         onOpenDevices = onOpenDevices,
                                         onManageOnWeb = onManageOnWeb,
                                     )
@@ -221,6 +225,7 @@ private fun GuestCard(onSignIn: () -> Unit, onRegister: () -> Unit) {
 private fun MemberSections(
     state: ProfileUiState.Loaded,
     onOpenPublicProfile: (id: String) -> Unit,
+    onOpenSaved: () -> Unit,
     onOpenDevices: () -> Unit,
     onManageOnWeb: () -> Unit,
 ) {
@@ -283,6 +288,12 @@ private fun MemberSections(
             supporting = stringResource(R.string.profile_public_hint),
             icon = ColaIcons.Person,
             onClick = { onOpenPublicProfile(account.id.value) },
+        )
+        ColaListItem(
+            title = stringResource(R.string.profile_saved),
+            supporting = stringResource(R.string.profile_saved_hint),
+            icon = ColaIcons.Bookmark,
+            onClick = onOpenSaved,
         )
         ColaListItem(
             title = stringResource(R.string.profile_devices),

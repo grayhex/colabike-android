@@ -28,8 +28,17 @@ sealed interface Destination : NavKey {
     /** The people who follow [ref], or whom [ref] follows. */
     @Serializable data class People(val ref: String, val following: Boolean) : Destination
 
-    /** Search over builds and people, opened from the bike list. */
-    @Serializable data object Search : Destination
+    /** A journal entry; [id] is its UUID. */
+    @Serializable data class Journal(val id: String) : Destination
+
+    /** The journal of one bike. */
+    @Serializable data class BikeJournal(val bikeId: String, val bikeName: String) : Destination
+
+    /** The entries the signed-in person saved, opened from the profile. */
+    @Serializable data object SavedJournal : Destination
+
+    /** Search over builds and people; [people] opens it on the people tab. */
+    @Serializable data class Search(val people: Boolean = false) : Destination
 
     /** Where the account is signed in; opened from the profile. */
     @Serializable data object Devices : Destination

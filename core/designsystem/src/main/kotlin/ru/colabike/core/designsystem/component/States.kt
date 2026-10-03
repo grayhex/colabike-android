@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,8 @@ fun EmptyState(
     icon: Int = ColaIcons.Bike,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     StateLayout(modifier) {
         SoftIconTile(icon)
@@ -58,6 +61,10 @@ fun EmptyState(
         if (actionLabel != null && onAction != null)
             Button(onClick = onAction, modifier = Modifier.heightIn(min = Spacing.touch)) {
                 Text(actionLabel)
+            }
+        if (secondaryLabel != null && onSecondary != null)
+            TextButton(onClick = onSecondary, modifier = Modifier.heightIn(min = Spacing.touch)) {
+                Text(secondaryLabel)
             }
     }
 }

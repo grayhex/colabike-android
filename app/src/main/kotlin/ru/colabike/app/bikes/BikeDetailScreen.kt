@@ -77,6 +77,7 @@ fun BikeDetailRoute(
     showBack: Boolean,
     onBack: () -> Unit,
     onOpenAuthor: (ref: String) -> Unit = {},
+    onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -97,6 +98,7 @@ fun BikeDetailRoute(
         onShare = { title -> sharer.share(title, links.bike(id.value)) },
         onOpenLink = opener::open,
         onOpenAuthor = onOpenAuthor,
+        onOpenJournal = onOpenJournal,
     )
 }
 
@@ -116,6 +118,7 @@ fun BikeDetailScreen(
     onShare: (title: String) -> Unit = {},
     onOpenLink: (String) -> Unit = {},
     onOpenAuthor: (ref: String) -> Unit = {},
+    onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
     Scaffold(
@@ -166,7 +169,14 @@ fun BikeDetailScreen(
                         }
                     }
                 is BikeDetailUiState.Loaded ->
-                    BikeContent(state, onToggleLike, onShare, onOpenLink, onOpenAuthor)
+                    BikeContent(
+                        state,
+                        onToggleLike,
+                        onShare,
+                        onOpenLink,
+                        onOpenAuthor,
+                        onOpenJournal,
+                    )
             }
         }
     }
@@ -183,6 +193,7 @@ private fun BikeContent(
     onShare: (title: String) -> Unit,
     onOpenLink: (String) -> Unit,
     onOpenAuthor: (ref: String) -> Unit,
+    onOpenJournal: (id: BikeId, name: String) -> Unit,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -306,6 +317,12 @@ private fun BikeContent(
                         ComponentsCard(components, locale, onOpenLink)
                     }
                 }
+                ColaListItem(
+                    title = stringResource(R.string.bike_journal),
+                    supporting = stringResource(R.string.bike_journal_hint),
+                    icon = ColaIcons.Journal,
+                    onClick = { onOpenJournal(summary.id, summary.name) },
+                )
                 bike.manufacturerUrl?.let { url ->
                     ColaListItem(
                         title = stringResource(R.string.bike_manufacturer),

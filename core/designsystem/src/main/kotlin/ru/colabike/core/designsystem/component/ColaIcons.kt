@@ -48,4 +48,7 @@ object ColaIcons {
     @DrawableRes val Share = R.drawable.cola_ic_share
     @DrawableRes val Close = R.drawable.cola_ic_close
     @DrawableRes val Search = R.drawable.cola_ic_search
+    @DrawableRes val Bookmark = R.drawable.cola_ic_bookmark
+    @DrawableRes val BookmarkFilled = R.drawable.cola_ic_bookmark_filled
+    @DrawableRes val Journal = R.drawable.cola_ic_journal
 }

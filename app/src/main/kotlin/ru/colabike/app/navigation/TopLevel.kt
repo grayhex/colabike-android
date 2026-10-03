@@ -22,7 +22,7 @@ enum class TopLevel(
     val available: Boolean,
 ) {
     /** Following feed, journal, saved: slice 6. */
-    Feed(Destination.Feed, R.string.nav_feed, ColaIcons.Feed, ColaIcons.FeedFilled, false),
+    Feed(Destination.Feed, R.string.nav_feed, ColaIcons.Feed, ColaIcons.FeedFilled, true),
     Bikes(Destination.Bikes, R.string.nav_bikes, ColaIcons.Bike, ColaIcons.BikeFilled, true),
 
     /** Rides, my plans, the map: slice 7. */

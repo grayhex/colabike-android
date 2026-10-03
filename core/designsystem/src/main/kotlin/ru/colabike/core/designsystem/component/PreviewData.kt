@@ -1,11 +1,17 @@
 package ru.colabike.core.designsystem.component
 
 import java.time.Instant
+import java.time.LocalDate
 import ru.colabike.core.model.BikeClassification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSummary
+import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.JournalStatus
+import ru.colabike.core.model.JournalSummary
+import ru.colabike.core.model.ListingBrief
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.Photo
 import ru.colabike.core.model.RideId
@@ -142,5 +148,37 @@ object PreviewData {
             status = RideStatus.Planned,
             distanceMeters = null,
             movingTimeSeconds = null,
+        )
+
+    val journal =
+        JournalSummary(
+            id = JournalId("j1"),
+            kind = "service",
+            title = "Замена цепи и кассеты после тысячи километров",
+            status = JournalStatus.Published,
+            isPublic = true,
+            eventDate = LocalDate.parse("2026-09-14"),
+            mileageKm = 4_200,
+            createdAt = Instant.parse("2026-09-14T18:30:00Z"),
+            updatedAt = Instant.parse("2026-09-15T08:00:00Z"),
+            bike = BikeRef(BikeId("b1"), "Городской Трэвел"),
+            author = rider,
+            likes = 5,
+            comments = 2,
+            liked = false,
+            excerpt = "Цепь вытянулась на 0,75 %, поставил новую и заодно сменил кассету на 11-42.",
+        )
+
+    val listing =
+        ListingBrief(
+            id = "l1",
+            title = "Втулка Shimano Deore, почти новая",
+            price = 2_500.0,
+            currency = "RUB",
+            category = "components",
+            type = "sale",
+            location = "Москва",
+            cover = null,
+            author = rider,
         )
 }

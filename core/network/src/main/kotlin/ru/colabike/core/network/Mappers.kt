@@ -8,11 +8,20 @@ import ru.colabike.api.models.BikeClassification as ClassificationDto
 import ru.colabike.api.models.BikeComponent as BikeComponentDto
 import ru.colabike.api.models.BikePage as BikePageDto
 import ru.colabike.api.models.BikePhoto as BikePhotoDto
+import ru.colabike.api.models.BikeRef as BikeRefDto
 import ru.colabike.api.models.BikeSummary as BikeSummaryDto
+import ru.colabike.api.models.FeedItem as FeedItemDto
+import ru.colabike.api.models.FeedPage as FeedPageDto
 import ru.colabike.api.models.FollowResult as FollowResultDto
+import ru.colabike.api.models.JournalComponent as JournalComponentDto
+import ru.colabike.api.models.JournalEntry as JournalEntryDto
+import ru.colabike.api.models.JournalPage as JournalPageDto
+import ru.colabike.api.models.JournalSummary as JournalSummaryDto
+import ru.colabike.api.models.MarketListing as MarketListingDto
 import ru.colabike.api.models.Me as MeDto
 import ru.colabike.api.models.Profile as ProfileDto
 import ru.colabike.api.models.Relationship as RelationshipDto
+import ru.colabike.api.models.RideSummary as RideSummaryDto
 import ru.colabike.api.models.UserPage as UserPageDto
 import ru.colabike.api.models.UserSummary as UserSummaryDto
 import ru.colabike.core.model.Account
@@ -21,8 +30,15 @@ import ru.colabike.core.model.BikeClassification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSummary
+import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.FollowState
+import ru.colabike.core.model.JournalEntry
+import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.JournalStatus
+import ru.colabike.core.model.JournalSummary
+import ru.colabike.core.model.ListingBrief
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.PersonSummary
@@ -30,6 +46,9 @@ import ru.colabike.core.model.Photo
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.Relationship
+import ru.colabike.core.model.RideId
+import ru.colabike.core.model.RideStatus
+import ru.colabike.core.model.RideSummary
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UserId
@@ -203,3 +222,132 @@ internal fun ProfileDto.toModel(media: MediaUrls): Profile =
 
 internal fun FollowResultDto.toModel(): FollowState =
     FollowState(relationship = relationship.toModel(), followers = followers)
+
+// --- journal and feed ----------------------------------------------------------------------
+
+internal fun BikeRefDto.toModel(): BikeRef = BikeRef(BikeId(id.toString()), name)
+
+internal fun JournalPageDto.toModel(media: MediaUrls): Page<JournalSummary> =
+    Page(items.map { it.toModel(media) }, nextCursor)
+
+internal fun JournalSummaryDto.toModel(media: MediaUrls): JournalSummary =
+    JournalSummary(
+        id = JournalId(id.toString()),
+        // A kind added after this release is shown without a label, not dropped.
+        kind =
+            if (kind == JournalSummaryDto.Kind.unknown_default_open_api) JournalSummary.KIND_OTHER
+            else kind.value,
+        title = title,
+        status = status.toModel(),
+        isPublic = isPublic,
+        eventDate = eventDate,
+        mileageKm = mileage?.takeIf { it > 0 },
+        createdAt = createdAt.toInstant(),
+        updatedAt = updatedAt.toInstant(),
+        bike = bike.toModel(),
+        author = author.toModel(media),
+        likes = likes,
+        comments = comments,
+        liked = liked,
+        excerpt = excerpt,
+    )
+
+private fun JournalSummaryDto.Status.toModel() =
+    if (this == JournalSummaryDto.Status.draft) JournalStatus.Draft else JournalStatus.Published
+
+internal fun JournalEntryDto.toModel(media: MediaUrls): JournalEntry =
+    JournalEntry(
+        summary =
+            JournalSummary(
+                id = JournalId(id.toString()),
+                kind =
+                    if (kind == JournalEntryDto.Kind.unknown_default_open_api)
+                        JournalSummary.KIND_OTHER
+                    else kind.value,
+                title = title,
+                status =
+                    if (status == JournalEntryDto.Status.draft) JournalStatus.Draft
+                    else JournalStatus.Published,
+                isPublic = isPublic,
+                eventDate = eventDate,
+                mileageKm = mileage?.takeIf { it > 0 },
+                createdAt = createdAt.toInstant(),
+                updatedAt = updatedAt.toInstant(),
+                bike = bike.toModel(),
+                author = author.toModel(media),
+                likes = likes,
+                comments = comments,
+                liked = liked,
+                excerpt = "",
+            ),
+        body = body,
+        components = components.map { it.toModel() },
+        photos =
+            photos.mapNotNull { photo ->
+                media.resolve(photo.url)?.let { Photo(photo.id.toString(), it) }
+            },
+    )
+
+/** A component of the entry's snapshot is shown like a bike's own: same fields, same rules. */
+internal fun JournalComponentDto.toModel(): BikeComponent =
+    BikeComponent(
+        id = id.toString(),
+        section =
+            if (section == JournalComponentDto.Section.unknown_default_open_api) "other"
+            else section.value,
+        category = category,
+        name = name,
+        notes = notes,
+        url = httpsOrNull(url),
+        groupId = groupId,
+        sortOrder = sortOrder,
+        priceRub = price,
+    )
+
+/** Items the app cannot show (an unknown type, a missing object) are left out of the page. */
+internal fun FeedPageDto.toModel(media: MediaUrls): Page<FeedItem> =
+    Page(items.mapNotNull { it.toModel(media) }, nextCursor)
+
+internal fun FeedItemDto.toModel(media: MediaUrls): FeedItem? {
+    val at = publishedAt.toInstant()
+    return when (type) {
+        FeedItemDto.Type.bike -> bike?.let { FeedItem.Bike(it.toModel(media), at) }
+        FeedItemDto.Type.journal -> journal?.let { FeedItem.Journal(it.toModel(media), at) }
+        FeedItemDto.Type.ride -> ride?.let { FeedItem.Ride(it.toModel(media), at) }
+        FeedItemDto.Type.market -> listing?.let { FeedItem.Listing(it.toBrief(media), at) }
+        FeedItemDto.Type.unknown_default_open_api -> null
+    }
+}
+
+internal fun RideSummaryDto.toModel(media: MediaUrls): RideSummary =
+    RideSummary(
+        id = RideId(id.toString()),
+        title = title,
+        status =
+            when (status) {
+                RideSummaryDto.Status.completed -> RideStatus.Completed
+                RideSummaryDto.Status.planned -> RideStatus.Planned
+                else -> RideStatus.Unknown
+            },
+        time = (startedAt ?: scheduledAt)?.toInstant(),
+        distanceMeters = metrics.distanceM,
+        movingTimeSeconds = metrics.movingTimeS,
+        bikeName = bike.name,
+        author = author.toModel(media),
+    )
+
+internal fun MarketListingDto.toBrief(media: MediaUrls): ListingBrief =
+    ListingBrief(
+        id = id.toString(),
+        title = title,
+        price = price,
+        currency = currency,
+        category = category.value,
+        type = listingType.value,
+        location = location,
+        cover =
+            photos.firstNotNullOfOrNull { photo ->
+                media.resolve(photo.url)?.let { Photo(photo.id.toString(), it) }
+            },
+        author = author.toModel(media),
+    )

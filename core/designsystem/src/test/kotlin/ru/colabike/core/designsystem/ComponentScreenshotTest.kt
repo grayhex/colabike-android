@@ -29,8 +29,10 @@ import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.HaloTone
 import ru.colabike.core.designsystem.component.IconHalo
+import ru.colabike.core.designsystem.component.JournalCard
 import ru.colabike.core.designsystem.component.LikeButton
 import ru.colabike.core.designsystem.component.ListItemAction
+import ru.colabike.core.designsystem.component.ListingCard
 import ru.colabike.core.designsystem.component.PhotoTile
 import ru.colabike.core.designsystem.component.PillBadge
 import ru.colabike.core.designsystem.component.PreviewData
@@ -38,6 +40,7 @@ import ru.colabike.core.designsystem.component.RideCard
 import ru.colabike.core.designsystem.component.StatTile
 import ru.colabike.core.designsystem.component.UserRow
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.JournalStatus
 
 /** Shared components in both themes and at 200 % text (DESIGN.md, "Definition of done"). */
 @RunWith(RobolectricTestRunner::class)
@@ -80,6 +83,35 @@ class ComponentScreenshotTest {
                 UserRow(PreviewData.rider, onClick = {})
             }
         }
+
+    private fun feedCards(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                JournalCard(PreviewData.journal, onClick = {})
+                JournalCard(
+                    PreviewData.journal.copy(
+                        kind = "other",
+                        status = JournalStatus.Draft,
+                        title = "Без метки и без текста",
+                        excerpt = "",
+                        eventDate = null,
+                        mileageKm = null,
+                        liked = true,
+                    ),
+                    onClick = {},
+                )
+                ListingCard(PreviewData.listing)
+                ListingCard(PreviewData.listing.copy(type = "wanted", price = null, location = ""))
+                RideCard(PreviewData.ride)
+            }
+        }
+
+    @Test fun feedCardsLight() = feedCards(dark = false, name = "feed_cards_light")
+
+    @Test fun feedCardsDark() = feedCards(dark = true, name = "feed_cards_dark")
+
+    @Test
+    fun feedCardsLargeText() = feedCards(dark = false, fontScale = 2f, name = "feed_cards_font_200")
 
     @Test
     fun statesLight() =
