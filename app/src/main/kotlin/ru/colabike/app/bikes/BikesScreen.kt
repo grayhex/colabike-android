@@ -32,8 +32,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -126,7 +129,7 @@ fun BikesScreen(
                     )
                 else ->
                     PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = onRefresh) {
-                        BikeGrid(state, onOpen, onLoadMore)
+                        BikeGrid(state, onOpen, onLoadMore, onRefresh)
                     }
             }
         }
@@ -134,7 +137,12 @@ fun BikesScreen(
 }
 
 @Composable
-private fun BikeGrid(state: BikesUiState, onOpen: (BikeId) -> Unit, onLoadMore: () -> Unit) {
+private fun BikeGrid(
+    state: BikesUiState,
+    onOpen: (BikeId) -> Unit,
+    onLoadMore: () -> Unit,
+    onRefresh: () -> Unit,
+) {
     val grid = rememberLazyGridState()
     val nearEnd by remember {
         derivedStateOf {
@@ -151,8 +159,18 @@ private fun BikeGrid(state: BikesUiState, onOpen: (BikeId) -> Unit, onLoadMore: 
         verticalArrangement = Arrangement.spacedBy(Spacing.l),
         modifier = Modifier.fillMaxSize(),
     ) {
+        state.refreshError?.let { error ->
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                RetryRow(error.resolve(), onRetry = onRefresh)
+            }
+        }
         items(state.bikes, key = { it.id.value }) { bike ->
-            BikeCard(bike, onClick = { onOpen(bike.id) })
+            BikeCard(
+                bike,
+                onClick = { onOpen(bike.id) },
+                // Found by the live smoke test (app/src/androidTest).
+                modifier = Modifier.testTag("bike:${bike.id.value}"),
+            )
         }
         if (state.loadingMore || state.moreError != null) {
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -161,22 +179,23 @@ private fun BikeGrid(state: BikesUiState, onOpen: (BikeId) -> Unit, onLoadMore: 
                     contentAlignment = Alignment.Center,
                 ) {
                     if (state.loadingMore) CircularProgressIndicator()
-                    else
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                state.moreError!!.resolve(),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            TextButton(onClick = onLoadMore) {
-                                Text(
-                                    stringResource(
-                                        ru.colabike.core.designsystem.R.string.cola_retry
-                                    )
-                                )
-                            }
-                        }
+                    else RetryRow(state.moreError!!.resolve(), onRetry = onLoadMore)
                 }
             }
+        }
+    }
+}
+
+/** A failure inside the list: what went wrong and a retry of exactly that. */
+@Composable
+private fun RetryRow(message: String, onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(message, style = MaterialTheme.typography.bodyMedium)
+        TextButton(onClick = onRetry) {
+            Text(stringResource(ru.colabike.core.designsystem.R.string.cola_retry))
         }
     }
 }

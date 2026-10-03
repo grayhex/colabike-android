@@ -13,6 +13,7 @@ import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.YandexFailure
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
+import ru.colabike.core.auth.AuthState
 import ru.colabike.core.auth.YandexSignIn
 import ru.colabike.core.model.DataError
 
@@ -36,6 +37,18 @@ class LoginViewModel(private val auth: AuthActions) : ViewModel() {
         viewModelScope.launch {
             auth.yandexFailures.collect { failure ->
                 mutableState.update { it.copy(busy = false, error = failure.toUiText()) }
+            }
+        }
+        // Whatever way the session started (password, or Yandex ID while a password was typed),
+        // the secret goes: this ViewModel outlives the signed-in app and shows again after
+        // sign-out.
+        viewModelScope.launch {
+            auth.state.collect { state ->
+                if (state is AuthState.SignedIn) {
+                    mutableState.update {
+                        it.copy(password = "", passwordVisible = false, busy = false, error = null)
+                    }
+                }
             }
         }
     }

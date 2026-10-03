@@ -25,8 +25,10 @@ data class BikesUiState(
     val loadingMore: Boolean = false,
     /** The first page failed: the whole screen shows it. */
     val error: UiText? = null,
-    /** A later page failed: the list stays, the end of it offers a retry. */
+    /** A later page failed: the list stays, the end of it offers a retry of that page. */
     val moreError: UiText? = null,
+    /** Pull-to-refresh failed: the old list stays, its top offers a retry of the refresh. */
+    val refreshError: UiText? = null,
     val nextCursor: String? = null,
 )
 
@@ -74,7 +76,13 @@ class BikesViewModel(private val repository: BikesRepository) : ViewModel() {
     private fun load(refresh: Boolean) {
         job?.cancel()
         mutableState.update {
-            it.copy(loading = !refresh, refreshing = refresh, error = null, moreError = null)
+            it.copy(
+                loading = !refresh,
+                refreshing = refresh,
+                error = null,
+                moreError = null,
+                refreshError = null,
+            )
         }
         val scope = state.value.scope
         job = viewModelScope.launch {
@@ -92,7 +100,7 @@ class BikesViewModel(private val repository: BikesRepository) : ViewModel() {
                 mutableState.update {
                     // A failed refresh keeps what is on screen.
                     if (refresh && it.bikes.isNotEmpty())
-                        it.copy(refreshing = false, moreError = e.toUiText())
+                        it.copy(refreshing = false, refreshError = e.toUiText())
                     else it.copy(loading = false, refreshing = false, error = e.toUiText())
                 }
             }

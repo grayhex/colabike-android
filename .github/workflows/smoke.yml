@@ -44,6 +44,7 @@ jobs:
           fi
       - run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :core:auth:assembleDebugAndroidTest
       - name: Start the Android 17 emulator
+        timeout-minutes: 20
         run: scripts/emulator.sh start
       - name: Instrumented tests
         run: |
@@ -64,4 +65,5 @@ jobs:
           path: |
             **/build/reports/androidTests/
             **/build/outputs/androidTest-results/
+            ${{ runner.temp }}/emulator.log
           retention-days: 7

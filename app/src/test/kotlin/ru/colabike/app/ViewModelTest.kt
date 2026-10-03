@@ -125,4 +125,39 @@ class ViewModelTest {
         assertThat(DataError.RateLimited(900).toUiText())
             .isEqualTo(UiText.Res(R.string.error_rate_limited, listOf(15)))
     }
+
+    @Test
+    fun `a session started any way clears the typed password`() = runTest {
+        val auth = FakeAuth(AuthState.SignedOut)
+        val vm = LoginViewModel(auth)
+        vm.onEmailChange("rider@example.test")
+        vm.onPasswordChange("typed-but-unused")
+        vm.togglePasswordVisibility()
+
+        // The Yandex ID flow ends outside this ViewModel: only the session state changes.
+        auth.state.value = AuthState.SignedIn(account)
+
+        assertThat(vm.state.value.password).isEmpty()
+        assertThat(vm.state.value.passwordVisible).isFalse()
+        assertThat(vm.state.value.email).isEqualTo("rider@example.test")
+    }
+
+    @Test
+    fun `a failed refresh keeps the list and is retried as a refresh`() = runTest {
+        val repo = FakeBikes(mapOf(null to Page(bikes(0, 3), "c1")))
+        val vm = BikesViewModel(repo)
+
+        repo.nextError = DataError.Offline(java.io.IOException())
+        vm.refresh()
+
+        assertThat(vm.state.value.bikes).hasSize(3)
+        assertThat(vm.state.value.refreshError).isEqualTo(UiText.Res(R.string.error_offline))
+        assertThat(vm.state.value.moreError).isNull()
+
+        vm.refresh()
+
+        assertThat(vm.state.value.refreshError).isNull()
+        assertThat(repo.calls.takeLast(2))
+            .containsExactly(BikeScope.Public to null, BikeScope.Public to null)
+    }
 }
