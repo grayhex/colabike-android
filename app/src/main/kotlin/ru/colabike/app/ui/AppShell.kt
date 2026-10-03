@@ -153,12 +153,20 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                 entry<Destination.Bike>(
                                     metadata = ListDetailSceneStrategy.detailPane()
                                 ) { key ->
+                                    // Side by side with the list there is nothing to go back
+                                    // from; opened over a person or a search it fills the area
+                                    // and needs its arrow.
+                                    val stack = state.currentStack
+                                    val besideList =
+                                        twoPane &&
+                                            stack.getOrNull(stack.lastIndexOf(key) - 1) ==
+                                                Destination.Bikes
                                     BikeDetailRoute(
                                         repository = dependencies.bikes,
                                         auth = dependencies.auth,
                                         links = dependencies.links,
                                         id = BikeId(key.id),
-                                        showBack = !twoPane,
+                                        showBack = !besideList,
                                         onBack = { navigator.back() },
                                         onOpenAuthor = { ref ->
                                             navigator.open(Destination.Person(ref))
