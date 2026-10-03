@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -48,6 +49,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.links.LocalLinkOpener
+import ru.colabike.app.links.SiteLinks
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.BrandMark
 import ru.colabike.core.designsystem.component.ColaIcons
@@ -56,11 +59,21 @@ import ru.colabike.core.designsystem.component.colaTextFieldColors
 import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.designsystem.theme.Spacing
 
+/**
+ * Sign-in. [onBrowseAsGuest] offers to look around without an account (the first screen of the
+ * app); [onClose] closes sign-in that a guest opened over their place.
+ */
 @Composable
-fun LoginRoute(auth: AuthActions) {
+fun LoginRoute(
+    auth: AuthActions,
+    links: SiteLinks,
+    onBrowseAsGuest: (() -> Unit)? = null,
+    onClose: (() -> Unit)? = null,
+) {
     val viewModel = viewModel { LoginViewModel(auth) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val opener = LocalLinkOpener.current
     LoginScreen(
         state = state,
         onEmailChange = viewModel::onEmailChange,
@@ -68,6 +81,10 @@ fun LoginRoute(auth: AuthActions) {
         onTogglePassword = viewModel::togglePasswordVisibility,
         onSubmit = viewModel::submit,
         onYandex = { auth.startYandex(context) },
+        onRegister = { opener.open(links.register) },
+        onForgotPassword = { opener.open(links.forgotPassword) },
+        onBrowseAsGuest = onBrowseAsGuest,
+        onClose = onClose,
     )
 }
 
@@ -83,6 +100,10 @@ fun LoginScreen(
     onTogglePassword: () -> Unit,
     onSubmit: () -> Unit,
     onYandex: () -> Unit,
+    onRegister: () -> Unit = {},
+    onForgotPassword: () -> Unit = {},
+    onBrowseAsGuest: (() -> Unit)? = null,
+    onClose: (() -> Unit)? = null,
 ) {
     ColaCanvas(Modifier.fillMaxSize()) {
         Box(
@@ -216,7 +237,58 @@ fun LoginScreen(
                         Text(stringResource(R.string.login_yandex))
                     }
                 }
+                // The site is where an account is made and a password is brought back: API v1 has
+                // no native way, so say it and open the browser (nothing is faked).
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                        WebLink(stringResource(R.string.login_forgot), onForgotPassword)
+                        WebLink(stringResource(R.string.login_register), onRegister)
+                    }
+                    Text(
+                        stringResource(R.string.login_web_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                if (onBrowseAsGuest != null) {
+                    TextButton(
+                        onClick = onBrowseAsGuest,
+                        enabled = !state.busy,
+                        modifier = Modifier.heightIn(min = Spacing.touch),
+                    ) {
+                        Text(stringResource(R.string.login_browse))
+                    }
+                }
             }
         }
+        // Last, so that it is above the scrolling column and gets the touch (siblings in z-order).
+        if (onClose != null) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier.safeDrawingPadding().padding(Spacing.xs),
+            ) {
+                Icon(
+                    painterResource(ColaIcons.ArrowBack),
+                    contentDescription = stringResource(R.string.login_close),
+                )
+            }
+        }
+    }
+}
+
+/** A link to the site: the label and the "opens outside" glyph, at least 48 dp tall. */
+@Composable
+private fun WebLink(text: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = Spacing.touch)) {
+        Text(text)
+        Icon(
+            painterResource(ColaIcons.OpenInNew),
+            contentDescription = null,
+            modifier = Modifier.padding(start = Spacing.xs).size(16.dp),
+        )
     }
 }

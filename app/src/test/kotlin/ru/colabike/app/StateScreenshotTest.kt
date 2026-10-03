@@ -16,6 +16,7 @@ import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
+import java.time.Instant
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,6 +27,11 @@ import ru.colabike.app.bikes.BikeDetailScreen
 import ru.colabike.app.bikes.BikeDetailUiState
 import ru.colabike.app.bikes.BikesScreen
 import ru.colabike.app.bikes.BikesUiState
+import ru.colabike.app.devices.DevicesScreen
+import ru.colabike.app.devices.DevicesUiState
+import ru.colabike.app.profile.ProfileScreen
+import ru.colabike.app.profile.ProfileUiState
+import ru.colabike.app.settings.ThemeMode
 import ru.colabike.app.ui.UiText
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
@@ -41,6 +47,9 @@ enum class ScreenState(val file: String) {
     BikesError("bikes_error"),
     BikeDetailError("bike_detail_error"),
     BikeDetailBare("bike_detail_bare"),
+    DevicesLoading("devices_loading"),
+    DevicesError("devices_error"),
+    ProfileFailed("profile_failed"),
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -127,6 +136,22 @@ private fun Content(state: ScreenState) {
                 onBack = {},
                 onRetry = {},
             )
+        ScreenState.DevicesLoading -> DevicesWith(DevicesUiState.Loading)
+        ScreenState.DevicesError ->
+            DevicesWith(DevicesUiState.Failed(UiText.Res(R.string.error_offline)))
+        ScreenState.ProfileFailed ->
+            ProfileScreen(
+                ProfileUiState.Failed(UiText.Res(R.string.error_offline)),
+                themeMode = ThemeMode.System,
+                onThemeMode = {},
+                onRetry = {},
+                onSignOut = {},
+                onSignIn = {},
+                onRegister = {},
+                onOpenDevices = {},
+                onManageOnWeb = {},
+                onOpenAbout = {},
+            )
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),
@@ -136,6 +161,18 @@ private fun Content(state: ScreenState) {
             )
     }
 }
+
+@Composable
+private fun DevicesWith(state: DevicesUiState) =
+    DevicesScreen(
+        state = state,
+        now = Instant.parse("2026-10-03T20:00:00Z"),
+        onBack = {},
+        onRetry = {},
+        onEnd = {},
+        onConfirmEnd = {},
+        onDismissQuestion = {},
+    )
 
 @Composable
 private fun BikesWith(state: BikesUiState) =

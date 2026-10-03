@@ -13,5 +13,6 @@
 - [docs/design/twilight-stillness.md](docs/design/twilight-stillness.md) — визуальный источник и соответствие токенам.
 - [docs/adr/0001-platform-baseline.md](docs/adr/0001-platform-baseline.md) — принятые решения о платформе.
 - [docs/adr/0002-visual-direction-and-shell.md](docs/adr/0002-visual-direction-and-shell.md) — визуальное направление и навигационная оболочка.
+- [docs/adr/0003-account-guest-and-web-flows.md](docs/adr/0003-account-guest-and-web-flows.md) — гость, устройства аккаунта и сценарии, которые остаются на сайте.
 
 Публикация — позже в RuStore. Google Play не цель.

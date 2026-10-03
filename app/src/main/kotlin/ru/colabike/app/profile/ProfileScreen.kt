@@ -11,12 +11,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -24,33 +30,73 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.colabike.app.AppDependencies
 import ru.colabike.app.R
-import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.links.LocalLinkOpener
+import ru.colabike.app.settings.ThemeMode
+import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.Avatar
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaListItem
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ErrorState
+import ru.colabike.core.designsystem.component.Eyebrow
+import ru.colabike.core.designsystem.component.HaloTone
 import ru.colabike.core.designsystem.component.IconHalo
+import ru.colabike.core.designsystem.component.ListItemAction
 import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.component.PillBadge
+import ru.colabike.core.designsystem.component.SoftIconTile
 import ru.colabike.core.designsystem.theme.Spacing
-import ru.colabike.core.model.AccountRepository
 
+/** What the profile can open, as callbacks: the screen never touches navigation itself. */
 @Composable
-fun ProfileRoute(account: AccountRepository, auth: AuthActions) {
-    val viewModel = viewModel { ProfileViewModel(account, auth) }
+fun ProfileRoute(
+    dependencies: AppDependencies,
+    onOpenDevices: () -> Unit,
+    onOpenAbout: () -> Unit,
+) {
+    val viewModel = viewModel { ProfileViewModel(dependencies.account, dependencies.auth) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ProfileScreen(state, onRetry = viewModel::load, onSignOut = viewModel::signOut)
+    val theme by dependencies.settings.themeMode.collectAsStateWithLifecycle()
+    val signIn = LocalSignInRequest.current
+    val opener = LocalLinkOpener.current
+    ProfileScreen(
+        state = state,
+        themeMode = theme,
+        onThemeMode = dependencies.settings::setThemeMode,
+        onRetry = viewModel::load,
+        onSignOut = viewModel::signOut,
+        onSignIn = signIn,
+        onRegister = { opener.open(dependencies.links.register) },
+        onOpenDevices = onOpenDevices,
+        onManageOnWeb = { opener.open(dependencies.links.account) },
+        onOpenAbout = onOpenAbout,
+    )
 }
 
 @Composable
-fun ProfileScreen(state: ProfileUiState, onRetry: () -> Unit, onSignOut: () -> Unit) {
+fun ProfileScreen(
+    state: ProfileUiState,
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
+    onRetry: () -> Unit,
+    onSignOut: () -> Unit,
+    onSignIn: () -> Unit,
+    onRegister: () -> Unit,
+    onOpenDevices: () -> Unit,
+    onManageOnWeb: () -> Unit,
+    onOpenAbout: () -> Unit,
+) {
     Scaffold(
         containerColor = Color.Transparent,
         topBar = { ColaTopBar(title = stringResource(R.string.profile_title)) },
@@ -59,90 +105,254 @@ fun ProfileScreen(state: ProfileUiState, onRetry: () -> Unit, onSignOut: () -> U
             when (state) {
                 ProfileUiState.Loading -> LoadingState(Modifier.fillMaxSize())
                 is ProfileUiState.Failed ->
-                    ErrorState(
-                        state.message.resolve(),
-                        onRetry = onRetry,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                is ProfileUiState.Loaded ->
+                    // The account failed to load, but what needs no account stays reachable.
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ErrorState(state.message.resolve(), onRetry = onRetry)
+                        Column(
+                            Modifier.widthIn(max = ContentWidth)
+                                .padding(horizontal = Spacing.screen)
+                                .padding(bottom = Spacing.xxl),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.section),
+                        ) {
+                            AppearanceAndAbout(themeMode, onThemeMode, onOpenAbout)
+                        }
+                    }
+                else ->
                     Column(
                         Modifier.fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = Spacing.screen)
-                            .padding(top = Spacing.l, bottom = Spacing.xxl),
+                            .padding(top = Spacing.s, bottom = Spacing.xxl),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(Spacing.l),
                     ) {
-                        val account = state.account
-                        Avatar(account.displayName, account.avatarUrl, size = 96.dp)
                         Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                            Modifier.widthIn(max = ContentWidth).fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.section),
                         ) {
-                            Text(
-                                account.displayName,
-                                style = MaterialTheme.typography.displayMedium,
-                                textAlign = TextAlign.Center,
-                            )
-                            Text(
-                                stringResource(
-                                    ru.colabike.core.designsystem.R.string.cola_username,
-                                    account.username,
-                                ),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        if (account.location.isNotBlank()) {
-                            PillBadge(account.location, icon = ColaIcons.Location)
-                        }
-                        if (account.bio.isNotBlank()) {
-                            Text(
-                                account.bio,
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.widthIn(max = 560.dp),
-                            )
-                        }
-                        if (!account.emailVerified) {
-                            ColaCard(
-                                Modifier.widthIn(max = 560.dp).fillMaxWidth(),
-                                shape = MaterialTheme.shapes.medium,
-                            ) {
-                                Row(
-                                    Modifier.padding(Spacing.l),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(Spacing.l),
+                            when (state) {
+                                ProfileUiState.Guest -> GuestCard(onSignIn, onRegister)
+                                is ProfileUiState.Loaded ->
+                                    MemberSections(
+                                        state,
+                                        onOpenDevices = onOpenDevices,
+                                        onManageOnWeb = onManageOnWeb,
+                                    )
+                                else -> Unit
+                            }
+                            AppearanceAndAbout(themeMode, onThemeMode, onOpenAbout)
+                            if (state is ProfileUiState.Loaded) {
+                                OutlinedButton(
+                                    onClick = onSignOut,
+                                    enabled = !state.signingOut,
+                                    modifier =
+                                        Modifier.widthIn(max = 420.dp)
+                                            .fillMaxWidth()
+                                            .heightIn(min = Spacing.touch)
+                                            .align(Alignment.CenterHorizontally),
                                 ) {
-                                    IconHalo(ColaIcons.MailUnread)
+                                    Icon(
+                                        painterResource(ColaIcons.Logout),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                     Text(
-                                        stringResource(R.string.profile_unverified),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.weight(1f),
+                                        stringResource(R.string.profile_sign_out),
+                                        modifier = Modifier.padding(start = Spacing.s),
                                     )
                                 }
                             }
-                        }
-                        OutlinedButton(
-                            onClick = onSignOut,
-                            enabled = !state.signingOut,
-                            modifier =
-                                Modifier.widthIn(max = 420.dp)
-                                    .fillMaxWidth()
-                                    .heightIn(min = Spacing.touch),
-                        ) {
-                            Icon(
-                                painterResource(ColaIcons.Logout),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                stringResource(R.string.profile_sign_out),
-                                modifier = Modifier.padding(start = Spacing.s),
-                            )
                         }
                     }
             }
         }
     }
 }
+
+private val ContentWidth = 560.dp
+
+/** The invitation a guest sees instead of an account: why to sign in, and how. */
+@Composable
+private fun GuestCard(onSignIn: () -> Unit, onRegister: () -> Unit) {
+    ColaCard(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier.padding(Spacing.card),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.l),
+        ) {
+            SoftIconTile(ColaIcons.Person)
+            Text(
+                stringResource(R.string.profile_guest_title),
+                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                stringResource(R.string.profile_guest_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Button(
+                onClick = onSignIn,
+                modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.touch + Spacing.xs),
+            ) {
+                Text(stringResource(R.string.profile_sign_in))
+            }
+            TextButton(onClick = onRegister, modifier = Modifier.heightIn(min = Spacing.touch)) {
+                Text(stringResource(R.string.profile_register))
+                Icon(
+                    painterResource(ColaIcons.OpenInNew),
+                    contentDescription = null,
+                    modifier = Modifier.padding(start = Spacing.xs).size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemberSections(
+    state: ProfileUiState.Loaded,
+    onOpenDevices: () -> Unit,
+    onManageOnWeb: () -> Unit,
+) {
+    val account = state.account
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.l),
+    ) {
+        Avatar(account.displayName, account.avatarUrl, size = 96.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Text(
+                account.displayName,
+                style = MaterialTheme.typography.displayMedium,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                stringResource(
+                    ru.colabike.core.designsystem.R.string.cola_username,
+                    account.username,
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (account.location.isNotBlank()) {
+            PillBadge(account.location, icon = ColaIcons.Location)
+        }
+        if (account.bio.isNotBlank()) {
+            Text(
+                account.bio,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = ContentWidth),
+            )
+        }
+    }
+    if (!account.emailVerified) {
+        ColaCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+            Row(
+                Modifier.padding(Spacing.l),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.l),
+            ) {
+                IconHalo(ColaIcons.MailUnread)
+                Text(
+                    stringResource(R.string.profile_unverified),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+    Section(stringResource(R.string.profile_section_account)) {
+        ColaListItem(
+            title = stringResource(R.string.profile_devices),
+            supporting = stringResource(R.string.profile_devices_hint),
+            icon = ColaIcons.Devices,
+            onClick = onOpenDevices,
+        )
+        ColaListItem(
+            title = stringResource(R.string.profile_manage_web),
+            supporting = stringResource(R.string.profile_manage_web_hint),
+            icon = ColaIcons.Person,
+            tone = HaloTone.Secondary,
+            action = ListItemAction.External,
+            onClick = onManageOnWeb,
+        )
+    }
+}
+
+@Composable
+private fun AppearanceAndAbout(
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
+    onOpenAbout: () -> Unit,
+) {
+    Section(stringResource(R.string.profile_section_appearance)) {
+        ThemeChoice(themeMode, onThemeMode)
+    }
+    Section(stringResource(R.string.profile_section_app)) {
+        ColaListItem(
+            title = stringResource(R.string.profile_about),
+            supporting = stringResource(R.string.profile_about_hint),
+            icon = ColaIcons.Info,
+            onClick = onOpenAbout,
+        )
+    }
+}
+
+/** A titled group of rows; the title is the heading for TalkBack. */
+@Composable
+private fun Section(title: String, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        Eyebrow(title, modifier = Modifier.semantics { heading() })
+        content()
+    }
+}
+
+/** System, light or dark: one choice among three, each row a whole touch target. */
+@Composable
+private fun ThemeChoice(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    ColaCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.selectableGroup()) {
+            ThemeMode.entries.forEachIndexed { index, mode ->
+                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(
+                    Modifier.fillMaxWidth()
+                        .heightIn(min = Spacing.touch)
+                        .selectable(
+                            selected = mode == selected,
+                            onClick = { onSelect(mode) },
+                            role = Role.RadioButton,
+                        )
+                        .padding(horizontal = Spacing.l, vertical = Spacing.s),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.l),
+                ) {
+                    RadioButton(selected = mode == selected, onClick = null)
+                    Text(
+                        stringResource(mode.label),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val ThemeMode.label: Int
+    get() =
+        when (this) {
+            ThemeMode.System -> R.string.theme_system
+            ThemeMode.Light -> R.string.theme_light
+            ThemeMode.Dark -> R.string.theme_dark
+        }

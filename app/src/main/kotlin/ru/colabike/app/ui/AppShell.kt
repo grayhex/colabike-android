@@ -34,8 +34,11 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
 import ru.colabike.app.AppDependencies
 import ru.colabike.app.R
+import ru.colabike.app.about.AboutRoute
+import ru.colabike.app.about.LicensesRoute
 import ru.colabike.app.bikes.BikeDetailRoute
 import ru.colabike.app.bikes.BikesRoute
+import ru.colabike.app.devices.DevicesRoute
 import ru.colabike.app.navigation.Destination
 import ru.colabike.app.navigation.Navigator
 import ru.colabike.app.navigation.TopLevel
@@ -122,6 +125,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                 ) {
                                     BikesRoute(
                                         dependencies.bikes,
+                                        dependencies.auth,
                                         onOpen = { id -> navigator.openBike(id.value) },
                                         scrollToTop =
                                             remember(navigator) {
@@ -140,7 +144,28 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                     )
                                 }
                                 entry<Destination.Profile> {
-                                    ProfileRoute(dependencies.account, dependencies.auth)
+                                    ProfileRoute(
+                                        dependencies,
+                                        onOpenDevices = { navigator.open(Destination.Devices) },
+                                        onOpenAbout = { navigator.open(Destination.About) },
+                                    )
+                                }
+                                entry<Destination.Devices> {
+                                    DevicesRoute(
+                                        dependencies.sessions,
+                                        dependencies.clock,
+                                        onBack = { navigator.back() },
+                                    )
+                                }
+                                entry<Destination.About> {
+                                    AboutRoute(
+                                        dependencies.links,
+                                        onBack = { navigator.back() },
+                                        onLicenses = { navigator.open(Destination.Licenses) },
+                                    )
+                                }
+                                entry<Destination.Licenses> {
+                                    LicensesRoute(onBack = { navigator.back() })
                                 }
                             }
                         ),

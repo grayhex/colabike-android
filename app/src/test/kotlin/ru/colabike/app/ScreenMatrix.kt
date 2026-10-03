@@ -11,6 +11,7 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
@@ -20,6 +21,7 @@ import ru.colabike.app.login.LoginScreen
 import ru.colabike.app.login.LoginUiState
 import ru.colabike.app.ui.AppShell
 import ru.colabike.app.ui.UiText
+import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.model.Page
 
@@ -29,6 +31,12 @@ enum class Screen(val file: String) {
     Bikes("bikes"),
     BikeDetail("bike_detail"),
     Profile("profile"),
+
+    /** What a guest sees on the profile tab, and the rest of the profile below the fold. */
+    ProfileGuest("profile_guest"),
+    ProfileMore("profile_more"),
+    Devices("devices"),
+    About("about"),
 }
 
 enum class Look(val dark: Boolean, val fontScale: Float, val file: String) {
@@ -69,6 +77,14 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                             onTogglePassword = {},
                             onSubmit = {},
                             onYandex = {},
+                            onBrowseAsGuest = {},
+                        )
+                    Screen.ProfileGuest ->
+                        AppShell(
+                            FakeDependencies(
+                                auth = FakeAuth(initial = AuthState.SignedOut),
+                                settings = FakeSettings(guest = true),
+                            )
                         )
                     else ->
                         AppShell(
@@ -84,7 +100,20 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
     when (screen) {
         Screen.BikeDetail ->
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-        Screen.Profile -> onNodeWithText("Профиль").performClick()
+        Screen.Profile,
+        Screen.ProfileGuest -> onNodeWithText("Профиль").performClick()
+        Screen.ProfileMore -> {
+            onNodeWithText("Профиль").performClick()
+            onNodeWithText("О приложении").performScrollTo()
+        }
+        Screen.Devices -> {
+            onNodeWithText("Профиль").performClick()
+            onNodeWithText("Устройства и входы").performScrollTo().performClick()
+        }
+        Screen.About -> {
+            onNodeWithText("Профиль").performClick()
+            onNodeWithText("О приложении").performScrollTo().performClick()
+        }
         else -> Unit
     }
     mainClock.advanceTimeBy(3_000)

@@ -1,6 +1,6 @@
 # Работа в colabike-android
 
-Нативный Android-клиент ColaBike. Сервер, API v1 и веб — в [grayhex/cola](https://github.com/grayhex/cola). Перед задачей прочитайте нужное: [архитектура](docs/architecture.md), [дизайн](DESIGN.md) и его источник [Twilight Stillness](docs/design/twilight-stillness.md), [решения платформы](docs/adr/0001-platform-baseline.md) и [визуальное направление и навигация](docs/adr/0002-visual-direction-and-shell.md).
+Нативный Android-клиент ColaBike. Сервер, API v1 и веб — в [grayhex/cola](https://github.com/grayhex/cola). Перед задачей прочитайте нужное: [архитектура](docs/architecture.md), [дизайн](DESIGN.md) и его источник [Twilight Stillness](docs/design/twilight-stillness.md), [решения платформы](docs/adr/0001-platform-baseline.md) и [визуальное направление и навигация](docs/adr/0002-visual-direction-and-shell.md), [гость, устройства и сценарии сайта](docs/adr/0003-account-guest-and-web-flows.md).
 
 ## Команды
 
