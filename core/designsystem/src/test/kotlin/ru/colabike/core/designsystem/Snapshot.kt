@@ -1,5 +1,7 @@
 package ru.colabike.core.designsystem
 
+import android.content.Context
+import android.provider.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
@@ -14,6 +16,7 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
 import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
@@ -36,6 +39,12 @@ fun ComposeContentTestRule.snapshot(
     fontScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
+    // No pulsing skeletons: the picture must not depend on the virtual clock.
+    Settings.Global.putFloat(
+        ApplicationProvider.getApplicationContext<Context>().contentResolver,
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+        0f,
+    )
     setContent {
         CompositionLocalProvider(
             LocalInspectionMode provides true,
@@ -47,5 +56,10 @@ fun ComposeContentTestRule.snapshot(
             }
         }
     }
+    // A capture right after setContent can come out as the bare window, before the first frame is
+    // drawn (seen on CI as an all-white image); the clock lets that frame happen.
+    waitForIdle()
+    mainClock.advanceTimeBy(3_000)
+    waitForIdle()
     onRoot().captureRoboImage("src/test/screenshots/$name.png")
 }

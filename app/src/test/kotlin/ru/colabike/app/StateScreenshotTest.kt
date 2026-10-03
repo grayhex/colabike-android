@@ -1,5 +1,7 @@
 package ru.colabike.app
 
+import android.content.Context
+import android.provider.Settings
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -10,6 +12,7 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
+import androidx.test.core.app.ApplicationProvider
 import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
@@ -77,6 +80,12 @@ class StateScreenshotTest(private val state: ScreenState, private val look: Look
 
     @Test
     fun capture() {
+        // No pulsing skeletons: the picture must not depend on the virtual clock.
+        Settings.Global.putFloat(
+            ApplicationProvider.getApplicationContext<Context>().contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            0f,
+        )
         compose.setContent {
             CompositionLocalProvider(
                 LocalInspectionMode provides true,
@@ -87,6 +96,10 @@ class StateScreenshotTest(private val state: ScreenState, private val look: Look
                 ColaBikeTheme(darkTheme = look.dark) { ColaCanvas { Content(state) } }
             }
         }
+        // A capture right after waitForIdle() can come out as the bare window, before the first
+        // frame is drawn (seen on CI as an all-white image); the clock lets that frame happen.
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(3_000)
         compose.waitForIdle()
         compose
             .onRoot()
