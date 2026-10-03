@@ -40,7 +40,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
+import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.ui.resolve
+import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.BikeCard
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
 import ru.colabike.core.designsystem.component.ColaFilterChip
@@ -57,13 +59,17 @@ import ru.colabike.core.model.BikesRepository
 @Composable
 fun BikesRoute(
     repository: BikesRepository,
+    auth: AuthActions,
     onOpen: (BikeId) -> Unit,
     scrollToTop: Flow<Unit> = emptyFlow(),
 ) {
     val viewModel = viewModel { BikesViewModel(repository) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val authState by auth.state.collectAsStateWithLifecycle()
     BikesScreen(
         state = state,
+        // "Mine" needs an account; a guest sees what is public and nothing to choose between.
+        showScopes = authState is AuthState.SignedIn,
         onScope = viewModel::selectScope,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
@@ -81,6 +87,7 @@ fun BikesRoute(
 @Composable
 fun BikesScreen(
     state: BikesUiState,
+    showScopes: Boolean = true,
     onScope: (BikeScope) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
@@ -93,20 +100,22 @@ fun BikesScreen(
         topBar = { ColaTopBar(title = stringResource(R.string.bikes_title)) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            Row(
-                Modifier.padding(horizontal = Spacing.screen),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                ColaFilterChip(
-                    selected = state.scope == BikeScope.Public,
-                    onClick = { onScope(BikeScope.Public) },
-                    label = stringResource(R.string.bikes_scope_public),
-                )
-                ColaFilterChip(
-                    selected = state.scope == BikeScope.Mine,
-                    onClick = { onScope(BikeScope.Mine) },
-                    label = stringResource(R.string.bikes_scope_mine),
-                )
+            if (showScopes) {
+                Row(
+                    Modifier.padding(horizontal = Spacing.screen),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                ) {
+                    ColaFilterChip(
+                        selected = state.scope == BikeScope.Public,
+                        onClick = { onScope(BikeScope.Public) },
+                        label = stringResource(R.string.bikes_scope_public),
+                    )
+                    ColaFilterChip(
+                        selected = state.scope == BikeScope.Mine,
+                        onClick = { onScope(BikeScope.Mine) },
+                        label = stringResource(R.string.bikes_scope_mine),
+                    )
+                }
             }
             when {
                 state.loading -> LoadingGrid()

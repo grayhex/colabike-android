@@ -21,4 +21,11 @@ sealed interface Destination : NavKey {
     @Serializable data object Messages : Destination
 
     @Serializable data object Profile : Destination
+
+    /** Where the account is signed in; opened from the profile. */
+    @Serializable data object Devices : Destination
+
+    @Serializable data object About : Destination
+
+    @Serializable data object Licenses : Destination
 }

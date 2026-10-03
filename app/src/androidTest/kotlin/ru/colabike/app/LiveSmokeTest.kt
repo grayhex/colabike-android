@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -19,8 +20,9 @@ import org.junit.runner.RunWith
 
 /**
  * The live smoke of #325 on an Android 17 emulator against production: sign in with the dedicated
- * smoke account, the bike list (`/bikes`), a bike (`/bikes/{id}`), the profile (`/me`), sign out
- * (the device session is revoked, the account does not collect devices).
+ * smoke account, the bike list (`/bikes`), a bike (`/bikes/{id}`), the profile (`/me`), the devices
+ * of the account (`/auth/sessions`), sign out (the device session is revoked, the account does not
+ * collect devices).
  *
  * Credentials come only as instrumentation arguments from CI secrets (smokeEmail, smokePassword);
  * without them the test is skipped, never faked. CI leaves the class out instead (notClass): AGP's
@@ -77,9 +79,15 @@ class LiveSmokeTest {
 
         // /me: the profile shows the account.
         compose.onNodeWithText("Профиль").performClick()
-        waitFor { hasText("Выйти") }
+        waitFor { hasText("Устройства и входы") }
 
-        compose.onNodeWithText("Выйти").performClick()
+        // /auth/sessions: this device is in the list, marked as this one.
+        compose.onNodeWithText("Устройства и входы").performScrollTo().performClick()
+        waitFor { hasText("ЭТО УСТРОЙСТВО") }
+        compose.onNodeWithContentDescription("Назад").performClick()
+
+        waitFor { hasText("Выйти") }
+        compose.onNodeWithText("Выйти").performScrollTo().performClick()
         waitFor { hasText("Вход в ColaBike") }
     }
 }

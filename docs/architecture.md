@@ -38,12 +38,13 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 ## Навигация
 
 - Navigation 3. Ключи — `@Serializable` объекты `Destination` (`Feed`, `Bikes`, `Bike(id)`, `Rides`, `Messages`, `Profile`), поэтому back stack переживает смерть процесса. В ключ кладётся только id: экран сам загружает то, что показывает, а токены и DTO в ключи не попадают.
-- Корень (`ColaBikeApp`) смотрит на `AuthState`:
+- Корень (`ColaBikeApp`) смотрит на `AuthState` и на выбор «смотреть без входа» (`AppSettings.browsingAsGuest`):
   - `Restoring` — пустой фон;
-  - `SignedOut` — вход;
+  - `SignedOut`, гость не выбран — вход с кнопкой «Смотреть без входа»;
+  - `SignedOut`, гость выбран — `AppShell` для гостя; вход открывается поверх по `LocalSignInRequest` (закрывается стрелкой и «назад»);
   - `SignedIn` — `AppShell`.
 
-  Вход не лежит в back stack, поэтому системный «назад» не возвращает на него.
+  Вход не лежит в back stack, поэтому системный «назад» не возвращает на него. Оболочка живёт под `SaveableStateProvider`: пока открыт вход, а потом при входе гостя навигация сохраняется (человек остаётся на своём месте), а после выхода начинается заново.
 - `AppShell` держит по одному back stack на раздел (`NavigationState`, `Navigator`; рецепт Navigation 3 «multiple back stacks»). Разделы описаны в `TopLevel`: Лента, Велосипеды, Покатушки, Сообщения, Профиль. Показывается тот, у которого есть экран (`available`); остальные включаются флагом вместе со своим срезом, вкладок-заглушек в релизе нет.
   - Приложение «выходит через дом»: стек стартового раздела (Велосипеды) всегда в списке `NavDisplay`, поэтому «назад» из другого раздела сначала возвращает на него.
   - Уход из раздела не трогает его стек. У каждого раздела свои `rememberSaveableStateHolderNavEntryDecorator` и `rememberViewModelStoreNavEntryDecorator`, поэтому сохраняются положение прокрутки и ViewModel: «Велосипед → другая вкладка → Велосипед» возвращает ту же карточку, не загружая её заново.
@@ -51,8 +52,14 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
   - Поиск и уведомления — действия верхней панели экранов, создание — контекстное действие; в `TopLevel` их нет и появятся они с срезами.
 - Раскладку выбирает размер окна: ниже 600 dp — плавающая панель `ColaNavigationBar` внизу, от 600 dp — `ColaNavigationRail`; обе стоят в слоте `NavigationSuiteScaffoldLayout`. Содержимое «съедает» инсет своей панели и над нижней плавно затухает.
 - Список и карточка — `ListDetailSceneStrategy` из material3-adaptive-navigation3. От 840 dp список и велосипед стоят рядом, а без выбранного велосипеда справа показывается заглушка. Уже 840 dp видна одна панель. `Navigator.openBike` заменяет открытый велосипед, а не накапливает их.
-- ViewModel экранов после входа живут в хранилище сессии (`SessionScope`), а не activity. Выход очищает его, поэтому следующий аккаунт не увидит ничего от предыдущего. Кэш картинок Coil при выходе тоже очищается.
+- ViewModel экранов после входа живут в хранилище зрителя (`SessionScope`, `Viewer.Guest`/`Viewer.Member`), а не activity. Смена зрителя и выход очищают его, поэтому следующий аккаунт (и участник после гостя) не увидит ничего от предыдущего. Кэш картинок Coil при выходе тоже очищается.
 - Predictive back: `android:enableOnBackInvokedCallback` и `NavDisplay`. ViewModel живёт столько же, сколько запись стека (`rememberViewModelStoreNavEntryDecorator`), а сохраняемое состояние — `rememberSaveableStateHolderNavEntryDecorator`.
+
+## Настройки, ссылки на сайт и устройства
+
+- `AppSettings` (`app/settings`): тема (`ThemeMode`: система, светлая, тёмная) и выбор гостя в SharedPreferences. Секретов там нет, резервные копии выключены. `MainActivity` берёт палитру из настройки и переустанавливает edge-to-edge под неё, чтобы значки системных панелей читались, даже когда приложение и система расходятся.
+- `SiteLinks` и `LinkOpener` (`app/links`): страницы сайта, куда приложение отправляет там, где у API v1 нет операции (регистрация, восстановление, управление аккаунтом, условия, политика). Открываются в Custom Tabs только по `https`, без токена. В тестах `LinkOpener` подменяется и запоминает адрес.
+- Устройства: `AccountSessionsRepository` (`core:model`) поверх `GET /auth/sessions` и `DELETE /auth/sessions/{id}`; `NetworkAccountSessionsRepository` ходит через клиент с `AuthInterceptor`. Хешей и токенов в ответе нет; браузерный сеанс называется по `User-Agent` (`describeUserAgent`), неизвестное значение не угадывается.
 
 ## Сессия устройства и токены
 
@@ -105,6 +112,7 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 | `core:auth` androidTest | настоящий Keystore: шифрование, удалённый ключ | эмулятор |
 | `core:designsystem` | компоненты, панели навигации и мелкие части в обеих темах и с шрифтом 200 % | Robolectric + Roborazzi |
 | `app` | ViewModel с фейками, экраны в compact и expanded, обе темы, list-detail в две панели; состояния (загрузка, пусто, ошибка) | JUnit, Robolectric + Roborazzi |
+| `app` | вход как гость и с места гостя, закрытие входа, устройства (список, подтверждение, ошибка), тема, ссылки на сайт, лицензии; `SessionStores`, `AppSettings`, `describeUserAgent` | Robolectric + Compose, JUnit |
 | `app` | `Navigator` без экрана; «Велосипед → другой раздел → Велосипед», прокрутка, повторное нажатие, «назад» | JUnit, Robolectric + Compose |
 | `app` androidTest | `StartupTest` — запуск на Android 17 до экрана входа; `LiveSmokeTest` — вход → `/bikes` → велосипед → `/me` → выход | эмулятор API 37, `smoke.yml` |
 

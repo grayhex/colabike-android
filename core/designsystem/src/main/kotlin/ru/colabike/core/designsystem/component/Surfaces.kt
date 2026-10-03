@@ -103,7 +103,8 @@ fun PillBadge(
                     modifier = Modifier.size(16.dp),
                 )
             }
-            Eyebrow(text)
+            // Two lines at most: a long badge wraps at big system fonts instead of being cut.
+            Eyebrow(text, maxLines = 2)
         }
     }
 }

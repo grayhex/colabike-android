@@ -36,4 +36,13 @@ object ColaIcons {
     @DrawableRes val Lock = R.drawable.cola_ic_lock
     @DrawableRes val Visibility = R.drawable.cola_ic_visibility
     @DrawableRes val VisibilityOff = R.drawable.cola_ic_visibility_off
+    @DrawableRes val Smartphone = R.drawable.cola_ic_smartphone
+    @DrawableRes val Computer = R.drawable.cola_ic_computer
+    @DrawableRes val Devices = R.drawable.cola_ic_devices
+    @DrawableRes val OpenInNew = R.drawable.cola_ic_open_in_new
+    @DrawableRes val Info = R.drawable.cola_ic_info
+    @DrawableRes val Palette = R.drawable.cola_ic_palette
+    @DrawableRes val Description = R.drawable.cola_ic_description
+    @DrawableRes val Policy = R.drawable.cola_ic_policy
+    @DrawableRes val PersonAdd = R.drawable.cola_ic_person_add
 }

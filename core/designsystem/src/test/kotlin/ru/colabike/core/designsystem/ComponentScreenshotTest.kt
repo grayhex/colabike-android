@@ -18,6 +18,7 @@ import ru.colabike.core.designsystem.component.BikeCardSkeleton
 import ru.colabike.core.designsystem.component.BrandMark
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaListItem
 import ru.colabike.core.designsystem.component.ColaNavItem
 import ru.colabike.core.designsystem.component.ColaNavigationBar
 import ru.colabike.core.designsystem.component.ColaNavigationRail
@@ -26,6 +27,7 @@ import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.HaloTone
 import ru.colabike.core.designsystem.component.IconHalo
+import ru.colabike.core.designsystem.component.ListItemAction
 import ru.colabike.core.designsystem.component.PillBadge
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.component.RideCard
@@ -176,4 +178,38 @@ class ComponentScreenshotTest {
     @Test fun partsDark() = parts(dark = true, name = "parts_dark")
 
     @Test fun partsLargeText() = parts(dark = false, fontScale = 2f, name = "parts_font_200")
+
+    private fun listItems(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                ColaListItem(
+                    title = "Устройства и входы",
+                    supporting = "Где выполнен вход в ваш аккаунт",
+                    icon = ColaIcons.Devices,
+                    onClick = {},
+                )
+                ColaListItem(
+                    title = "Управление аккаунтом",
+                    supporting = "Почта, пароль и удаление аккаунта: на сайте, в браузере",
+                    icon = ColaIcons.Person,
+                    tone = HaloTone.Secondary,
+                    action = ListItemAction.External,
+                    onClick = {},
+                )
+                ColaListItem(
+                    title = "Google Pixel 9",
+                    supporting = "Приложение для Android 0.2.0 · сейчас в сети",
+                    icon = ColaIcons.Smartphone,
+                    trailing = { PillBadge("Новое") },
+                )
+                ColaListItem(title = "Только название")
+            }
+        }
+
+    @Test fun listItemsLight() = listItems(dark = false, name = "list_items_light")
+
+    @Test fun listItemsDark() = listItems(dark = true, name = "list_items_dark")
+
+    @Test
+    fun listItemsLargeText() = listItems(dark = false, fontScale = 2f, name = "list_items_font_200")
 }

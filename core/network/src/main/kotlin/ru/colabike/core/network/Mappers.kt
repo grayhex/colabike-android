@@ -1,5 +1,6 @@
 package ru.colabike.core.network
 
+import ru.colabike.api.models.AccountSession as AccountSessionDto
 import ru.colabike.api.models.Author as AuthorDto
 import ru.colabike.api.models.Bike as BikeDto
 import ru.colabike.api.models.BikeComponent as BikeComponentDto
@@ -8,6 +9,7 @@ import ru.colabike.api.models.BikePhoto as BikePhotoDto
 import ru.colabike.api.models.BikeSummary as BikeSummaryDto
 import ru.colabike.api.models.Me as MeDto
 import ru.colabike.core.model.Account
+import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
@@ -15,6 +17,8 @@ import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.Photo
+import ru.colabike.core.model.SessionKind
+import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UserId
 
 // DTO -> app model. Screens never see generated classes (docs/architecture.md, "Data flow").
@@ -98,4 +102,29 @@ fun MeDto.toAccount(media: MediaUrls): Account =
         bio = bio,
         location = location,
         emailVerified = emailVerifiedAt != null,
+    )
+
+internal fun AccountSessionDto.toModel(): AccountSession =
+    AccountSession(
+        id = id.toString(),
+        kind =
+            when (kind) {
+                AccountSessionDto.Kind.browser -> SessionKind.Browser
+                AccountSessionDto.Kind.device -> SessionKind.Device
+                AccountSessionDto.Kind.unknown_default_open_api -> SessionKind.Unknown
+            },
+        deviceName = deviceName?.takeIf { it.isNotBlank() },
+        platform =
+            when (platform) {
+                AccountSessionDto.Platform.android -> SessionPlatform.Android
+                AccountSessionDto.Platform.ios -> SessionPlatform.Ios
+                AccountSessionDto.Platform.other -> SessionPlatform.Other
+                AccountSessionDto.Platform.unknown_default_open_api,
+                null -> SessionPlatform.Unknown
+            },
+        appVersion = appVersion?.takeIf { it.isNotBlank() },
+        userAgent = userAgent,
+        createdAt = createdAt.toInstant(),
+        lastSeenAt = lastSeenAt.toInstant(),
+        isCurrent = current,
     )

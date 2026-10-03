@@ -10,12 +10,16 @@ import kotlinx.coroutines.launch
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
+import ru.colabike.core.auth.AuthState
 import ru.colabike.core.model.Account
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.DataError
 
 @Immutable
 sealed interface ProfileUiState {
+    /** Nobody is signed in: the profile is an invitation, not an account. */
+    data object Guest : ProfileUiState
+
     data object Loading : ProfileUiState
 
     data class Loaded(val account: Account, val signingOut: Boolean = false) : ProfileUiState
@@ -23,13 +27,21 @@ sealed interface ProfileUiState {
     data class Failed(val message: UiText) : ProfileUiState
 }
 
+/**
+ * The profile of whoever is looking. The ViewModel lives in the viewer's own store (SessionScope),
+ * so it is created for a guest or for a member and never changes between them.
+ */
 class ProfileViewModel(private val account: AccountRepository, private val auth: AuthActions) :
     ViewModel() {
-    private val mutableState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
+    private val mutableState =
+        MutableStateFlow<ProfileUiState>(
+            if (auth.state.value is AuthState.SignedIn) ProfileUiState.Loading
+            else ProfileUiState.Guest
+        )
     val state: StateFlow<ProfileUiState> = mutableState.asStateFlow()
 
     init {
-        load()
+        if (state.value == ProfileUiState.Loading) load()
     }
 
     fun load() {

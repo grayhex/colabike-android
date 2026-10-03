@@ -3,6 +3,7 @@ package ru.colabike.app
 import android.content.Context
 import android.os.Build
 import java.io.File
+import java.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,6 +14,9 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.AuthController
+import ru.colabike.app.links.SiteLinks
+import ru.colabike.app.settings.AppSettings
+import ru.colabike.app.settings.PreferencesSettings
 import ru.colabike.core.auth.AuthInterceptor
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.auth.DeviceInfo
@@ -21,19 +25,27 @@ import ru.colabike.core.auth.EncryptedFileStore
 import ru.colabike.core.auth.KeystoreTokenCipher
 import ru.colabike.core.auth.YandexSignIn
 import ru.colabike.core.model.AccountRepository
+import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.network.ApiConfig
 import ru.colabike.core.network.ColaBikeApi
 import ru.colabike.core.network.HttpClients
 import ru.colabike.core.network.MediaUrls
 import ru.colabike.core.network.NetworkAccountRepository
+import ru.colabike.core.network.NetworkAccountSessionsRepository
 import ru.colabike.core.network.NetworkBikesRepository
 
 /** What screens get: repositories and auth actions, never HTTP clients (AGENTS.md). */
 interface AppDependencies {
     val bikes: BikesRepository
     val account: AccountRepository
+    val sessions: AccountSessionsRepository
     val auth: AuthActions
+    val settings: AppSettings
+    val links: SiteLinks
+
+    /** What time it is; a fixed clock in tests, so a screenshot does not age. */
+    val clock: Clock
 }
 
 /**
@@ -75,6 +87,12 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
 
     override val bikes: BikesRepository = NetworkBikesRepository(api.bikes, media)
     override val account: AccountRepository = NetworkAccountRepository(api.account, media)
+    override val sessions: AccountSessionsRepository =
+        NetworkAccountSessionsRepository(api.sessions)
+    override val settings: AppSettings =
+        PreferencesSettings(context.getSharedPreferences("settings", Context.MODE_PRIVATE))
+    override val links = SiteLinks(config.siteUrl)
+    override val clock: Clock = Clock.systemUTC()
     override val auth: AuthController =
         AuthController(
             session = session,

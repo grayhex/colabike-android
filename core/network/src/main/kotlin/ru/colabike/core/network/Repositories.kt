@@ -5,8 +5,11 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import ru.colabike.api.apis.AccountApi
 import ru.colabike.api.apis.BikesApi
+import ru.colabike.api.apis.SessionsApi
 import ru.colabike.core.model.Account
 import ru.colabike.core.model.AccountRepository
+import ru.colabike.core.model.AccountSession
+import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeScope
@@ -48,4 +51,22 @@ class NetworkAccountRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : AccountRepository {
     override suspend fun me(): Account = apiCall(dispatcher) { api.getMe() }.toAccount(media)
+}
+
+/**
+ * The account's sessions. [api] must be the client with the Bearer interceptor: these calls are
+ * made as the signed-in person.
+ */
+class NetworkAccountSessionsRepository(
+    private val api: SessionsApi,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : AccountSessionsRepository {
+    override suspend fun sessions(): List<AccountSession> =
+        apiCall(dispatcher) { api.listSessions() }.items.map { it.toModel() }
+
+    override suspend fun revoke(id: String) {
+        // A malformed id cannot name a session; the API would answer 404 as well.
+        val uuid = runCatching { UUID.fromString(id) }.getOrNull() ?: throw DataError.NotFound()
+        apiCall(dispatcher) { api.revokeSession(uuid) }
+    }
 }

@@ -108,6 +108,12 @@ class Navigator(private val state: NavigationState) {
         }
     }
 
+    /** A screen above the current one (profile → devices): pushed, and Back pops it. */
+    fun open(destination: Destination) {
+        val stack = state.currentStack
+        if (stack.lastOrNull() != destination) stack.add(destination)
+    }
+
     /** Opening a bike replaces the bike already shown, so two panes never stack details. */
     fun openBike(id: String) {
         val stack = state.currentStack

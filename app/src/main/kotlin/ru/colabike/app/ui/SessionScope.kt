@@ -9,21 +9,36 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+/** Who is looking at the app: a guest, or a signed-in member. */
+enum class Viewer {
+    Guest,
+    Member,
+}
+
 /**
- * ViewModels of the signed-in app live in a store that belongs to the session, not to the activity:
- * after sign-out nothing of the previous account survives into the next one (a profile, a list),
- * whatever Navigation 3 does with its entries, while rotation keeps all.
+ * ViewModels of the app after the start screen live in a store that belongs to the viewer, not to
+ * the activity: when the viewer changes (a guest signs in, a member signs out) nothing of the
+ * previous one survives into the next (a profile, a list), whatever Navigation 3 does with its
+ * entries, while rotation keeps all.
  */
 class SessionStores : ViewModel() {
     private var store = ViewModelStore()
+    private var viewer: Viewer? = null
 
-    val current: ViewModelStore
-        get() = store
+    /** The store of [viewer]; asking for another viewer drops every ViewModel of the previous. */
+    fun storeFor(viewer: Viewer): ViewModelStore {
+        if (this.viewer != viewer) {
+            end()
+            this.viewer = viewer
+        }
+        return store
+    }
 
     /** Drops every ViewModel of the ended session. */
     fun end() {
         store.clear()
         store = ViewModelStore()
+        viewer = null
     }
 
     override fun onCleared() = store.clear()
@@ -31,13 +46,16 @@ class SessionStores : ViewModel() {
 
 @Composable
 fun SessionScope(
+    viewer: Viewer,
     stores: SessionStores = viewModel { SessionStores() },
     content: @Composable () -> Unit,
 ) {
+    // Asking inside remember is idempotent: the same viewer gets the same store again.
+    val store = remember(viewer, stores) { stores.storeFor(viewer) }
     val owner =
-        remember(stores.current) {
+        remember(store) {
             object : ViewModelStoreOwner {
-                override val viewModelStore = stores.current
+                override val viewModelStore = store
             }
         }
     CompositionLocalProvider(LocalViewModelStoreOwner provides owner, content = content)
