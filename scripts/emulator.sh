@@ -35,7 +35,7 @@ device() {
 # sys.boot_completed is not enough: right after it the package manager may be missing or the
 # private volume unmounted ("Requested internal only, but not enough space", "Can't find service:
 # package"), and system_server can still restart. Ready means both answer and system_server keeps
-# the same start count for 20 seconds.
+# the same start count for a minute, longer than one crash loop of SurfaceFlinger (about 30 s).
 wait_until_ready() {
   local stable=0 count="" current packages volumes
   for _ in $(seq 1 60); do
@@ -50,7 +50,7 @@ wait_until_ready() {
         count="$current"
         stable=0
       fi
-      if [ "$stable" -ge 4 ]; then
+      if [ "$stable" -ge 12 ]; then
         echo "Device ready: system_server start count ${count:-unknown}"
         return 0
       fi
@@ -59,7 +59,7 @@ wait_until_ready() {
     fi
     sleep 5
   done
-  fail "the package manager and storage were not steady within 5 minutes after boot"
+  fail "system_server did not stay up for a minute within 5 minutes after boot (start count ${count:-unknown}); see the crash buffer in the diagnostics"
 }
 
 case "${1:-}" in
@@ -76,8 +76,12 @@ start)
   sed -i '/^disk\.dataPartition\.size=/d; /^hw\.ramSize=/d' "$config"
   printf '%s\n' "disk.dataPartition.size=6G" "hw.ramSize=4096" >>"$config"
   "$EMULATOR" -accel-check || true
+  # -feature -GLDirectMem: the API 37 image turns GLDirectMem on, and together with the emulator's
+  # HasSharedSlotsHostMemoryAllocator the renderer then offers ANDROID_EMU_read_color_buffer_dma.
+  # The image's gralloc mapper does not support it: SurfaceFlinger aborts every ~30 s with
+  # "Assertion failed: !rcEnc->featureInfo()->hasReadColorBufferDma" and takes system_server along.
   nohup "$EMULATOR" -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data \
-    -gpu swiftshader_indirect -camera-back none -camera-front none >"$LOG" 2>&1 &
+    -gpu swiftshader -feature -GLDirectMem -camera-back none -camera-front none >"$LOG" 2>&1 &
   echo $! >"$PID"
   # Poll instead of `adb wait-for-device`: a dead emulator fails the step at once
   # instead of leaving adb waiting until the timeout.
@@ -114,7 +118,9 @@ diagnose)
   device df -h /data || true
   device sm list-volumes all || true
   echo "--- crash buffer"
-  timeout 30 "$ADB" logcat -d -b crash 2>/dev/null | tail -n 200 || true
+  timeout 30 "$ADB" logcat -d -b crash 2>/dev/null |
+    grep -E 'Fatal signal|Abort message|FATAL EXCEPTION|Process: |Cmdline: |#0[0-4] pc' |
+    tail -n 120 || true
   echo "--- system events"
   timeout 30 "$ADB" logcat -d -b main,system 2>/dev/null |
     grep -E -i 'watchdog|fatal|died|lowmemorykiller|lmkd|no space left|not enough space|low on storage|devicestoragemonitor' |
