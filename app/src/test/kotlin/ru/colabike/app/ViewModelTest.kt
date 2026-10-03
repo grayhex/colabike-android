@@ -15,6 +15,7 @@ import ru.colabike.app.ui.toUiText
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.auth.YandexSignIn
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.Page
@@ -36,9 +37,7 @@ class ViewModelTest {
             .inOrder()
         assertThat(vm.state.value.nextCursor).isNull()
         vm.loadMore() // the last page: nothing more to ask
-        assertThat(repo.calls)
-            .containsExactly(BikeScope.Public to null, BikeScope.Public to "c1")
-            .inOrder()
+        assertThat(repo.calls).containsExactly(BikeQuery() to null, BikeQuery() to "c1").inOrder()
     }
 
     @Test
@@ -62,7 +61,7 @@ class ViewModelTest {
         val repo = FakeBikes()
         val vm = BikesViewModel(repo)
         vm.selectScope(BikeScope.Mine)
-        assertThat(repo.calls.last()).isEqualTo(BikeScope.Mine to null)
+        assertThat(repo.calls.last()).isEqualTo(BikeQuery(BikeScope.Mine) to null)
         assertThat(vm.state.value.scope).isEqualTo(BikeScope.Mine)
     }
 
@@ -165,7 +164,6 @@ class ViewModelTest {
         vm.refresh()
 
         assertThat(vm.state.value.refreshError).isNull()
-        assertThat(repo.calls.takeLast(2))
-            .containsExactly(BikeScope.Public to null, BikeScope.Public to null)
+        assertThat(repo.calls.takeLast(2)).containsExactly(BikeQuery() to null, BikeQuery() to null)
     }
 }

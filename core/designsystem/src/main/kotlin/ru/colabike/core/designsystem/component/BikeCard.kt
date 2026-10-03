@@ -29,7 +29,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
 import ru.colabike.core.designsystem.R
 import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
@@ -123,33 +123,43 @@ fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifi
 }
 
 /**
- * A bike's picture: the photo cropped to fill, or, when there is none, a quiet tile that says so.
- * Never a made-up picture.
+ * A bike's picture: the photo cropped to fill, or, when there is none, a quiet tile that says so. A
+ * photo that cannot be loaded (deleted, no right to it, no connection) shows its own quiet tile,
+ * not an empty grey box. Never a made-up picture.
  */
 @Composable
 fun BikePhoto(url: String?, modifier: Modifier = Modifier) {
     Box(modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
         if (url != null) {
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = url,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                loading = {},
+                error = { PhotoTile(stringResource(R.string.cola_photo_unavailable)) },
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            Column(
-                Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                Icon(
-                    painter = painterResource(ColaIcons.Image),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(40.dp),
-                )
-                Eyebrow(stringResource(R.string.cola_no_photo))
-            }
+            PhotoTile(stringResource(R.string.cola_no_photo))
+        }
+    }
+}
+
+/** The tile that stands in for a picture: a thin icon and a word about why it is not there. */
+@Composable
+fun PhotoTile(text: String, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.s),
+        ) {
+            Icon(
+                painter = painterResource(ColaIcons.Image),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(40.dp),
+            )
+            Eyebrow(text)
         }
     }
 }

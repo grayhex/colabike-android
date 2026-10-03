@@ -37,7 +37,7 @@ import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.model.BikeComponent
-import ru.colabike.core.model.BikeDetail
+import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
 
 /** The states a screen has besides its content (DESIGN.md): loading, empty, error, an odd bike. */
@@ -48,6 +48,8 @@ enum class ScreenState(val file: String) {
     BikeDetailError("bike_detail_error"),
     BikeDetailBare("bike_detail_bare"),
     BikeDetailPrivateGuest("bike_detail_private_guest"),
+    BikesSearchEmpty("bikes_search_empty"),
+    BikesFiltered("bikes_filtered"),
     DevicesLoading("devices_loading"),
     DevicesError("devices_error"),
     ProfileFailed("profile_failed"),
@@ -57,7 +59,7 @@ enum class ScreenState(val file: String) {
 private val photos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
 
 private val bareBike =
-    BikeDetail(
+    PreviewData.bikeDetail.copy(
         summary =
             PreviewData.bikeWithoutPhoto.copy(
                 name = "Старый шоссейник",
@@ -65,11 +67,13 @@ private val bareBike =
                 isPublic = false,
                 author = PreviewData.rider,
             ),
+        trim = "",
         description = "",
-        color = "Графит",
-        size = "L",
         weightKg = null,
         mileageKm = 0,
+        manufacturerUrl = null,
+        priceRub = null,
+        groupOrder = emptyList(),
         photos = emptyList(),
         components =
             listOf(
@@ -127,7 +131,31 @@ private fun Content(state: ScreenState) {
     when (state) {
         ScreenState.BikesLoading -> BikesWith(BikesUiState(loading = true))
         ScreenState.BikesEmptyMine ->
-            BikesWith(BikesUiState(scope = BikeScope.Mine, loading = false, bikes = emptyList()))
+            BikesWith(
+                BikesUiState(
+                    query = BikeQuery(BikeScope.Mine),
+                    loading = false,
+                    bikes = emptyList(),
+                )
+            )
+        ScreenState.BikesSearchEmpty ->
+            BikesWith(
+                BikesUiState(
+                    query = BikeQuery(text = "Бромптон", categories = setOf("urban_touring")),
+                    typed = "Бромптон",
+                    loading = false,
+                    bikes = emptyList(),
+                )
+            )
+        ScreenState.BikesFiltered ->
+            BikesWith(
+                BikesUiState(
+                    query = BikeQuery(text = "cube", categories = setOf("mtb", "urban_touring")),
+                    typed = "cube",
+                    loading = false,
+                    bikes = listOf(PreviewData.bike, PreviewData.bikeWithoutPhoto),
+                )
+            )
         ScreenState.BikesError ->
             BikesWith(BikesUiState(loading = false, error = UiText.Res(R.string.error_offline)))
         ScreenState.BikeDetailError ->

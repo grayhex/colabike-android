@@ -19,6 +19,9 @@ lint {
 }
 
 dependencies {
+    // Flow types are part of the repository interfaces.
+    api(libs.kotlinx.coroutines.core)
+
     testImplementation(libs.junit)
     testImplementation(libs.truth)
 }

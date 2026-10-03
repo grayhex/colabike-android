@@ -1,5 +1,6 @@
 package ru.colabike.core.network
 
+import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -7,8 +8,11 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Test
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.LikeChange
+import ru.colabike.core.model.LikeState
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 
@@ -24,7 +28,7 @@ class RepositoriesTest {
     fun `a bike page maps to app models with absolute photos and the cursor`() = runTest {
         site.json(200, site.fixture("bike-page.json"))
 
-        val page = bikes.bikes(BikeScope.Mine, cursor = "c1", limit = 2)
+        val page = bikes.bikes(BikeQuery(BikeScope.Mine), cursor = "c1", limit = 2)
 
         val request = site.server.takeRequest()
         assertThat(request.url.encodedPath).isEqualTo("/api/v1/bikes")
@@ -59,7 +63,9 @@ class RepositoriesTest {
             .isEqualTo(site.config.siteUrl + "/api/avatars/8d9e0f1a")
         assertThat(bike.weightKg).isEqualTo(14.2)
         assertThat(bike.size).isEqualTo("L")
-        assertThat(bike.components.map { it.section }).containsExactly("build", "other").inOrder()
+        assertThat(bike.components.map { it.section })
+            .containsExactly("build", "build", "other")
+            .inOrder()
         assertThat(bike.photos).hasSize(1)
     }
 
@@ -79,6 +85,122 @@ class RepositoriesTest {
         assertThat(me.displayName).isEqualTo("Тестовый Райдер")
         assertThat(me.emailVerified).isFalse()
         assertThat(me.toString()).doesNotContain("rider@example.test")
+    }
+}
+
+class BikesSearchAndLikeTest {
+    private val site = TestServer()
+    private val bikes = NetworkBikesRepository(site.api.bikes, site.media, Dispatchers.Unconfined)
+
+    @After fun close() = site.close()
+
+    @Test
+    fun `text and categories go to the server, blank ones do not`() = runTest {
+        site.json(200, site.fixture("bike-page.json"))
+        site.json(200, site.fixture("bike-page.json"))
+
+        bikes.bikes(
+            BikeQuery(BikeScope.Public, text = "  кросс ", categories = setOf("mtb", "bmx"))
+        )
+        bikes.bikes(BikeQuery(BikeScope.Mine, text = "   "))
+
+        val search = site.server.takeRequest().url
+        assertThat(search.queryParameter("q")).isEqualTo("кросс")
+        assertThat(search.queryParameter("category")).isEqualTo("bmx,mtb")
+        assertThat(search.queryParameter("scope")).isEqualTo("public")
+        val all = site.server.takeRequest().url
+        assertThat(all.queryParameter("q")).isNull()
+        assertThat(all.queryParameter("category")).isNull()
+        assertThat(all.queryParameter("scope")).isEqualTo("mine")
+    }
+
+    @Test
+    fun `a search text is cut to the length the API accepts`() = runTest {
+        site.json(200, site.fixture("bike-page.json"))
+
+        bikes.bikes(BikeQuery(text = "я".repeat(400)))
+
+        assertThat(site.server.takeRequest().url.queryParameter("q")).hasLength(150)
+    }
+
+    @Test
+    fun `a summary carries the classification`() = runTest {
+        site.json(200, site.fixture("bike-page.json"))
+
+        val first = bikes.bikes(BikeQuery()).items.first()
+
+        assertThat(first.classification.category).isEqualTo(first.category)
+        assertThat(first.classification.electric).isFalse()
+    }
+
+    @Test
+    fun `the detail keeps prices, groups and https links, and drops other schemes`() = runTest {
+        site.json(200, site.fixture("bike.json"))
+
+        val bike = bikes.bike(BikeId("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31"))
+
+        assertThat(bike.trim).isEqualTo("Pro")
+        assertThat(bike.priceRub).isEqualTo(85000.0)
+        assertThat(bike.manufacturerUrl).isEqualTo("https://www.cube.eu/travel-sl")
+        assertThat(bike.purposes).containsExactly("commuting", "touring").inOrder()
+        assertThat(bike.groupOrder).containsExactly("drivetrain", "frame").inOrder()
+        val (frame, drivetrain, _) = bike.components
+        // A link that is not https never reaches the screen.
+        assertThat(frame.url).isNull()
+        assertThat(frame.priceRub).isNull()
+        assertThat(drivetrain.url).isEqualTo("https://bike-components.example/deore")
+        assertThat(drivetrain.priceRub).isEqualTo(12500.0)
+        assertThat(drivetrain.groupId).isEqualTo("drivetrain")
+    }
+
+    @Test
+    fun `liking sends PUT, unliking DELETE, and the answer is the server's`() = runTest {
+        val id = BikeId("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31")
+        site.json(200, """{"liked":true,"likes":5}""")
+        site.json(200, """{"liked":false,"likes":4}""")
+
+        val liked = bikes.setLiked(id, true)
+        val unliked = bikes.setLiked(id, false)
+
+        assertThat(liked).isEqualTo(LikeState(liked = true, likes = 5))
+        assertThat(unliked).isEqualTo(LikeState(liked = false, likes = 4))
+        val put = site.server.takeRequest()
+        assertThat(put.method).isEqualTo("PUT")
+        assertThat(put.url.encodedPath).isEqualTo("/api/v1/bikes/${id.value}/like")
+        assertThat(site.server.takeRequest().method).isEqualTo("DELETE")
+    }
+
+    @Test
+    fun `a like that went through is announced to every screen`() = runTest {
+        val id = BikeId("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31")
+        site.json(200, """{"liked":true,"likes":5}""")
+
+        bikes.likeChanges.test {
+            bikes.setLiked(id, true)
+
+            assertThat(awaitItem()).isEqualTo(LikeChange(id, LikeState(true, 5)))
+        }
+    }
+
+    @Test
+    fun `a refused like announces nothing and fails with the reason`() = runTest {
+        val id = BikeId("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31")
+        site.json(404, error("not_found"))
+
+        bikes.likeChanges.test {
+            val failure = runCatching { bikes.setLiked(id, true) }
+
+            assertThat(failure.exceptionOrNull()).isInstanceOf(DataError.NotFound::class.java)
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `a malformed id is NotFound without a request`() = runTest {
+        val failure = runCatching { bikes.setLiked(BikeId("../me"), true) }
+
+        assertThat(failure.exceptionOrNull()).isInstanceOf(DataError.NotFound::class.java)
+        assertThat(site.server.requestCount).isEqualTo(0)
     }
 }
 

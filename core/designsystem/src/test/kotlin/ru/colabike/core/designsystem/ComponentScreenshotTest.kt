@@ -1,9 +1,11 @@
 package ru.colabike.core.designsystem
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
@@ -27,7 +29,9 @@ import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.HaloTone
 import ru.colabike.core.designsystem.component.IconHalo
+import ru.colabike.core.designsystem.component.LikeButton
 import ru.colabike.core.designsystem.component.ListItemAction
+import ru.colabike.core.designsystem.component.PhotoTile
 import ru.colabike.core.designsystem.component.PillBadge
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.component.RideCard
@@ -212,4 +216,37 @@ class ComponentScreenshotTest {
 
     @Test
     fun listItemsLargeText() = listItems(dark = false, fontScale = 2f, name = "list_items_font_200")
+
+    private fun likes(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                    LikeButton(liked = false, count = 4, onToggle = {})
+                    LikeButton(liked = true, count = 5, onToggle = {})
+                    // One's own bike: the count, no switch.
+                    LikeButton(liked = false, count = 12)
+                }
+                Row(
+                    Modifier.height(120.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+                ) {
+                    PhotoTile(
+                        "Нет фото",
+                        Modifier.weight(1f)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    )
+                    PhotoTile(
+                        "Фото недоступно",
+                        Modifier.weight(1f)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    )
+                }
+            }
+        }
+
+    @Test fun likesLight() = likes(dark = false, name = "likes_light")
+
+    @Test fun likesDark() = likes(dark = true, name = "likes_dark")
+
+    @Test fun likesLargeText() = likes(dark = false, fontScale = 2f, name = "likes_font_200")
 }

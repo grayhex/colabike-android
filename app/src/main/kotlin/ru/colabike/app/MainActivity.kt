@@ -17,6 +17,8 @@ import ru.colabike.app.links.AppLinkParser
 import ru.colabike.app.links.CustomTabsLinkOpener
 import ru.colabike.app.links.LinkHandler
 import ru.colabike.app.links.LocalLinkOpener
+import ru.colabike.app.links.LocalSharer
+import ru.colabike.app.links.SheetSharer
 import ru.colabike.app.ui.ColaBikeApp
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 
@@ -59,7 +61,11 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             val opener = remember { CustomTabsLinkOpener(this) }
-            CompositionLocalProvider(LocalLinkOpener provides opener) {
+            val sharer = remember { SheetSharer(this) }
+            CompositionLocalProvider(
+                LocalLinkOpener provides opener,
+                LocalSharer provides sharer,
+            ) {
                 ColaBikeTheme(darkTheme = dark) { ColaBikeApp(graph) }
             }
         }

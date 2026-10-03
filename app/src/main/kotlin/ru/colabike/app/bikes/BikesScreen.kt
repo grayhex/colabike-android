@@ -8,14 +8,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,11 +36,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,6 +61,8 @@ import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.SkeletonGroup
+import ru.colabike.core.designsystem.component.colaFieldShape
+import ru.colabike.core.designsystem.component.colaTextFieldColors
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeScope
@@ -71,6 +83,9 @@ fun BikesRoute(
         // "Mine" needs an account; a guest sees what is public and nothing to choose between.
         showScopes = authState is AuthState.SignedIn,
         onScope = viewModel::selectScope,
+        onSearchText = viewModel::onSearchText,
+        onToggleCategory = viewModel::toggleCategory,
+        onClearFilters = viewModel::clearFilters,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
@@ -89,6 +104,9 @@ fun BikesScreen(
     state: BikesUiState,
     showScopes: Boolean = true,
     onScope: (BikeScope) -> Unit,
+    onSearchText: (String) -> Unit = {},
+    onToggleCategory: (String) -> Unit = {},
+    onClearFilters: () -> Unit = {},
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
@@ -100,6 +118,7 @@ fun BikesScreen(
         topBar = { ColaTopBar(title = stringResource(R.string.bikes_title)) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
+            SearchField(state.typed, onSearchText)
             if (showScopes) {
                 Row(
                     Modifier.padding(horizontal = Spacing.screen),
@@ -117,12 +136,33 @@ fun BikesScreen(
                     )
                 }
             }
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = Spacing.screen),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                items(BikeLabels.categories, key = { it.first }) { (key, label) ->
+                    ColaFilterChip(
+                        selected = key in state.query.categories,
+                        onClick = { onToggleCategory(key) },
+                        label = label,
+                    )
+                }
+            }
             when {
                 state.loading -> LoadingGrid()
                 state.error != null ->
                     ErrorState(
                         state.error.resolve(),
                         onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                state.bikes.isEmpty() && state.query.isFiltered ->
+                    EmptyState(
+                        title = stringResource(R.string.bikes_search_empty_title),
+                        message = stringResource(R.string.bikes_search_empty),
+                        icon = ColaIcons.Search,
+                        actionLabel = stringResource(R.string.bikes_search_reset),
+                        onAction = onClearFilters,
                         modifier = Modifier.fillMaxSize(),
                     )
                 state.bikes.isEmpty() ->
@@ -199,6 +239,40 @@ private fun BikeGrid(
             }
         }
     }
+}
+
+/**
+ * The search line: what is typed is shown at once, the request follows a pause (the view model).
+ * The keyboard's search key only hides the keyboard, since the list already follows the text.
+ */
+@Composable
+private fun SearchField(text: String, onText: (String) -> Unit) {
+    val focus = LocalFocusManager.current
+    OutlinedTextField(
+        value = text,
+        onValueChange = onText,
+        placeholder = { Text(stringResource(R.string.bikes_search_hint)) },
+        leadingIcon = { Icon(painterResource(ColaIcons.Search), contentDescription = null) },
+        trailingIcon = {
+            if (text.isNotEmpty()) {
+                IconButton(onClick = { onText("") }) {
+                    Icon(
+                        painterResource(ColaIcons.Close),
+                        contentDescription = stringResource(R.string.bikes_search_clear),
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        shape = colaFieldShape,
+        colors = colaTextFieldColors(),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(horizontal = Spacing.screen)
+                .padding(bottom = Spacing.s),
+    )
 }
 
 /** A failure inside the list: what went wrong and a retry of exactly that. */

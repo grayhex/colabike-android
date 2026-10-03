@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
+import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
@@ -18,7 +20,10 @@ import ru.colabike.core.model.DataError
 
 @Immutable
 data class BikesUiState(
-    val scope: BikeScope = BikeScope.Public,
+    /** What the list is for now (scope, text, categories). A new query starts a new list. */
+    val query: BikeQuery = BikeQuery(),
+    /** What the person has typed so far: ahead of [query] by the debounce. */
+    val typed: String = "",
     val bikes: List<BikeSummary> = emptyList(),
     val loading: Boolean = true,
     val refreshing: Boolean = false,
@@ -30,22 +35,71 @@ data class BikesUiState(
     /** Pull-to-refresh failed: the old list stays, its top offers a retry of the refresh. */
     val refreshError: UiText? = null,
     val nextCursor: String? = null,
-)
+) {
+    val scope: BikeScope
+        get() = query.scope
+}
 
-/** Keyset paging over `/bikes`: one page at a time, the cursor from the last answer. */
-class BikesViewModel(private val repository: BikesRepository) : ViewModel() {
+/**
+ * Keyset paging over `/bikes`: one page at a time, the cursor from the last answer. A new query
+ * (scope, text, categories) cancels the request in flight and starts over with no cursor, so the
+ * old query's pages can never be appended to the new one's list. Typing waits [debounceMs] after
+ * the last key.
+ */
+class BikesViewModel(
+    private val repository: BikesRepository,
+    private val debounceMs: Long = DEBOUNCE_MS,
+) : ViewModel() {
     private val mutableState = MutableStateFlow(BikesUiState())
     val state: StateFlow<BikesUiState> = mutableState.asStateFlow()
     private var job: Job? = null
+    private var typing: Job? = null
 
     init {
         load(refresh = false)
+        // A like given on the bike's page shows here without loading the list again.
+        viewModelScope.launch {
+            repository.likeChanges.collect { change ->
+                mutableState.update { current ->
+                    current.copy(
+                        bikes =
+                            current.bikes.map {
+                                if (it.id == change.id)
+                                    it.copy(liked = change.state.liked, likes = change.state.likes)
+                                else it
+                            }
+                    )
+                }
+            }
+        }
     }
 
-    fun selectScope(scope: BikeScope) {
-        if (scope == state.value.scope) return
-        mutableState.value = BikesUiState(scope = scope)
-        load(refresh = false)
+    fun selectScope(scope: BikeScope) = apply(state.value.query.copy(scope = scope))
+
+    fun toggleCategory(key: String) {
+        val categories = state.value.query.categories
+        apply(
+            state.value.query.copy(
+                categories = if (key in categories) categories - key else categories + key
+            )
+        )
+    }
+
+    /** Every key stroke: the field follows at once, the request waits for a pause. */
+    fun onSearchText(text: String) {
+        mutableState.update { it.copy(typed = text) }
+        typing?.cancel()
+        typing = viewModelScope.launch {
+            delay(debounceMs)
+            apply(state.value.query.copy(text = text.trim()))
+        }
+    }
+
+    /** Back to everything in the scope: no text, no categories. */
+    fun clearFilters() {
+        typing?.cancel()
+        mutableState.update { it.copy(typed = "") }
+        apply(state.value.query.copy(text = "", categories = emptySet()))
     }
 
     fun refresh() = load(refresh = true)
@@ -59,7 +113,7 @@ class BikesViewModel(private val repository: BikesRepository) : ViewModel() {
         mutableState.update { it.copy(loadingMore = true, moreError = null) }
         job = viewModelScope.launch {
             try {
-                val page = repository.bikes(current.scope, cursor)
+                val page = repository.bikes(current.query, cursor)
                 mutableState.update {
                     it.copy(
                         bikes = (it.bikes + page.items).distinctBy(BikeSummary::id),
@@ -73,6 +127,12 @@ class BikesViewModel(private val repository: BikesRepository) : ViewModel() {
         }
     }
 
+    private fun apply(query: BikeQuery) {
+        if (query == state.value.query) return
+        mutableState.value = BikesUiState(query = query, typed = state.value.typed)
+        load(refresh = false)
+    }
+
     private fun load(refresh: Boolean) {
         job?.cancel()
         mutableState.update {
@@ -84,10 +144,10 @@ class BikesViewModel(private val repository: BikesRepository) : ViewModel() {
                 refreshError = null,
             )
         }
-        val scope = state.value.scope
+        val query = state.value.query
         job = viewModelScope.launch {
             try {
-                val page = repository.bikes(scope)
+                val page = repository.bikes(query)
                 mutableState.update {
                     it.copy(
                         bikes = page.items,
@@ -105,5 +165,9 @@ class BikesViewModel(private val repository: BikesRepository) : ViewModel() {
                 }
             }
         }
+    }
+
+    private companion object {
+        const val DEBOUNCE_MS = 400L
     }
 }
