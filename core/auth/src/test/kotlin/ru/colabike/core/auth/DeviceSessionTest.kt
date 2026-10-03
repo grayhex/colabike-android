@@ -162,6 +162,84 @@ class DeviceSessionTest {
     }
 
     @Test
+    fun `a server fault on refresh keeps the credentials and the next request recovers`() =
+        runBlocking {
+            val store = MemoryStore()
+            val session = api.session(store).apply { signIn("a@b.c", "right-password") }
+            api.expiredAccess += "cola_at_A"
+            api.refreshStatus = 503
+
+            val failure = runCatching {
+                NetworkAccountRepository(api.authed(session).account, api.media).me()
+            }
+
+            // Not "signed out": the server was unwell, nothing proved the session over.
+            assertThat(failure.exceptionOrNull()).isInstanceOf(DataError.Offline::class.java)
+            assertThat(session.state.value).isInstanceOf(AuthState.SignedIn::class.java)
+            assertThat(store.value).isEqualTo("cola_rt_A")
+
+            api.refreshStatus = null
+            val me = NetworkAccountRepository(api.authed(session).account, api.media).me()
+            assertThat(me.username).isEqualTo("test-rider")
+            assertThat(store.value).isEqualTo("cola_rt_B")
+        }
+
+    @Test
+    fun `a throttled refresh keeps the credentials too`() = runBlocking {
+        val store = MemoryStore()
+        val session = api.session(store).apply { signIn("a@b.c", "right-password") }
+        api.expiredAccess += "cola_at_A"
+        api.refreshStatus = 429
+
+        val failure = runCatching {
+            NetworkAccountRepository(api.authed(session).account, api.media).me()
+        }
+
+        assertThat(failure.exceptionOrNull()).isInstanceOf(DataError.Offline::class.java)
+        assertThat(session.state.value).isInstanceOf(AuthState.SignedIn::class.java)
+        assertThat(store.value).isEqualTo("cola_rt_A")
+    }
+
+    @Test
+    fun `a connection that fails twice in a row keeps the credentials`() = runBlocking {
+        val store = MemoryStore()
+        val session = api.session(store).apply { signIn("a@b.c", "right-password") }
+        api.expiredAccess += "cola_at_A"
+        // Every answer is lost, however often OkHttp itself repeats a call on a broken connection.
+        api.lostRefreshAnswers.set(Int.MAX_VALUE)
+
+        val failure = runCatching {
+            NetworkAccountRepository(api.authed(session).account, api.media).me()
+        }
+
+        assertThat(failure.exceptionOrNull()).isInstanceOf(DataError.Offline::class.java)
+        assertThat(session.state.value).isInstanceOf(AuthState.SignedIn::class.java)
+        assertThat(store.value).isEqualTo("cola_rt_A")
+        // The call was repeated once with the same token, and then given up on.
+        assertThat(api.refreshCount.get()).isAtLeast(2)
+
+        // The connection is back: the very same token still works.
+        api.lostRefreshAnswers.set(0)
+        val me = NetworkAccountRepository(api.authed(session).account, api.media).me()
+        assertThat(me.username).isEqualTo("test-rider")
+    }
+
+    @Test
+    fun `sign-out ends the session once and a late invalid_token cannot revive it`() = runBlocking {
+        val store = MemoryStore()
+        val session = api.session(store).apply { signIn("a@b.c", "right-password") }
+        val states = mutableListOf<AuthState>()
+        val seen = session.state.value
+        states += seen
+
+        session.signOut {}
+        session.invalidate("cola_at_A") // a request that was in flight when the person left
+
+        assertThat(session.state.value).isEqualTo(AuthState.SignedOut)
+        assertThat(store.value).isNull()
+    }
+
+    @Test
     fun `after a restart the stored refresh token is exchanged before the first request`() =
         runBlocking {
             api.refreshes["cola_rt_A"] = "B"

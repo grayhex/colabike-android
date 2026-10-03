@@ -72,7 +72,15 @@ class ViewModelTest {
         assertThat(BikeDetailViewModel(repo, BikeId("b1")).state.value)
             .isInstanceOf(BikeDetailUiState.Loaded::class.java)
         assertThat(BikeDetailViewModel(repo, BikeId("missing")).state.value)
-            .isEqualTo(BikeDetailUiState.Failed(UiText.Res(R.string.error_not_found)))
+            .isEqualTo(
+                BikeDetailUiState.Failed(UiText.Res(R.string.error_not_found), notFound = true)
+            )
+        // Only "not found" lets a guest wonder whether the bike is private.
+        repo.nextError = DataError.Offline(java.io.IOException())
+        assertThat(BikeDetailViewModel(repo, BikeId("b1")).state.value)
+            .isEqualTo(
+                BikeDetailUiState.Failed(UiText.Res(R.string.error_offline), notFound = false)
+            )
     }
 
     @Test

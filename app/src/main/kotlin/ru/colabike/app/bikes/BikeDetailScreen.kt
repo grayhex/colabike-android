@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -33,12 +35,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
 import ru.colabike.app.R
+import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
+import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.BikePhoto
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaIcons
@@ -59,13 +65,23 @@ import ru.colabike.core.model.BikesRepository
 @Composable
 fun BikeDetailRoute(
     repository: BikesRepository,
+    auth: AuthActions,
     id: BikeId,
     showBack: Boolean,
     onBack: () -> Unit,
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    BikeDetailScreen(state, showBack = showBack, onBack = onBack, onRetry = viewModel::load)
+    val authState by auth.state.collectAsStateWithLifecycle()
+    val signIn = LocalSignInRequest.current
+    BikeDetailScreen(
+        state,
+        showBack = showBack,
+        onBack = onBack,
+        onRetry = viewModel::load,
+        // A private bike answers a guest "not found" exactly as a missing one does.
+        onSignIn = if (authState is AuthState.SignedIn) null else signIn,
+    )
 }
 
 /** One bike: its name and what it is, the photo, who rides it, the facts and the build. */
@@ -75,6 +91,7 @@ fun BikeDetailScreen(
     showBack: Boolean,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onSignIn: (() -> Unit)? = null,
 ) {
     val summary = (state as? BikeDetailUiState.Loaded)?.bike?.summary
     Scaffold(
@@ -93,11 +110,29 @@ fun BikeDetailScreen(
             when (state) {
                 BikeDetailUiState.Loading -> LoadingState(Modifier.fillMaxSize())
                 is BikeDetailUiState.Failed ->
-                    ErrorState(
-                        state.message.resolve(),
-                        onRetry = onRetry,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        ErrorState(state.message.resolve(), onRetry = onRetry)
+                        if (state.notFound && onSignIn != null) {
+                            Text(
+                                stringResource(R.string.bike_private_hint),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = Spacing.xl),
+                            )
+                            Button(
+                                onClick = onSignIn,
+                                modifier =
+                                    Modifier.padding(Spacing.l).heightIn(min = Spacing.touch),
+                            ) {
+                                Text(stringResource(R.string.profile_sign_in))
+                            }
+                        }
+                    }
                 is BikeDetailUiState.Loaded -> BikeContent(state.bike)
             }
         }

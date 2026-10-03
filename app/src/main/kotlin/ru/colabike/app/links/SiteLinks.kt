@@ -18,6 +18,12 @@ class SiteLinks(siteUrl: String) {
     val account = "$base/account?tab=account"
     val terms = "$base/legal/terms"
     val privacy = "$base/legal/privacy"
+
+    /** A page of the site from known-good path parts (never from a raw incoming string). */
+    fun page(vararg segments: String): String = "$base/" + segments.joinToString("/")
+
+    /** A page by an already encoded path that the parser has taken from an allowlisted address. */
+    fun pageAt(encodedPath: String): String = base + encodedPath
 }
 
 /**

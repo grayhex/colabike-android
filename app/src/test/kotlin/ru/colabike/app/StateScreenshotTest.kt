@@ -47,6 +47,7 @@ enum class ScreenState(val file: String) {
     BikesError("bikes_error"),
     BikeDetailError("bike_detail_error"),
     BikeDetailBare("bike_detail_bare"),
+    BikeDetailPrivateGuest("bike_detail_private_guest"),
     DevicesLoading("devices_loading"),
     DevicesError("devices_error"),
     ProfileFailed("profile_failed"),
@@ -151,6 +152,14 @@ private fun Content(state: ScreenState) {
                 onOpenDevices = {},
                 onManageOnWeb = {},
                 onOpenAbout = {},
+            )
+        ScreenState.BikeDetailPrivateGuest ->
+            BikeDetailScreen(
+                BikeDetailUiState.Failed(UiText.Res(R.string.error_not_found), notFound = true),
+                showBack = true,
+                onBack = {},
+                onRetry = {},
+                onSignIn = {},
             )
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(

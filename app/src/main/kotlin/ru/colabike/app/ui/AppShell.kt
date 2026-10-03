@@ -14,6 +14,7 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -69,6 +71,15 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
             topLevelRoutes = sections.map { it.root }.toSet(),
         )
     val navigator = remember(state) { Navigator(state) }
+    // A link that arrived before the shell could take it (sign-in, a cold start) is carried out
+    // now.
+    val pendingDestination by dependencies.pending.destination.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingDestination) {
+        pendingDestination?.let {
+            navigator.go(it)
+            dependencies.pending.clear()
+        }
+    }
     val listDetail = rememberListDetailSceneStrategy<NavKey>()
     val windowSize = currentWindowAdaptiveInfo().windowSizeClass
     // Read through State: NavEntries are built once per stack, so a plain value would stay at what
@@ -138,6 +149,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                 ) { key ->
                                     BikeDetailRoute(
                                         repository = dependencies.bikes,
+                                        auth = dependencies.auth,
                                         id = BikeId(key.id),
                                         showBack = !twoPane,
                                         onBack = { navigator.back() },

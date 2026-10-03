@@ -13,7 +13,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ru.colabike.app.links.AppLinkParser
 import ru.colabike.app.links.CustomTabsLinkOpener
+import ru.colabike.app.links.LinkHandler
 import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.app.ui.ColaBikeApp
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
@@ -22,6 +24,20 @@ import ru.colabike.core.designsystem.theme.ColaBikeTheme
 class MainActivity : ComponentActivity() {
     private val graph
         get() = (application as ColaBikeApplication).graph
+
+    /**
+     * Every address that reaches the activity goes through the allowlist of [AppLinkParser]; the
+     * sign-in code to sign-in, the rest to the pending navigation (or the site).
+     */
+    private val linkHandler by lazy {
+        LinkHandler(
+            parser = AppLinkParser(BuildConfig.SITE_URL),
+            site = graph.links,
+            pending = graph.pending,
+            onAuthLink = graph.auth::handleLink,
+            onSite = CustomTabsLinkOpener(this)::open,
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -55,7 +71,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handle(intent: Intent?) {
-        if (intent?.action == Intent.ACTION_VIEW) intent.dataString?.let(graph.auth::handleLink)
+        // Only the address is read; nothing else of the Intent is used or forwarded.
+        if (intent?.action == Intent.ACTION_VIEW) linkHandler.handle(intent.dataString)
     }
 
     private companion object {

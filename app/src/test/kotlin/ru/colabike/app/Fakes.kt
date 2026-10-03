@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.YandexFailure
+import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.SiteLinks
+import ru.colabike.app.navigation.Destination
 import ru.colabike.app.settings.AppSettings
 import ru.colabike.app.settings.ThemeMode
 import ru.colabike.core.auth.AuthState
@@ -194,6 +196,18 @@ class FakeSettings(theme: ThemeMode = ThemeMode.System, guest: Boolean = false) 
     }
 }
 
+class FakePending : PendingNavigation {
+    override val destination = MutableStateFlow<Destination?>(null)
+
+    override fun offer(destination: Destination) {
+        this.destination.value = destination
+    }
+
+    override fun clear() {
+        destination.value = null
+    }
+}
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -201,5 +215,6 @@ class FakeDependencies(
     override val auth: FakeAuth = FakeAuth(),
     override val settings: FakeSettings = FakeSettings(),
     override val links: SiteLinks = SiteLinks("https://colabike.test"),
+    override val pending: FakePending = FakePending(),
     override val clock: Clock = Clock.fixed(Instant.parse("2026-10-03T20:00:00Z"), ZoneOffset.UTC),
 ) : AppDependencies
