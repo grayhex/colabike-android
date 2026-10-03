@@ -76,12 +76,14 @@ start)
   sed -i '/^disk\.dataPartition\.size=/d; /^hw\.ramSize=/d' "$config"
   printf '%s\n' "disk.dataPartition.size=6G" "hw.ramSize=4096" >>"$config"
   "$EMULATOR" -accel-check || true
-  # -feature -GLDirectMem: the API 37 image turns GLDirectMem on, and together with the emulator's
-  # HasSharedSlotsHostMemoryAllocator the renderer then offers ANDROID_EMU_read_color_buffer_dma.
-  # The image's gralloc mapper does not support it: SurfaceFlinger aborts every ~30 s with
-  # "Assertion failed: !rcEnc->featureInfo()->hasReadColorBufferDma" and takes system_server along.
+  # The gralloc mapper of the API 37 image reads buffers back only through the renderer's
+  # ANDROID_EMU_read_color_buffer_dma, which the emulator offers only with both GLDirectMem and
+  # HasSharedSlotsHostMemoryAllocator. The image does not declare the latter, so it stays off and
+  # SurfaceFlinger aborts every ~20-30 s ("Assertion failed: !rcEnc->featureInfo()->
+  # hasReadColorBufferDma"), taking system_server along. Force both on.
   nohup "$EMULATOR" -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data \
-    -gpu swiftshader -feature -GLDirectMem -camera-back none -camera-front none >"$LOG" 2>&1 &
+    -gpu swiftshader -feature GLDirectMem,HasSharedSlotsHostMemoryAllocator \
+    -camera-back none -camera-front none >"$LOG" 2>&1 &
   echo $! >"$PID"
   # Poll instead of `adb wait-for-device`: a dead emulator fails the step at once
   # instead of leaving adb waiting until the timeout.
