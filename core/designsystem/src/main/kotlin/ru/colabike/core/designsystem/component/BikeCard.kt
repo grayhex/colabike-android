@@ -12,12 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -35,9 +35,13 @@ import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeSummary
 
+/** Landscape, like a bike photographed from the side: crops lose the least. */
+internal const val BikePhotoAspect = 4f / 3f
+
 /**
- * Photo-first bike card: the cover fills the top, name and what the bike is below, then the author
- * and the counters. TalkBack reads one sentence and offers one action.
+ * Photo-first bike card. The cover fills the card; the name sits on the photo in the serif voice,
+ * on a gradient that fades into the card surface so it reads on any picture and in both themes.
+ * Below the photo: the author and the counters. TalkBack reads one sentence and offers one action.
  */
 @Composable
 fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -50,7 +54,7 @@ fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifi
         listOfNotNull(bike.name, subtitle.ifBlank { null }, former, author, likes, comments)
             .joinToString(", ")
     val openLabel = stringResource(R.string.cola_open)
-    OutlinedCard(
+    ColaCard(
         onClick = onClick,
         modifier =
             modifier.fillMaxWidth().clearAndSetSemantics {
@@ -61,83 +65,90 @@ fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifi
                     true
                 }
             },
-        shape = MaterialTheme.shapes.medium,
     ) {
-        Box(
-            Modifier.fillMaxWidth()
-                .aspectRatio(4f / 3f)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            if (bike.cover != null) {
-                AsyncImage(
-                    model = bike.cover?.url,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Icon(
-                    painter = painterResource(ColaIcons.Bike),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(48.dp).align(Alignment.Center),
-                )
-            }
-            if (former != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.padding(Spacing.s).align(Alignment.TopStart),
-                ) {
-                    Text(
-                        former,
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(horizontal = Spacing.s, vertical = Spacing.xxs),
+        val fade = MaterialTheme.colorScheme.surfaceContainer
+        Box(Modifier.fillMaxWidth().aspectRatio(BikePhotoAspect)) {
+            BikePhoto(bike.cover?.url, Modifier.fillMaxSize())
+            Box(
+                Modifier.fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.45f to Color.Transparent,
+                            0.8f to fade.copy(alpha = 0.78f),
+                            1f to fade,
+                        )
                     )
-                }
-            }
-        }
-        Column(
-            Modifier.padding(Spacing.m),
-            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-        ) {
-            Text(
-                bike.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
             )
-            if (subtitle.isNotBlank()) {
+            if (former != null) {
+                PillBadge(former, modifier = Modifier.padding(Spacing.m).align(Alignment.TopStart))
+            }
+            Column(
+                Modifier.align(Alignment.BottomStart).padding(Spacing.card),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                if (subtitle.isNotBlank()) Eyebrow(subtitle)
                 Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    bike.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                bike.author?.let {
-                    Avatar(it.displayName, it.avatarUrl, size = 20.dp)
-                    Text(
-                        it.displayName,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                } ?: Box(Modifier.weight(1f))
-                Counter(
-                    if (bike.liked) ColaIcons.LikeFilled else ColaIcons.Like,
-                    bike.likes,
-                    liked = bike.liked,
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = Spacing.card, vertical = Spacing.m),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+        ) {
+            bike.author?.let {
+                Avatar(it.displayName, it.avatarUrl, size = 24.dp)
+                Text(
+                    it.displayName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
-                Counter(ColaIcons.Comment, bike.comments)
+            } ?: Box(Modifier.weight(1f))
+            Counter(
+                if (bike.liked) ColaIcons.LikeFilled else ColaIcons.Like,
+                bike.likes,
+                liked = bike.liked,
+            )
+            Counter(ColaIcons.Comment, bike.comments)
+        }
+    }
+}
+
+/**
+ * A bike's picture: the photo cropped to fill, or, when there is none, a quiet tile that says so.
+ * Never a made-up picture.
+ */
+@Composable
+fun BikePhoto(url: String?, modifier: Modifier = Modifier) {
+    Box(modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+        if (url != null) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Column(
+                Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                Icon(
+                    painter = painterResource(ColaIcons.Image),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(40.dp),
+                )
+                Eyebrow(stringResource(R.string.cola_no_photo))
             }
         }
     }
@@ -147,13 +158,13 @@ fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifi
 private fun Counter(icon: Int, value: Int, liked: Boolean = false) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
             tint = if (liked) ColaTheme.colors.like else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(18.dp),
         )
         Text(
             value.toString(),

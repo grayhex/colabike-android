@@ -15,13 +15,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,20 +28,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.BikeCard
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
+import ru.colabike.core.designsystem.component.ColaFilterChip
+import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.SkeletonGroup
@@ -54,7 +55,11 @@ import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.BikesRepository
 
 @Composable
-fun BikesRoute(repository: BikesRepository, onOpen: (BikeId) -> Unit) {
+fun BikesRoute(
+    repository: BikesRepository,
+    onOpen: (BikeId) -> Unit,
+    scrollToTop: Flow<Unit> = emptyFlow(),
+) {
     val viewModel = viewModel { BikesViewModel(repository) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     BikesScreen(
@@ -64,10 +69,14 @@ fun BikesRoute(repository: BikesRepository, onOpen: (BikeId) -> Unit) {
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
         onOpen = onOpen,
+        scrollToTop = scrollToTop,
     )
 }
 
-/** Bikes as photo-first cards; as many columns as the pane width holds at 280 dp each. */
+/**
+ * Bikes as photo-first cards; as many columns as the pane width holds at 280 dp each. A tap on the
+ * already selected Bikes tab arrives as [scrollToTop].
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BikesScreen(
@@ -77,36 +86,26 @@ fun BikesScreen(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onOpen: (BikeId) -> Unit,
+    scrollToTop: Flow<Unit> = emptyFlow(),
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(R.string.bikes_title),
-                        modifier = Modifier.semantics { heading() },
-                    )
-                },
-                scrollBehavior = scrollBehavior,
-            )
-        },
+        containerColor = Color.Transparent,
+        topBar = { ColaTopBar(title = stringResource(R.string.bikes_title)) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Row(
                 Modifier.padding(horizontal = Spacing.screen),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
-                FilterChip(
+                ColaFilterChip(
                     selected = state.scope == BikeScope.Public,
                     onClick = { onScope(BikeScope.Public) },
-                    label = { Text(stringResource(R.string.bikes_scope_public)) },
+                    label = stringResource(R.string.bikes_scope_public),
                 )
-                FilterChip(
+                ColaFilterChip(
                     selected = state.scope == BikeScope.Mine,
                     onClick = { onScope(BikeScope.Mine) },
-                    label = { Text(stringResource(R.string.bikes_scope_mine)) },
+                    label = stringResource(R.string.bikes_scope_mine),
                 )
             }
             when {
@@ -119,17 +118,22 @@ fun BikesScreen(
                     )
                 state.bikes.isEmpty() ->
                     EmptyState(
-                        title = stringResource(R.string.bikes_empty_title),
+                        title =
+                            stringResource(
+                                if (state.scope == BikeScope.Mine) R.string.bikes_empty_mine_title
+                                else R.string.bikes_empty_public_title
+                            ),
                         message =
                             stringResource(
                                 if (state.scope == BikeScope.Mine) R.string.bikes_empty_mine
                                 else R.string.bikes_empty_public
                             ),
+                        icon = ColaIcons.Bike,
                         modifier = Modifier.fillMaxSize(),
                     )
                 else ->
                     PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = onRefresh) {
-                        BikeGrid(state, onOpen, onLoadMore, onRefresh)
+                        BikeGrid(state, onOpen, onLoadMore, onRefresh, scrollToTop)
                     }
             }
         }
@@ -142,8 +146,10 @@ private fun BikeGrid(
     onOpen: (BikeId) -> Unit,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
+    scrollToTop: Flow<Unit>,
 ) {
     val grid = rememberLazyGridState()
+    LaunchedEffect(scrollToTop, grid) { scrollToTop.collect { grid.animateScrollToItem(0) } }
     val nearEnd by remember {
         derivedStateOf {
             (grid.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >=
@@ -157,7 +163,7 @@ private fun BikeGrid(
         contentPadding = PaddingValues(Spacing.screen),
         horizontalArrangement = Arrangement.spacedBy(Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.l),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().testTag("bikes:grid"),
     ) {
         state.refreshError?.let { error ->
             item(span = { GridItemSpan(maxLineSpan) }) {

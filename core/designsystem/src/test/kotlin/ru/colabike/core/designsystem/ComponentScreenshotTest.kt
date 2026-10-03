@@ -2,7 +2,11 @@ package ru.colabike.core.designsystem
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -11,10 +15,21 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ru.colabike.core.designsystem.component.BikeCard
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
+import ru.colabike.core.designsystem.component.BrandMark
+import ru.colabike.core.designsystem.component.ColaFilterChip
+import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaNavItem
+import ru.colabike.core.designsystem.component.ColaNavigationBar
+import ru.colabike.core.designsystem.component.ColaNavigationRail
+import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
+import ru.colabike.core.designsystem.component.HaloTone
+import ru.colabike.core.designsystem.component.IconHalo
+import ru.colabike.core.designsystem.component.PillBadge
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.component.RideCard
+import ru.colabike.core.designsystem.component.StatTile
 import ru.colabike.core.designsystem.component.UserRow
 import ru.colabike.core.designsystem.theme.Spacing
 
@@ -79,4 +94,86 @@ class ComponentScreenshotTest {
                 BikeCardSkeleton()
             }
         }
+
+    private val sections =
+        listOf(
+            ColaNavItem("Лента", ColaIcons.Feed, ColaIcons.FeedFilled),
+            ColaNavItem("Велосипеды", ColaIcons.Bike, ColaIcons.BikeFilled),
+            ColaNavItem("Покатушки", ColaIcons.Route, ColaIcons.Route),
+            ColaNavItem("Сообщения", ColaIcons.Chat, ColaIcons.ChatFilled),
+            ColaNavItem("Профиль", ColaIcons.Person, ColaIcons.PersonFilled),
+        )
+
+    private fun navigation(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                // All five sections of the target shell, and the two shipped today.
+                ColaNavigationBar(sections, selectedIndex = 1, onSelect = {})
+                ColaNavigationBar(sections.take(2), selectedIndex = 0, onSelect = {})
+            }
+        }
+
+    @Test fun navigationLight() = navigation(dark = false, name = "navigation_light")
+
+    @Test fun navigationDark() = navigation(dark = true, name = "navigation_dark")
+
+    @Test
+    fun navigationLargeText() =
+        navigation(dark = false, fontScale = 2f, name = "navigation_font_200")
+
+    @Test
+    fun railLight() =
+        compose.snapshot("rail_light", dark = false) {
+            Row(Modifier.height(420.dp)) {
+                ColaNavigationRail(
+                    sections.take(2),
+                    selectedIndex = 0,
+                    onSelect = {},
+                    header = { BrandMark(size = 40.dp) },
+                )
+            }
+        }
+
+    @Test
+    fun railDark() =
+        compose.snapshot("rail_dark", dark = true) {
+            Row(Modifier.height(420.dp)) {
+                ColaNavigationRail(
+                    sections.take(2),
+                    selectedIndex = 1,
+                    onSelect = {},
+                    header = { BrandMark(size = 40.dp) },
+                )
+            }
+        }
+
+    private fun parts(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                ColaTopBar(title = "Велосипеды", subtitle = "Гараж сообщества", onBack = {})
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                    ColaFilterChip(selected = true, onClick = {}, label = "Все")
+                    ColaFilterChip(selected = false, onClick = {}, label = "Мои")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                    PillBadge("Москва", icon = ColaIcons.Location)
+                    PillBadge("Бывший")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                    IconHalo(ColaIcons.MailUnread)
+                    IconHalo(ColaIcons.Bike, tone = HaloTone.Secondary)
+                    BrandMark(size = 48.dp)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                    StatTile("Вес", "14,2 кг", Modifier.weight(1f))
+                    StatTile("Пробег", "1 200 км", Modifier.weight(1f))
+                }
+            }
+        }
+
+    @Test fun partsLight() = parts(dark = false, name = "parts_light")
+
+    @Test fun partsDark() = parts(dark = true, name = "parts_dark")
+
+    @Test fun partsLargeText() = parts(dark = false, fontScale = 2f, name = "parts_font_200")
 }

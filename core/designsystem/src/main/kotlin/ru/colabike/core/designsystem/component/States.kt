@@ -3,8 +3,10 @@ package ru.colabike.core.designsystem.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -25,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import ru.colabike.core.designsystem.R
 import ru.colabike.core.designsystem.theme.Spacing
 
+/** Messages stay a readable line length on any window. */
+private val TextMaxWidth = 360.dp
+
 /** Nothing to show yet: what this place is for and, if there is one, the next step. */
 @Composable
 fun EmptyState(
@@ -36,26 +41,24 @@ fun EmptyState(
     onAction: (() -> Unit)? = null,
 ) {
     StateLayout(modifier) {
-        Icon(
-            painterResource(icon),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(48.dp),
-        )
+        SoftIconTile(icon)
         Text(
             title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
-            modifier = Modifier.semantics { heading() },
+            modifier = Modifier.widthIn(max = TextMaxWidth).semantics { heading() },
         )
         Text(
             message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = TextMaxWidth),
         )
         if (actionLabel != null && onAction != null)
-            Button(onClick = onAction) { Text(actionLabel) }
+            Button(onClick = onAction, modifier = Modifier.heightIn(min = Spacing.touch)) {
+                Text(actionLabel)
+            }
     }
 }
 
@@ -63,19 +66,17 @@ fun EmptyState(
 @Composable
 fun ErrorState(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     StateLayout(modifier) {
-        Icon(
-            painterResource(ColaIcons.Error),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(48.dp),
-        )
+        SoftIconTile(ColaIcons.Error, tint = MaterialTheme.colorScheme.error)
         Text(
             message,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            modifier =
+                Modifier.widthIn(max = TextMaxWidth).semantics {
+                    liveRegion = LiveRegionMode.Polite
+                },
         )
-        OutlinedButton(onClick = onRetry) {
+        OutlinedButton(onClick = onRetry, modifier = Modifier.heightIn(min = Spacing.touch)) {
             Icon(
                 painterResource(ColaIcons.Refresh),
                 contentDescription = null,
@@ -100,7 +101,7 @@ private fun StateLayout(modifier: Modifier, content: @Composable () -> Unit) {
     Column(
         modifier = modifier.fillMaxWidth().padding(Spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.m, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(Spacing.l, Alignment.CenterVertically),
     ) {
         content()
     }

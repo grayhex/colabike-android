@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="cola_canvas">#FFFFFFFF</color>
+    <color name="cola_canvas">#FFF6F2EA</color>
     <color name="cola_yellow">#FFF3B51B</color>
 </resources>

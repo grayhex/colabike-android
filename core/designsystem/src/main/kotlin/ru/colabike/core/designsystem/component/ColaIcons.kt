@@ -3,10 +3,17 @@ package ru.colabike.core.designsystem.component
 import androidx.annotation.DrawableRes
 import ru.colabike.core.designsystem.R
 
-/** Material Symbols Rounded, bundled as vector drawables (licence in res/raw). */
+/**
+ * Material Symbols Rounded at weight 300, bundled as vector drawables (licence in res/raw): the
+ * thin outline of the reference at rest, the filled glyph (`…Filled`) when selected.
+ */
 object ColaIcons {
     @DrawableRes val Bike = R.drawable.cola_ic_bike
     @DrawableRes val BikeFilled = R.drawable.cola_ic_bike_filled
+    @DrawableRes val Feed = R.drawable.cola_ic_feed
+    @DrawableRes val FeedFilled = R.drawable.cola_ic_feed_filled
+    @DrawableRes val Chat = R.drawable.cola_ic_chat
+    @DrawableRes val ChatFilled = R.drawable.cola_ic_chat_filled
     @DrawableRes val Person = R.drawable.cola_ic_person
     @DrawableRes val PersonFilled = R.drawable.cola_ic_person_filled
     @DrawableRes val AccountCircle = R.drawable.cola_ic_account_circle
@@ -16,12 +23,16 @@ object ColaIcons {
     @DrawableRes val Route = R.drawable.cola_ic_route
     @DrawableRes val Timer = R.drawable.cola_ic_timer
     @DrawableRes val Calendar = R.drawable.cola_ic_calendar
+    @DrawableRes val Location = R.drawable.cola_ic_location
+    @DrawableRes val Image = R.drawable.cola_ic_image
     @DrawableRes val ArrowBack = R.drawable.cola_ic_arrow_back
+    @DrawableRes val ChevronRight = R.drawable.cola_ic_chevron_right
     @DrawableRes val Login = R.drawable.cola_ic_login
     @DrawableRes val Logout = R.drawable.cola_ic_logout
     @DrawableRes val Error = R.drawable.cola_ic_error
     @DrawableRes val Refresh = R.drawable.cola_ic_refresh
     @DrawableRes val Mail = R.drawable.cola_ic_mail
+    @DrawableRes val MailUnread = R.drawable.cola_ic_mail_unread
     @DrawableRes val Lock = R.drawable.cola_ic_lock
     @DrawableRes val Visibility = R.drawable.cola_ic_visibility
     @DrawableRes val VisibilityOff = R.drawable.cola_ic_visibility_off

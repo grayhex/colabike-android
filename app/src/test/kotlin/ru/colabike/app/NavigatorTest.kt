@@ -1,0 +1,122 @@
+package ru.colabike.app
+
+import androidx.compose.runtime.mutableStateOf
+import androidx.navigation3.runtime.NavKey
+import app.cash.turbine.test
+import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.test.runTest
+import org.junit.Test
+import ru.colabike.app.navigation.Destination
+import ru.colabike.app.navigation.NavigationState
+import ru.colabike.app.navigation.Navigator
+import ru.colabike.app.navigation.TopLevel
+
+/** What the shell does with taps and Back, without a screen. */
+class NavigatorTest {
+    private val bikes = Destination.Bikes
+    private val profile = Destination.Profile
+
+    private val state =
+        NavigationState(
+            startRoute = bikes,
+            topLevelRoute = mutableStateOf<NavKey>(bikes),
+            backStacks =
+                mapOf(
+                    bikes to mutableListOf<NavKey>(bikes),
+                    profile to mutableListOf<NavKey>(profile),
+                ),
+        )
+    private val navigator = Navigator(state)
+
+    @Test
+    fun `leaving a section keeps what is open in it`() {
+        navigator.openBike("b1")
+        navigator.select(profile)
+        navigator.select(bikes)
+
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+        assertThat(state.currentStack).containsExactly(bikes, Destination.Bike("b1")).inOrder()
+    }
+
+    @Test
+    fun `opening a bike replaces the bike already open`() {
+        navigator.openBike("b1")
+        navigator.openBike("b2")
+
+        assertThat(state.currentStack).containsExactly(bikes, Destination.Bike("b2")).inOrder()
+    }
+
+    @Test
+    fun `tapping the current section with a bike open returns to its root`() {
+        navigator.openBike("b1")
+        navigator.select(bikes)
+
+        assertThat(state.currentStack).containsExactly(bikes)
+    }
+
+    @Test
+    fun `tapping the current section at its root asks the screen to scroll to the top`() = runTest {
+        navigator.reselects(bikes).test {
+            navigator.select(bikes)
+            awaitItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a reselect is heard only by its own section`() = runTest {
+        navigator.reselects(bikes).test {
+            navigator.select(profile)
+            navigator.select(profile)
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `switching sections is not a reselect`() = runTest {
+        navigator.reselects(profile).test {
+            navigator.select(profile)
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `back pops, then goes to the start section, then belongs to the system`() {
+        navigator.select(profile)
+        assertThat(navigator.back()).isTrue()
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+
+        navigator.openBike("b1")
+        assertThat(navigator.back()).isTrue()
+        assertThat(state.currentStack).containsExactly(bikes)
+
+        assertThat(navigator.back()).isFalse()
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+    }
+
+    @Test
+    fun `back from another section leaves the start section as it was`() {
+        navigator.openBike("b1")
+        navigator.select(profile)
+        navigator.back()
+
+        assertThat(state.currentStack).containsExactly(bikes, Destination.Bike("b1")).inOrder()
+    }
+
+    @Test
+    fun `a section that is not part of the app cannot be selected`() {
+        navigator.select(Destination.Rides)
+
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+    }
+
+    @Test
+    fun `only sections with a screen are shown, and the app starts on one of them`() {
+        // Enabling Feed, Rides or Messages is part of the slice that builds it: update this list
+        // together with the flag in TopLevel.
+        assertThat(TopLevel.shown).containsExactly(TopLevel.Bikes, TopLevel.Profile).inOrder()
+        assertThat(TopLevel.shown).contains(TopLevel.start)
+    }
+}

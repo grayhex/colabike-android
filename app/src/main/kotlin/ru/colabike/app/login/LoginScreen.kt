@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -25,7 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,7 +49,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.ui.resolve
+import ru.colabike.core.designsystem.component.BrandMark
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.colaFieldShape
+import ru.colabike.core.designsystem.component.colaTextFieldColors
+import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.designsystem.theme.Spacing
 
 @Composable
@@ -82,7 +84,7 @@ fun LoginScreen(
     onSubmit: () -> Unit,
     onYandex: () -> Unit,
 ) {
-    Surface(Modifier.fillMaxSize()) {
+    ColaCanvas(Modifier.fillMaxSize()) {
         Box(
             Modifier.fillMaxSize()
                 .safeDrawingPadding()
@@ -95,23 +97,10 @@ fun LoginScreen(
                 verticalArrangement = Arrangement.spacedBy(Spacing.l),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.tertiary,
-                    shape = CircleShape,
-                    modifier = Modifier.size(72.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painterResource(ColaIcons.Bike),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiary,
-                            modifier = Modifier.size(40.dp),
-                        )
-                    }
-                }
+                BrandMark(size = 72.dp)
                 Text(
                     stringResource(R.string.login_title),
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.displayMedium,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.semantics { heading() },
                 )
@@ -131,6 +120,8 @@ fun LoginScreen(
                     singleLine = true,
                     enabled = !state.busy,
                     isError = state.error != null,
+                    shape = colaFieldShape,
+                    colors = colaTextFieldColors(),
                     keyboardOptions =
                         KeyboardOptions(
                             keyboardType = KeyboardType.Email,
@@ -166,6 +157,8 @@ fun LoginScreen(
                     singleLine = true,
                     enabled = !state.busy,
                     isError = state.error != null,
+                    shape = colaFieldShape,
+                    colors = colaTextFieldColors(),
                     visualTransformation =
                         if (state.passwordVisible) VisualTransformation.None
                         else PasswordVisualTransformation(),
@@ -192,7 +185,7 @@ fun LoginScreen(
                 Button(
                     onClick = onSubmit,
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.touch + Spacing.xs),
                 ) {
                     if (state.busy)
                         CircularProgressIndicator(
@@ -217,7 +210,8 @@ fun LoginScreen(
                     OutlinedButton(
                         onClick = onYandex,
                         enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        modifier =
+                            Modifier.fillMaxWidth().heightIn(min = Spacing.touch + Spacing.xs),
                     ) {
                         Text(stringResource(R.string.login_yandex))
                     }

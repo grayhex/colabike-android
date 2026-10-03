@@ -123,6 +123,12 @@ diagnose)
   timeout 30 "$ADB" logcat -d -b crash 2>/dev/null |
     grep -E 'Fatal signal|Abort message|FATAL EXCEPTION|Process: |Cmdline: |#0[0-4] pc' |
     tail -n 120 || true
+  # Compose catches an exception thrown during composition, logs it under this tag and carries on;
+  # a later crash inside its slot table (ArrayIndexOutOfBounds in SlotWriter) is only the aftermath,
+  # and the first exception is the cause. The tags are narrow on purpose: no typed text is logged.
+  echo "--- composition and app errors"
+  timeout 30 "$ADB" logcat -d -b main ComposeInternal:E AndroidRuntime:E '*:S' 2>/dev/null |
+    tail -n 200 || true
   echo "--- system events"
   timeout 30 "$ADB" logcat -d -b main,system 2>/dev/null |
     grep -E -i 'watchdog|fatal|died|lowmemorykiller|lmkd|no space left|not enough space|low on storage|devicestoragemonitor' |

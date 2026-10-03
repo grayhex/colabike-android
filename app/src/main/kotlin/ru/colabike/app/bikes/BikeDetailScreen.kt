@@ -1,47 +1,53 @@
 package ru.colabike.app.bikes
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
 import java.text.NumberFormat
 import ru.colabike.app.R
 import ru.colabike.app.ui.resolve
+import ru.colabike.core.designsystem.component.BikePhoto
+import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ErrorState
+import ru.colabike.core.designsystem.component.Eyebrow
 import ru.colabike.core.designsystem.component.LoadingState
+import ru.colabike.core.designsystem.component.PillBadge
+import ru.colabike.core.designsystem.component.StatTile
 import ru.colabike.core.designsystem.component.UserRow
 import ru.colabike.core.designsystem.component.bikeSubtitle
 import ru.colabike.core.designsystem.theme.Spacing
@@ -62,8 +68,7 @@ fun BikeDetailRoute(
     BikeDetailScreen(state, showBack = showBack, onBack = onBack, onRetry = viewModel::load)
 }
 
-/** One bike: the photo first, then what it is, who rides it, the facts and the build. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** One bike: its name and what it is, the photo, who rides it, the facts and the build. */
 @Composable
 fun BikeDetailScreen(
     state: BikeDetailUiState,
@@ -71,23 +76,18 @@ fun BikeDetailScreen(
     onBack: () -> Unit,
     onRetry: () -> Unit,
 ) {
-    val title = (state as? BikeDetailUiState.Loaded)?.bike?.summary?.name.orEmpty()
+    val summary = (state as? BikeDetailUiState.Loaded)?.bike?.summary
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                painterResource(ColaIcons.ArrowBack),
-                                contentDescription = stringResource(R.string.bike_back),
-                            )
-                        }
-                    }
-                },
+            ColaTopBar(
+                title = summary?.name ?: stringResource(R.string.bike_title),
+                subtitle =
+                    summary?.let { bikeSubtitle(it.brand, it.model, it.year) }?.ifBlank { null },
+                titleMaxLines = 4,
+                onBack = if (showBack) onBack else null,
             )
-        }
+        },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (state) {
@@ -104,146 +104,162 @@ fun BikeDetailScreen(
     }
 }
 
+/** From this pane width the photo is wide (16:9) so it does not push the facts off the screen. */
+private val WidePane = 600.dp
+
 @Composable
-private fun BikeContent(bike: BikeDetail) {
-    val summary = bike.summary
-    val locale = LocalConfiguration.current.locales[0]
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Spacing.xl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Column(Modifier.widthIn(max = 840.dp).fillMaxWidth()) {
-            val photo = bike.photos.firstOrNull() ?: summary.cover
-            Box(
-                Modifier.fillMaxWidth()
-                    .aspectRatio(4f / 3f)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                if (photo != null) {
-                    AsyncImage(
-                        model = photo.url,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Icon(
-                        painterResource(ColaIcons.Bike),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(64.dp).align(Alignment.Center),
-                    )
-                }
-            }
+private fun BikeContent(bike: BikeDetail) =
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val summary = bike.summary
+        val locale = LocalConfiguration.current.locales[0]
+        val photoAspect = if (maxWidth >= WidePane) 16f / 9f else 4f / 3f
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Column(
-                Modifier.padding(Spacing.screen),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                Modifier.widthIn(max = 840.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.screen)
+                    .padding(top = Spacing.s, bottom = Spacing.xxl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.section),
             ) {
-                Text(
-                    summary.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.semantics { heading() },
-                )
-                bikeSubtitle(summary.brand, summary.model, summary.year)
-                    .takeIf { it.isNotBlank() }
-                    ?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                if (!summary.isPublic) {
-                    Text(
-                        stringResource(R.string.bike_private),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                    val frame = MaterialTheme.shapes.extraLarge
+                    BikePhoto(
+                        (bike.photos.firstOrNull() ?: summary.cover)?.url,
+                        Modifier.fillMaxWidth()
+                            .aspectRatio(photoAspect)
+                            .clip(frame)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, frame),
                     )
-                }
-            }
-            summary.author?.let { UserRow(it) }
-            if (bike.description.isNotBlank()) {
-                Section(stringResource(R.string.bike_description)) {
-                    Text(bike.description, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-            val facts =
-                listOfNotNull(
-                    bike.color
-                        .takeIf { it.isNotBlank() }
-                        ?.let { stringResource(R.string.bike_color) to it },
-                    bike.size
-                        .takeIf { it.isNotBlank() }
-                        ?.let { stringResource(R.string.bike_size) to it },
-                    bike.weightKg?.let {
-                        stringResource(R.string.bike_weight) to
-                            stringResource(
-                                R.string.bike_weight_value,
-                                NumberFormat.getNumberInstance(locale).format(it),
-                            )
-                    },
-                    bike.mileageKm
-                        .takeIf { it > 0 }
-                        ?.let {
-                            stringResource(R.string.bike_mileage) to
-                                stringResource(R.string.bike_mileage_value, it)
-                        },
-                )
-            if (facts.isNotEmpty()) {
-                Section(stringResource(R.string.bike_specs)) {
-                    facts.forEachIndexed { index, (label, value) ->
-                        if (index > 0) HorizontalDivider()
-                        Fact(label, value)
-                    }
-                }
-            }
-            bike.components.groupBy(BikeComponent::section).forEach { (section, components) ->
-                Section(
-                    stringResource(
-                        when (section) {
-                            "build" -> R.string.bike_build
-                            "accessories" -> R.string.bike_accessories
-                            else -> R.string.bike_other_components
+                    if (summary.isFormer || !summary.isPublic) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                        ) {
+                            if (summary.isFormer) {
+                                PillBadge(
+                                    stringResource(
+                                        ru.colabike.core.designsystem.R.string.cola_former_bike
+                                    )
+                                )
+                            }
+                            if (!summary.isPublic) {
+                                PillBadge(
+                                    stringResource(R.string.bike_private),
+                                    icon = ColaIcons.Lock,
+                                )
+                            }
                         }
+                    }
+                    summary.author?.let { UserRow(it) }
+                }
+                if (bike.description.isNotBlank()) {
+                    Section(stringResource(R.string.bike_description)) {
+                        Text(bike.description, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                val facts =
+                    listOfNotNull(
+                        bike.weightKg?.let {
+                            stringResource(R.string.bike_weight) to
+                                stringResource(
+                                    R.string.bike_weight_value,
+                                    NumberFormat.getNumberInstance(locale).format(it),
+                                )
+                        },
+                        bike.mileageKm
+                            .takeIf { it > 0 }
+                            ?.let {
+                                stringResource(R.string.bike_mileage) to
+                                    stringResource(R.string.bike_mileage_value, it)
+                            },
+                        bike.size
+                            .takeIf { it.isNotBlank() }
+                            ?.let { stringResource(R.string.bike_size) to it },
+                        bike.color
+                            .takeIf { it.isNotBlank() }
+                            ?.let { stringResource(R.string.bike_color) to it },
                     )
-                ) {
-                    components.forEachIndexed { index, component ->
-                        if (index > 0) HorizontalDivider()
-                        Fact(component.category, component.name)
+                if (facts.isNotEmpty()) {
+                    Section(stringResource(R.string.bike_specs)) { Facts(facts) }
+                }
+                bike.components.groupBy(BikeComponent::section).forEach { (section, components) ->
+                    Section(
+                        stringResource(
+                            when (section) {
+                                "build" -> R.string.bike_build
+                                "accessories" -> R.string.bike_accessories
+                                else -> R.string.bike_other_components
+                            }
+                        )
+                    ) {
+                        ColaCard(Modifier.fillMaxWidth()) {
+                            Column(
+                                Modifier.padding(horizontal = Spacing.card, vertical = Spacing.s)
+                            ) {
+                                components.forEachIndexed { index, component ->
+                                    if (index > 0) {
+                                        HorizontalDivider(
+                                            color = MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    }
+                                    Component(component.category, component.name)
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
-}
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
-    Column(
-        Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.m),
-        verticalArrangement = Arrangement.spacedBy(Spacing.s),
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
         Text(
             title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.semantics { heading() },
         )
         content()
     }
 }
 
+/** Two tiles to a row; one when the system font is large and a tile no longer fits half a row. */
 @Composable
-private fun Fact(label: String, value: String) {
+private fun Facts(facts: List<Pair<String, String>>) {
+    val columns = if (LocalDensity.current.fontScale > LargeFont) 1 else 2
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        facts.chunked(columns).forEach { row ->
+            Row(
+                Modifier.height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+            ) {
+                row.forEach { (label, value) ->
+                    StatTile(label, value, Modifier.weight(1f).fillMaxHeight())
+                }
+                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** From this font scale on, stat tiles stack. */
+private const val LargeFont = 1.3f
+
+@Composable
+private fun Component(category: String, name: String) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = Spacing.s),
+        Modifier.fillMaxWidth().padding(vertical = Spacing.m),
         horizontalArrangement = Arrangement.spacedBy(Spacing.l),
     ) {
+        Eyebrow(category, maxLines = 3, modifier = Modifier.weight(0.4f))
         Text(
-            label,
+            name,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(0.4f),
+            modifier = Modifier.weight(0.6f),
         )
-        Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.6f))
     }
 }

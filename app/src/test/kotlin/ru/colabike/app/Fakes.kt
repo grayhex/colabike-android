@@ -42,6 +42,9 @@ class FakeBikes(
     val calls = mutableListOf<Pair<BikeScope, String?>>()
     var nextError: DataError? = null
 
+    /** How many times a bike's details were requested: a ViewModel that survived asks once. */
+    var detailCalls = 0
+
     override suspend fun bikes(scope: BikeScope, cursor: String?, limit: Int): Page<BikeSummary> {
         calls += scope to cursor
         nextError?.let {
@@ -52,6 +55,7 @@ class FakeBikes(
     }
 
     override suspend fun bike(id: BikeId): BikeDetail {
+        detailCalls++
         nextError?.let {
             nextError = null
             throw it
