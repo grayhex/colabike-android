@@ -1,0 +1,16 @@
+# Gradle and Kotlin
+.gradle/
+.kotlin/
+build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+captures/
+
+# Signing material never lives in Git (release keystore: see docs/architecture.md).
+*.jks
+*.keystore
+keystore.properties
