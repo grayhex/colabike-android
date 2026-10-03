@@ -10,15 +10,19 @@ import org.junit.Test
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
+import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.LikeChange
 import ru.colabike.core.model.LikeState
+import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
+import ru.colabike.core.model.UserId
 
 class RepositoriesTest {
     private val site = TestServer()
-    private val bikes = NetworkBikesRepository(site.api.bikes, site.media, Dispatchers.Unconfined)
+    private val bikes =
+        NetworkBikesRepository(site.api.bikes, site.api.search, site.media, Dispatchers.Unconfined)
     private val account =
         NetworkAccountRepository(site.api.account, site.media, Dispatchers.Unconfined)
 
@@ -90,7 +94,8 @@ class RepositoriesTest {
 
 class BikesSearchAndLikeTest {
     private val site = TestServer()
-    private val bikes = NetworkBikesRepository(site.api.bikes, site.media, Dispatchers.Unconfined)
+    private val bikes =
+        NetworkBikesRepository(site.api.bikes, site.api.search, site.media, Dispatchers.Unconfined)
 
     @After fun close() = site.close()
 
@@ -278,5 +283,170 @@ class AccountSessionsRepositoryTest {
         val failure = runCatching { sessions.sessions() }
 
         assertThat(failure.exceptionOrNull()).isInstanceOf(DataError.SignedOut::class.java)
+    }
+}
+
+class PeopleRepositoryTest {
+    private val site = TestServer()
+    private val people =
+        NetworkPeopleRepository(site.api.users, site.api.search, site.media, Dispatchers.Unconfined)
+    private val bikes =
+        NetworkBikesRepository(site.api.bikes, site.api.search, site.media, Dispatchers.Unconfined)
+    private val uuid = "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6"
+
+    @After fun close() = site.close()
+
+    @Test
+    fun `a profile maps to the person, counts and what the viewer is to them`() = runTest {
+        site.json(200, site.fixture("profile.json"))
+
+        val profile = people.profile("test-rider")
+
+        assertThat(site.server.takeRequest().url.encodedPath).isEqualTo("/api/v1/users/test-rider")
+        assertThat(profile.person.id.value).isEqualTo(uuid)
+        assertThat(profile.person.displayName).isEqualTo("Тестовый Райдер")
+        assertThat(profile.person.avatarUrl)
+            .isEqualTo(site.config.siteUrl + "/api/avatars/8d9e0f1a")
+        assertThat(profile.counts)
+            .isEqualTo(ProfileCounts(bikes = 3, followers = 12, following = 7))
+        assertThat(profile.relationship?.following).isTrue()
+        assertThat(profile.joined).isEqualTo(Instant.parse("2026-09-01T10:00:00Z"))
+    }
+
+    @Test
+    fun `a ref that is neither a UUID nor a username is not found without a request`() = runTest {
+        listOf("", "ab", "../me", "a b c", "x".repeat(31), "name/with/slash").forEach {
+            val failure = runCatching { people.profile(it) }
+            assertThat(failure.exceptionOrNull()).isInstanceOf(DataError.NotFound::class.java)
+        }
+        assertThat(site.server.requestCount).isEqualTo(0)
+    }
+
+    @Test
+    fun `a blocked or unknown person is NotFound`() = runTest {
+        site.json(404, error("not_found"))
+
+        val failure = runCatching { people.profile("nobody-here") }
+
+        assertThat(failure.exceptionOrNull()).isInstanceOf(DataError.NotFound::class.java)
+    }
+
+    @Test
+    fun `followers come in pages with the viewer's relationship, and an unsafe avatar is dropped`() =
+        runTest {
+            site.json(200, site.fixture("user-page.json"))
+
+            val page = people.followers(uuid, cursor = "c0", limit = 2)
+
+            val request = site.server.takeRequest().url
+            assertThat(request.encodedPath).isEqualTo("/api/v1/users/$uuid/followers")
+            assertThat(request.queryParameter("cursor")).isEqualTo("c0")
+            assertThat(request.queryParameter("limit")).isEqualTo("2")
+            assertThat(page.nextCursor).isEqualTo("eyJyIjoiMjAyNi0wOS0wMSJ9")
+            val (first, second) = page.items
+            assertThat(first.relationship?.friends).isTrue()
+            assertThat(second.relationship).isNull()
+            assertThat(second.person.avatarUrl).isNull()
+            assertThat(second.person.displayName).isEqualTo("second-rider")
+        }
+
+    @Test
+    fun `following and the bikes of a person use their own addresses`() = runTest {
+        site.json(200, site.fixture("user-page.json"))
+        site.json(200, site.fixture("bike-page.json"))
+
+        people.following(uuid)
+        val bikesOf = people.bikesOf("test-rider")
+
+        assertThat(site.server.takeRequest().url.encodedPath)
+            .isEqualTo("/api/v1/users/$uuid/following")
+        assertThat(site.server.takeRequest().url.encodedPath)
+            .isEqualTo("/api/v1/users/test-rider/bikes")
+        assertThat(bikesOf.items).isNotEmpty()
+    }
+
+    @Test
+    fun `following sends PUT, unfollowing DELETE, and the answer is announced`() = runTest {
+        val id = UserId(uuid)
+        site.json(
+            200,
+            """{"relationship":{"isSelf":false,"following":true,"followedBy":false,"friends":false},"followers":13}""",
+        )
+        site.json(
+            200,
+            """{"relationship":{"isSelf":false,"following":false,"followedBy":false,"friends":false},"followers":12}""",
+        )
+
+        people.followChanges.test {
+            val on = people.setFollowing(id, true)
+            val off = people.setFollowing(id, false)
+
+            assertThat(on.followers).isEqualTo(13)
+            assertThat(on.relationship.following).isTrue()
+            assertThat(off.followers).isEqualTo(12)
+            assertThat(awaitItem().state).isEqualTo(on)
+            assertThat(awaitItem().state).isEqualTo(off)
+        }
+        val put = site.server.takeRequest()
+        assertThat(put.method).isEqualTo("PUT")
+        assertThat(put.url.encodedPath).isEqualTo("/api/v1/users/$uuid/follow")
+        assertThat(site.server.takeRequest().method).isEqualTo("DELETE")
+    }
+
+    @Test
+    fun `one cannot follow oneself, and the refusal announces nothing`() = runTest {
+        site.json(400, error("cannot_follow_self", "Нельзя подписаться на себя"))
+
+        people.followChanges.test {
+            val failure = runCatching { people.setFollowing(UserId(uuid), true) }
+
+            val rejected = failure.exceptionOrNull() as DataError.Rejected
+            assertThat(rejected.code).isEqualTo("cannot_follow_self")
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `searching people needs a text, and asks the server only with one`() = runTest {
+        site.json(200, site.fixture("user-page.json"))
+
+        val none = people.search("   ")
+        assertThat(none.items).isEmpty()
+        assertThat(site.server.requestCount).isEqualTo(0)
+
+        people.search("  Райдер ")
+        val url = site.server.takeRequest().url
+        assertThat(url.encodedPath).isEqualTo("/api/v1/experience/users")
+        assertThat(url.queryParameter("q")).isEqualTo("Райдер")
+    }
+
+    @Test
+    fun `searching bikes sends the text and only the facets that were asked for`() = runTest {
+        site.json(200, site.fixture("bike-page.json"))
+        site.json(200, site.fixture("bike-page.json"))
+
+        bikes.search(
+            BikeSearch(
+                text = " dura-ace ",
+                category = "mtb",
+                suspension = "hardtail",
+                electric = true,
+                fatbike = false,
+            )
+        )
+        bikes.search(BikeSearch(text = "x", category = "hoverboard", suspension = "airy"))
+
+        val first = site.server.takeRequest().url
+        assertThat(first.encodedPath).isEqualTo("/api/v1/experience/bikes")
+        assertThat(first.queryParameter("q")).isEqualTo("dura-ace")
+        assertThat(first.queryParameter("category")).isEqualTo("mtb")
+        assertThat(first.queryParameter("suspension")).isEqualTo("hardtail")
+        assertThat(first.queryParameter("electric")).isEqualTo("1")
+        assertThat(first.queryParameter("fatbike")).isEqualTo("0")
+        // A value the API does not list is not sent (the server would refuse the whole request).
+        val second = site.server.takeRequest().url
+        assertThat(second.queryParameter("category")).isNull()
+        assertThat(second.queryParameter("suspension")).isNull()
+        assertThat(second.queryParameter("electric")).isNull()
     }
 }

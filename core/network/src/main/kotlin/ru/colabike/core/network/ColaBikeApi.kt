@@ -4,7 +4,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import okhttp3.OkHttpClient
 import ru.colabike.api.apis.AccountApi
 import ru.colabike.api.apis.BikesApi
+import ru.colabike.api.apis.SearchApi
 import ru.colabike.api.apis.SessionsApi
+import ru.colabike.api.apis.UsersApi
 import ru.colabike.api.infrastructure.Serializer
 
 /**
@@ -19,6 +21,8 @@ class ColaBikeApi(config: ApiConfig, client: OkHttpClient) {
     val sessions = SessionsApi(config.apiBaseUrl, client)
     val account = AccountApi(config.apiBaseUrl, client)
     val bikes = BikesApi(config.apiBaseUrl, client)
+    val users = UsersApi(config.apiBaseUrl, client)
+    val search = SearchApi(config.apiBaseUrl, client)
 
     private companion object {
         val configured = AtomicBoolean(false)

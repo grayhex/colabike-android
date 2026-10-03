@@ -73,6 +73,7 @@ fun BikesRoute(
     repository: BikesRepository,
     auth: AuthActions,
     onOpen: (BikeId) -> Unit,
+    onSearch: () -> Unit = {},
     scrollToTop: Flow<Unit> = emptyFlow(),
 ) {
     val viewModel = viewModel { BikesViewModel(repository) }
@@ -90,6 +91,7 @@ fun BikesRoute(
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
         onOpen = onOpen,
+        onOpenSearch = onSearch,
         scrollToTop = scrollToTop,
     )
 }
@@ -111,11 +113,27 @@ fun BikesScreen(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onOpen: (BikeId) -> Unit,
+    onOpenSearch: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
 ) {
     Scaffold(
         containerColor = Color.Transparent,
-        topBar = { ColaTopBar(title = stringResource(R.string.bikes_title)) },
+        topBar = {
+            ColaTopBar(
+                title = stringResource(R.string.bikes_title),
+                actions = {
+                    // The wide search: builds by components and facets, and people.
+                    if (onOpenSearch != null) {
+                        IconButton(onClick = onOpenSearch) {
+                            Icon(
+                                painterResource(ColaIcons.Search),
+                                contentDescription = stringResource(R.string.search_open),
+                            )
+                        }
+                    }
+                },
+            )
+        },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             SearchField(state.typed, onSearchText)

@@ -24,12 +24,21 @@ import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeQuery
+import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.FollowChange
+import ru.colabike.core.model.FollowState
 import ru.colabike.core.model.LikeChange
 import ru.colabike.core.model.LikeState
 import ru.colabike.core.model.Page
+import ru.colabike.core.model.PeopleRepository
+import ru.colabike.core.model.Person
+import ru.colabike.core.model.PersonSummary
+import ru.colabike.core.model.Profile
+import ru.colabike.core.model.ProfileCounts
+import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UserId
@@ -127,6 +136,27 @@ class FakeBikes(
         return PreviewData.bikeDetail.copy(summary = summary)
     }
 
+    val searches = mutableListOf<Pair<BikeSearch, String?>>()
+
+    /** What a search finds; by default the first page of [pages]. */
+    var searchAnswer: (suspend (BikeSearch, String?) -> Page<BikeSummary>)? = null
+
+    override suspend fun search(
+        search: BikeSearch,
+        cursor: String?,
+        limit: Int,
+    ): Page<BikeSummary> {
+        searches += search to cursor
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+        searchAnswer?.let {
+            return it(search, cursor)
+        }
+        return pages[cursor] ?: Page(emptyList(), null)
+    }
+
     override suspend fun setLiked(id: BikeId, liked: Boolean): LikeState {
         likes += id to liked
         likeError?.let {
@@ -137,6 +167,104 @@ class FakeBikes(
         return LikeState(liked, (current + if (liked) 1 else -1).coerceAtLeast(0)).also {
             changes.tryEmit(LikeChange(id, it))
         }
+    }
+}
+
+val rider = Person(UserId("u-rider"), "test-rider", "Тестовый Райдер", null)
+
+fun profileOf(
+    person: Person = rider,
+    relationship: Relationship? =
+        Relationship(isSelf = false, following = false, followedBy = false, friends = false),
+    followers: Int = 12,
+) =
+    Profile(
+        person = person,
+        bio = "Катаюсь круглый год.",
+        location = "Москва",
+        joined = Instant.parse("2026-09-01T10:00:00Z"),
+        counts = ProfileCounts(bikes = 2, followers = followers, following = 7),
+        relationship = relationship,
+    )
+
+fun people(from: Int, count: Int): List<PersonSummary> =
+    (from until from + count).map {
+        PersonSummary(Person(UserId("u$it"), "rider-$it", "Райдер $it", null), null)
+    }
+
+/** People by ref (UUID or username); a ref without an entry is not found. */
+class FakePeople(
+    var profiles: Map<String, Profile> =
+        mapOf(
+            rider.id.value to profileOf(),
+            rider.username to profileOf(),
+            PreviewData.rider.id.value to profileOf(PreviewData.rider),
+        ),
+    var bikesOfPerson: Page<BikeSummary> = Page(bikes(0, 2), null),
+    var followersPage: Page<PersonSummary> = Page(people(0, 3), null),
+    var followingPage: Page<PersonSummary> = Page(people(10, 2), null),
+) : PeopleRepository {
+    val profileCalls = mutableListOf<String>()
+    val follows = mutableListOf<Pair<UserId, Boolean>>()
+    val searches = mutableListOf<Pair<String, String?>>()
+    var nextError: DataError? = null
+    var followError: DataError? = null
+    var searchAnswer: (suspend (String, String?) -> Page<PersonSummary>)? = null
+    private val changes = MutableSharedFlow<FollowChange>(extraBufferCapacity = 16)
+    override val followChanges: SharedFlow<FollowChange> = changes
+
+    private fun fail() {
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+
+    override suspend fun profile(ref: String): Profile {
+        profileCalls += ref
+        fail()
+        return profiles[ref] ?: throw DataError.NotFound()
+    }
+
+    override suspend fun bikesOf(ref: String, cursor: String?, limit: Int): Page<BikeSummary> {
+        fail()
+        return bikesOfPerson
+    }
+
+    override suspend fun followers(ref: String, cursor: String?, limit: Int): Page<PersonSummary> {
+        fail()
+        return followersPage
+    }
+
+    override suspend fun following(ref: String, cursor: String?, limit: Int): Page<PersonSummary> {
+        fail()
+        return followingPage
+    }
+
+    override suspend fun search(text: String, cursor: String?, limit: Int): Page<PersonSummary> {
+        searches += text to cursor
+        fail()
+        return searchAnswer?.invoke(text, cursor) ?: Page(emptyList(), null)
+    }
+
+    override suspend fun setFollowing(id: UserId, following: Boolean): FollowState {
+        follows += id to following
+        followError?.let {
+            followError = null
+            throw it
+        }
+        val current = profiles.values.firstOrNull { it.person.id == id }
+        val followers = (current?.counts?.followers ?: 0) + if (following) 1 else -1
+        return FollowState(
+                Relationship(
+                    isSelf = false,
+                    following = following,
+                    followedBy = false,
+                    friends = false,
+                ),
+                followers.coerceAtLeast(0),
+            )
+            .also { changes.tryEmit(FollowChange(id, it)) }
     }
 }
 
@@ -226,6 +354,7 @@ class FakePending : PendingNavigation {
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
+    override val people: FakePeople = FakePeople(),
     override val sessions: FakeSessions = FakeSessions(),
     override val auth: FakeAuth = FakeAuth(),
     override val settings: FakeSettings = FakeSettings(),

@@ -109,7 +109,8 @@ class AppLinkParser(siteUrl: String) {
         /** Digits and Latin letters without i, l, o, u (the site's public id alphabet). */
         val PUBLIC_ID = Regex("^[0-9a-hjkmnp-tv-z]{8}$")
 
-        val USERNAME = Regex("^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+        /** A username is 3 to 30 characters (cola api-v1, `{ref}`). */
+        val USERNAME = Regex("^[A-Za-z0-9][A-Za-z0-9_.-]{2,29}$")
     }
 }
 
@@ -132,11 +133,12 @@ sealed interface LinkTarget {
 fun AppLink.target(site: SiteLinks): LinkTarget =
     when (this) {
         is AppLink.Bike -> LinkTarget.InApp(Destination.Bike(id))
-        // No screens yet (#6, #7, #9 and the public profile of #5): the site, by the same address.
+        // A profile has a screen; the API takes the username as the person's `{ref}`.
+        is AppLink.Person -> LinkTarget.InApp(Destination.Person(username))
+        // No screens yet (#6, #7, #9): the site, by the same address.
         is AppLink.Journal -> LinkTarget.OnSite(site.page("j", id))
         is AppLink.Ride -> LinkTarget.OnSite(site.page("r", id))
         is AppLink.Market -> LinkTarget.OnSite(site.page("market", id))
-        is AppLink.Person -> LinkTarget.OnSite(site.page("@$username"))
         // The site can resolve its own address, the app cannot: hand the page over as it is.
         is AppLink.NeedsResolver -> LinkTarget.OnSite(site.pageAt(encodedPath))
         AppLink.NativeAuth,

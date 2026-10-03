@@ -59,19 +59,30 @@ class PreferencesPendingNavigation(
     private fun encode(destination: Destination): String? =
         when (destination) {
             is Destination.Bike ->
-                if (UUID.matches(destination.id)) "bike:${destination.id}" else null
+                if (UUID.matches(destination.id)) "$BIKE${destination.id}" else null
+            is Destination.Person ->
+                if (isPersonRef(destination.ref)) "$PERSON${destination.ref}" else null
             else -> null
         }
 
     private fun decode(value: String): Destination? =
-        value
-            .removePrefix("bike:")
-            .takeIf { value.startsWith("bike:") && UUID.matches(it) }
-            ?.let { Destination.Bike(it) }
+        when {
+            value.startsWith(BIKE) ->
+                value.removePrefix(BIKE).takeIf(UUID::matches)?.let { Destination.Bike(it) }
+            value.startsWith(PERSON) ->
+                value.removePrefix(PERSON).takeIf(::isPersonRef)?.let { Destination.Person(it) }
+            else -> null
+        }
+
+    /** A person is named by id or by username, the two shapes the API takes. */
+    private fun isPersonRef(ref: String) = UUID.matches(ref) || USERNAME.matches(ref)
 
     private companion object {
         const val KEY_VALUE = "pending_destination"
         const val KEY_AT = "pending_at"
+        const val BIKE = "bike:"
+        const val PERSON = "person:"
         val UUID = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+        val USERNAME = Regex("^[A-Za-z0-9][A-Za-z0-9_.-]{2,29}$")
     }
 }

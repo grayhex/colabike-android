@@ -72,6 +72,8 @@
     <string name="profile_sign_in">Войти</string>
     <string name="profile_register">Регистрация на сайте</string>
     <string name="profile_section_account">Аккаунт</string>
+    <string name="profile_public">Мой публичный профиль</string>
+    <string name="profile_public_hint">Так вас видят другие: велосипеды, подписчики</string>
     <string name="profile_devices">Устройства и входы</string>
     <string name="profile_devices_hint">Где выполнен вход в ваш аккаунт</string>
     <string name="profile_manage_web">Управление аккаунтом</string>
@@ -119,6 +121,41 @@
     <string name="licenses_sans_covers">Шрифт текста. Лицензия SIL Open Font License 1.1.</string>
     <string name="licenses_apache_title">Apache License 2.0</string>
     <string name="licenses_apache_covers">Иконки Material Symbols, Android Jetpack и Compose, OkHttp, Coil, kotlinx.coroutines и kotlinx.serialization.</string>
+
+    <string name="person_title">Человек</string>
+    <string name="person_bikes">Велосипеды</string>
+    <string name="person_joined">На ColaBike с %1$s</string>
+    <string name="person_follow">Подписаться</string>
+    <string name="person_following">Вы подписаны</string>
+    <string name="person_friends">Друзья</string>
+    <string name="person_follow_named">Подписаться на %1$s</string>
+    <string name="person_unfollow_named">Отписаться от %1$s</string>
+    <string name="person_it_is_you">Это вы</string>
+    <string name="person_my_account">Мой аккаунт</string>
+    <string name="person_count_bikes">Велосипеды</string>
+    <string name="person_count_followers">Подписчики</string>
+    <string name="person_count_following">Подписки</string>
+    <string name="person_no_bikes_title">Пока нет велосипедов</string>
+    <string name="person_no_bikes">Публичные велосипеды человека появятся здесь.</string>
+    <string name="people_followers">Подписчики</string>
+    <string name="people_following">Подписки</string>
+    <string name="people_no_followers_title">Подписчиков пока нет</string>
+    <string name="people_no_following_title">Подписок пока нет</string>
+    <string name="people_empty">Когда появятся люди, они будут здесь.</string>
+
+    <string name="search_title">Поиск</string>
+    <string name="search_tab_bikes">Велосипеды</string>
+    <string name="search_tab_people">Люди</string>
+    <string name="search_hint_bikes">Название, бренд, компонент</string>
+    <string name="search_hint_people">Имя или username</string>
+    <string name="search_electric">Электро</string>
+    <string name="search_fatbike">Fatbike</string>
+    <string name="search_start_title">Что ищем?</string>
+    <string name="search_start_bikes">Введите название, бренд или компонент, или выберите тип велосипеда.</string>
+    <string name="search_start_people">Введите имя или username человека.</string>
+    <string name="search_people_empty_title">Никого не нашли</string>
+    <string name="search_people_empty">Проверьте написание: ищем по имени и username.</string>
+    <string name="search_open">Поиск</string>
 
     <string name="error_offline">Нет соединения. Проверьте интернет и повторите.</string>
     <string name="error_not_found">Не нашли: возможно, его скрыли или удалили.</string>

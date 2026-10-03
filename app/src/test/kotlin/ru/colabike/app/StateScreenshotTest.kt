@@ -29,8 +29,18 @@ import ru.colabike.app.bikes.BikesScreen
 import ru.colabike.app.bikes.BikesUiState
 import ru.colabike.app.devices.DevicesScreen
 import ru.colabike.app.devices.DevicesUiState
+import ru.colabike.app.people.PeopleListKind
+import ru.colabike.app.people.PeopleListScreen
+import ru.colabike.app.people.PeopleListUiState
+import ru.colabike.app.people.PersonActions
+import ru.colabike.app.people.PersonScreen
+import ru.colabike.app.people.PersonUiState
 import ru.colabike.app.profile.ProfileScreen
 import ru.colabike.app.profile.ProfileUiState
+import ru.colabike.app.search.Results
+import ru.colabike.app.search.SearchScreen
+import ru.colabike.app.search.SearchTab
+import ru.colabike.app.search.SearchUiState
 import ru.colabike.app.settings.ThemeMode
 import ru.colabike.app.ui.UiText
 import ru.colabike.core.designsystem.component.PreviewData
@@ -39,6 +49,7 @@ import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
+import ru.colabike.core.model.Relationship
 
 /** The states a screen has besides its content (DESIGN.md): loading, empty, error, an odd bike. */
 enum class ScreenState(val file: String) {
@@ -53,6 +64,17 @@ enum class ScreenState(val file: String) {
     DevicesLoading("devices_loading"),
     DevicesError("devices_error"),
     ProfileFailed("profile_failed"),
+    PersonFollowing("person_following"),
+    PersonOwn("person_own"),
+    PersonNoBikes("person_no_bikes"),
+    PersonNotFound("person_not_found"),
+    PeopleFollowing("people_following"),
+    PeopleEmpty("people_empty"),
+    SearchBikes("search_bikes"),
+    SearchBikesEmpty("search_bikes_empty"),
+    SearchPeople("search_people"),
+    SearchPeopleEmpty("search_people_empty"),
+    SearchError("search_error"),
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -189,6 +211,107 @@ private fun Content(state: ScreenState) {
                 onRetry = {},
                 onSignIn = {},
             )
+        ScreenState.PersonFollowing ->
+            PersonWith(
+                PersonUiState(
+                    profile =
+                        profileOf(
+                            PreviewData.rider,
+                            Relationship(
+                                isSelf = false,
+                                following = true,
+                                followedBy = true,
+                                friends = true,
+                            ),
+                        ),
+                    loading = false,
+                    bikes = listOf(PreviewData.bike, PreviewData.bikeWithoutPhoto),
+                )
+            )
+        ScreenState.PersonOwn ->
+            PersonWith(
+                PersonUiState(
+                    profile =
+                        profileOf(
+                            PreviewData.rider,
+                            Relationship(
+                                isSelf = true,
+                                following = false,
+                                followedBy = false,
+                                friends = false,
+                            ),
+                        ),
+                    loading = false,
+                    bikes = listOf(PreviewData.bike),
+                )
+            )
+        ScreenState.PersonNoBikes ->
+            PersonWith(
+                PersonUiState(
+                    profile = profileOf(PreviewData.rider).copy(bio = "", location = ""),
+                    loading = false,
+                )
+            )
+        ScreenState.PersonNotFound ->
+            PersonWith(
+                PersonUiState(
+                    loading = false,
+                    error = UiText.Res(R.string.error_not_found),
+                    notFound = true,
+                )
+            )
+        ScreenState.PeopleFollowing ->
+            PeopleWith(PeopleListUiState(people = people(10, 4), loading = false))
+        ScreenState.PeopleEmpty ->
+            PeopleWith(PeopleListUiState(people = emptyList(), loading = false))
+        ScreenState.SearchBikes ->
+            SearchWith(
+                SearchUiState(
+                    typed = "cube",
+                    text = "cube",
+                    category = "mtb",
+                    bikes =
+                        Results(
+                            asked = true,
+                            items = listOf(PreviewData.bike, PreviewData.bikeWithoutPhoto),
+                        ),
+                )
+            )
+        ScreenState.SearchBikesEmpty ->
+            SearchWith(
+                SearchUiState(
+                    typed = "Бромптон",
+                    text = "Бромптон",
+                    electric = true,
+                    bikes = Results(asked = true),
+                )
+            )
+        ScreenState.SearchPeople ->
+            SearchWith(
+                SearchUiState(
+                    tab = SearchTab.People,
+                    typed = "райдер",
+                    text = "райдер",
+                    people = Results(asked = true, items = people(0, 4)),
+                )
+            )
+        ScreenState.SearchPeopleEmpty ->
+            SearchWith(
+                SearchUiState(
+                    tab = SearchTab.People,
+                    typed = "zzzz",
+                    text = "zzzz",
+                    people = Results(asked = true),
+                )
+            )
+        ScreenState.SearchError ->
+            SearchWith(
+                SearchUiState(
+                    typed = "cube",
+                    text = "cube",
+                    bikes = Results(asked = true, error = UiText.Res(R.string.error_offline)),
+                )
+            )
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),
@@ -198,6 +321,45 @@ private fun Content(state: ScreenState) {
             )
     }
 }
+
+@Composable
+private fun PersonWith(state: PersonUiState) =
+    PersonScreen(
+        state = state,
+        actions = PersonActions({}, {}, {}, {}, {}),
+        onRetry = {},
+        onLoadMore = {},
+        onToggleFollow = {},
+    )
+
+@Composable
+private fun PeopleWith(state: PeopleListUiState) =
+    PeopleListScreen(
+        kind = PeopleListKind.Following,
+        state = state,
+        onBack = {},
+        onRetry = {},
+        onLoadMore = {},
+        onOpenPerson = {},
+    )
+
+@Composable
+private fun SearchWith(state: SearchUiState) =
+    SearchScreen(
+        state = state,
+        onBack = {},
+        onTab = {},
+        onText = {},
+        onClear = {},
+        onCategory = {},
+        onSuspension = {},
+        onElectric = {},
+        onFatbike = {},
+        onRetry = {},
+        onLoadMore = {},
+        onOpenBike = {},
+        onOpenPerson = {},
+    )
 
 @Composable
 private fun DevicesWith(state: DevicesUiState) =

@@ -1,0 +1,11 @@
+{
+  "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+  "username": "test-rider",
+  "name": "Тестовый Райдер",
+  "avatarUrl": "/api/avatars/8d9e0f1a",
+  "bio": "Катаюсь круглый год.",
+  "location": "Москва",
+  "createdAt": "2026-09-01T10:00:00.000Z",
+  "counts": {"bikes": 3, "followers": 12, "following": 7},
+  "relationship": {"isSelf": false, "following": true, "followedBy": false, "friends": false}
+}

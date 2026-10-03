@@ -132,6 +132,11 @@ class Navigator(private val state: NavigationState) {
                 state.topLevelRoute = TopLevel.Bikes.root
                 openBike(destination.id)
             }
+            is Destination.Person -> {
+                if (TopLevel.Bikes.root !in state.backStacks) return
+                state.topLevelRoute = TopLevel.Bikes.root
+                open(destination)
+            }
             else -> Unit
         }
     }
