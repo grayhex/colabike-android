@@ -14,7 +14,9 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -66,7 +68,12 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
     val navigator = remember(state) { Navigator(state) }
     val listDetail = rememberListDetailSceneStrategy<NavKey>()
     val windowSize = currentWindowAdaptiveInfo().windowSizeClass
-    val twoPane = windowSize.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
+    // Read through State: NavEntries are built once per stack, so a plain value would stay at what
+    // the window was when the entry was created (fold or unfold would leave the wrong back arrow).
+    val twoPane by
+        rememberUpdatedState(
+            windowSize.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
+        )
     val bottomBar =
         !windowSize.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
