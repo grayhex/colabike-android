@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+      "username": "test-rider",
+      "name": "Тестовый Райдер",
+      "avatarUrl": "/api/avatars/8d9e0f1a",
+      "relationship": {"isSelf": false, "following": true, "followedBy": true, "friends": true}
+    },
+    {
+      "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "username": "second-rider",
+      "name": "",
+      "avatarUrl": "javascript:alert(1)",
+      "relationship": null
+    }
+  ],
+  "nextCursor": "eyJyIjoiMjAyNi0wOS0wMSJ9"
+}

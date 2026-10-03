@@ -64,6 +64,7 @@ fun ProfileRoute(
     dependencies: AppDependencies,
     onOpenDevices: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenPublicProfile: (id: String) -> Unit = {},
 ) {
     val viewModel = viewModel { ProfileViewModel(dependencies.account, dependencies.auth) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -79,6 +80,7 @@ fun ProfileRoute(
         onSignIn = signIn,
         onRegister = { opener.open(dependencies.links.register) },
         onOpenDevices = onOpenDevices,
+        onOpenPublicProfile = onOpenPublicProfile,
         onManageOnWeb = { opener.open(dependencies.links.account) },
         onOpenAbout = onOpenAbout,
     )
@@ -96,6 +98,7 @@ fun ProfileScreen(
     onOpenDevices: () -> Unit,
     onManageOnWeb: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenPublicProfile: (id: String) -> Unit = {},
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -137,6 +140,7 @@ fun ProfileScreen(
                                 is ProfileUiState.Loaded ->
                                     MemberSections(
                                         state,
+                                        onOpenPublicProfile = onOpenPublicProfile,
                                         onOpenDevices = onOpenDevices,
                                         onManageOnWeb = onManageOnWeb,
                                     )
@@ -216,6 +220,7 @@ private fun GuestCard(onSignIn: () -> Unit, onRegister: () -> Unit) {
 @Composable
 private fun MemberSections(
     state: ProfileUiState.Loaded,
+    onOpenPublicProfile: (id: String) -> Unit,
     onOpenDevices: () -> Unit,
     onManageOnWeb: () -> Unit,
 ) {
@@ -273,6 +278,12 @@ private fun MemberSections(
         }
     }
     Section(stringResource(R.string.profile_section_account)) {
+        ColaListItem(
+            title = stringResource(R.string.profile_public),
+            supporting = stringResource(R.string.profile_public_hint),
+            icon = ColaIcons.Person,
+            onClick = { onOpenPublicProfile(account.id.value) },
+        )
         ColaListItem(
             title = stringResource(R.string.profile_devices),
             supporting = stringResource(R.string.profile_devices_hint),

@@ -41,12 +41,27 @@ enum class Screen(val file: String) {
     ProfileMore("profile_more"),
     Devices("devices"),
     About("about"),
+
+    /** The author of a bike: header, numbers, and bikes. */
+    Person("person"),
+
+    /** The followers behind the number on a person's page. */
+    PeopleList("people_list"),
+
+    /** The search as it opens: the field, the tabs, the facets, and what to type. */
+    SearchStart("search_start"),
 }
 
 enum class Look(val dark: Boolean, val fontScale: Float, val file: String) {
     Light(dark = false, fontScale = 1f, file = "light"),
     Dark(dark = true, fontScale = 1f, file = "dark"),
     LargeText(dark = false, fontScale = 2f, file = "font200"),
+}
+
+/** From the list to the first bike's page and from there to its author. */
+private fun ComposeContentTestRule.openAuthor() {
+    onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+    onNodeWithText("Тестовый Райдер").performScrollTo().performClick()
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -126,6 +141,12 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithText("Профиль").performClick()
             onNodeWithText("О приложении").performScrollTo().performClick()
         }
+        Screen.Person -> openAuthor()
+        Screen.PeopleList -> {
+            openAuthor()
+            onNodeWithContentDescription("Подписчики, 12").performClick()
+        }
+        Screen.SearchStart -> onNodeWithContentDescription("Поиск").performClick()
         else -> Unit
     }
     mainClock.advanceTimeBy(3_000)

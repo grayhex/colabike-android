@@ -22,6 +22,15 @@ sealed interface Destination : NavKey {
 
     @Serializable data object Profile : Destination
 
+    /** A person's public page; [ref] is a UUID (from a list) or a username (from a link). */
+    @Serializable data class Person(val ref: String) : Destination
+
+    /** The people who follow [ref], or whom [ref] follows. */
+    @Serializable data class People(val ref: String, val following: Boolean) : Destination
+
+    /** Search over builds and people, opened from the bike list. */
+    @Serializable data object Search : Destination
+
     /** Where the account is signed in; opened from the profile. */
     @Serializable data object Devices : Destination
 

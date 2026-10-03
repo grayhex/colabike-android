@@ -46,6 +46,10 @@ class AppLinkParserTest {
             .isEqualTo(AppLink.Person("test.rider_2"))
         assertThat(parser.parse("https://colabike.ru/@")).isEqualTo(AppLink.NotForTheApp)
         assertThat(parser.parse("https://colabike.ru/@-bad")).isEqualTo(AppLink.NotForTheApp)
+        // The API takes a username of 3 to 30 characters.
+        assertThat(parser.parse("https://colabike.ru/@ab")).isEqualTo(AppLink.NotForTheApp)
+        assertThat(parser.parse("https://colabike.ru/@" + "a".repeat(31)))
+            .isEqualTo(AppLink.NotForTheApp)
         assertThat(parser.parse("https://colabike.ru/@a/b")).isEqualTo(AppLink.NotForTheApp)
     }
 
@@ -137,7 +141,7 @@ class LinkTargetTest {
     }
 
     @Test
-    fun `what has no screen yet is shown by the site on the same address`() {
+    fun `what has no screen yet is shown by the site on the same address, a profile is not one`() {
         assertThat(AppLink.Journal(uuid).target(site))
             .isEqualTo(LinkTarget.OnSite("https://colabike.ru/j/$uuid"))
         assertThat(AppLink.Ride(uuid).target(site))
@@ -145,7 +149,7 @@ class LinkTargetTest {
         assertThat(AppLink.Market(uuid).target(site))
             .isEqualTo(LinkTarget.OnSite("https://colabike.ru/market/$uuid"))
         assertThat(AppLink.Person("test-rider").target(site))
-            .isEqualTo(LinkTarget.OnSite("https://colabike.ru/@test-rider"))
+            .isEqualTo(LinkTarget.InApp(Destination.Person("test-rider")))
     }
 
     @Test
@@ -196,10 +200,18 @@ class LinkHandlerTest {
 
     @Test
     fun `an address without a screen opens on the site`() {
+        handler.handle("https://colabike.ru/j/$uuid")
+
+        assertThat(site).containsExactly("https://colabike.ru/j/$uuid")
+        assertThat(pending.destination.value).isNull()
+    }
+
+    @Test
+    fun `a profile address waits for the shell like a bike does`() {
         handler.handle("https://colabike.ru/@test-rider")
 
-        assertThat(site).containsExactly("https://colabike.ru/@test-rider")
-        assertThat(pending.destination.value).isNull()
+        assertThat(pending.destination.value).isEqualTo(Destination.Person("test-rider"))
+        assertThat(site).isEmpty()
     }
 
     @Test
@@ -258,6 +270,20 @@ class PendingNavigationTest {
         assertThat(pending().destination.value).isNull()
         // And it is gone for good, not only hidden.
         now = now.minus(Duration.ofMinutes(31))
+        assertThat(pending().destination.value).isNull()
+    }
+
+    @Test
+    fun `a person is kept as the link named them`() {
+        pending().offer(Destination.Person("test-rider"))
+        assertThat(pending().destination.value).isEqualTo(Destination.Person("test-rider"))
+
+        pending().offer(Destination.Person(uuid))
+        assertThat(pending().destination.value).isEqualTo(Destination.Person(uuid))
+
+        // Not a ref the API takes.
+        pending().clear()
+        pending().offer(Destination.Person("../me"))
         assertThat(pending().destination.value).isNull()
     }
 

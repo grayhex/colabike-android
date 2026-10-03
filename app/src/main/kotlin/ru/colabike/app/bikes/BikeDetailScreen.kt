@@ -76,6 +76,7 @@ fun BikeDetailRoute(
     id: BikeId,
     showBack: Boolean,
     onBack: () -> Unit,
+    onOpenAuthor: (ref: String) -> Unit = {},
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -95,6 +96,7 @@ fun BikeDetailRoute(
         onToggleLike = if (signedIn) viewModel::toggleLike else signIn,
         onShare = { title -> sharer.share(title, links.bike(id.value)) },
         onOpenLink = opener::open,
+        onOpenAuthor = onOpenAuthor,
     )
 }
 
@@ -113,6 +115,7 @@ fun BikeDetailScreen(
     onToggleLike: () -> Unit = {},
     onShare: (title: String) -> Unit = {},
     onOpenLink: (String) -> Unit = {},
+    onOpenAuthor: (ref: String) -> Unit = {},
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
     Scaffold(
@@ -162,7 +165,8 @@ fun BikeDetailScreen(
                             }
                         }
                     }
-                is BikeDetailUiState.Loaded -> BikeContent(state, onToggleLike, onShare, onOpenLink)
+                is BikeDetailUiState.Loaded ->
+                    BikeContent(state, onToggleLike, onShare, onOpenLink, onOpenAuthor)
             }
         }
     }
@@ -178,6 +182,7 @@ private fun BikeContent(
     onToggleLike: () -> Unit,
     onShare: (title: String) -> Unit,
     onOpenLink: (String) -> Unit,
+    onOpenAuthor: (ref: String) -> Unit,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -261,9 +266,9 @@ private fun BikeContent(
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         )
                     }
-                    // The author's page is a slice of its own; until it exists the row opens
-                    // nothing.
-                    summary.author?.let { UserRow(it) }
+                    summary.author?.let { author ->
+                        UserRow(author, onClick = { onOpenAuthor(author.id.value) })
+                    }
                 }
                 if (bike.description.isNotBlank()) {
                     Section(stringResource(R.string.bike_description)) {

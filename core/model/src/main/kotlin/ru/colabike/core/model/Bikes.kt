@@ -97,3 +97,24 @@ enum class BikeScope {
     Public,
     Mine,
 }
+
+/**
+ * A search over builds (`/experience/bikes`): free text matches names, brands, models and
+ * components. Only public bikes are found. [category] is one family; [electric] and [fatbike] are
+ * "only these" when true and not asked about when null.
+ */
+data class BikeSearch(
+    val text: String = "",
+    val category: String? = null,
+    val suspension: String? = null,
+    val electric: Boolean? = null,
+    val fatbike: Boolean? = null,
+) {
+    val isEmpty: Boolean
+        get() =
+            text.isBlank() &&
+                category == null &&
+                suspension == null &&
+                electric == null &&
+                fatbike == null
+}

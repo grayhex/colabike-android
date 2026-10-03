@@ -45,7 +45,12 @@ import ru.colabike.app.navigation.Destination
 import ru.colabike.app.navigation.Navigator
 import ru.colabike.app.navigation.TopLevel
 import ru.colabike.app.navigation.rememberNavigationState
+import ru.colabike.app.people.PeopleListKind
+import ru.colabike.app.people.PeopleListRoute
+import ru.colabike.app.people.PersonActions
+import ru.colabike.app.people.PersonRoute
 import ru.colabike.app.profile.ProfileRoute
+import ru.colabike.app.search.SearchRoute
 import ru.colabike.core.designsystem.component.BrandMark
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaNavItem
@@ -138,6 +143,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         dependencies.bikes,
                                         dependencies.auth,
                                         onOpen = { id -> navigator.openBike(id.value) },
+                                        onSearch = { navigator.open(Destination.Search) },
                                         scrollToTop =
                                             remember(navigator) {
                                                 navigator.reselects(Destination.Bikes)
@@ -147,13 +153,74 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                 entry<Destination.Bike>(
                                     metadata = ListDetailSceneStrategy.detailPane()
                                 ) { key ->
+                                    // Side by side with the list there is nothing to go back
+                                    // from; opened over a person or a search it fills the area
+                                    // and needs its arrow.
+                                    val stack = state.currentStack
+                                    val besideList =
+                                        twoPane &&
+                                            stack.getOrNull(stack.lastIndexOf(key) - 1) ==
+                                                Destination.Bikes
                                     BikeDetailRoute(
                                         repository = dependencies.bikes,
                                         auth = dependencies.auth,
                                         links = dependencies.links,
                                         id = BikeId(key.id),
-                                        showBack = !twoPane,
+                                        showBack = !besideList,
                                         onBack = { navigator.back() },
+                                        onOpenAuthor = { ref ->
+                                            navigator.open(Destination.Person(ref))
+                                        },
+                                    )
+                                }
+                                entry<Destination.Person> { key ->
+                                    PersonRoute(
+                                        people = dependencies.people,
+                                        bikes = dependencies.bikes,
+                                        auth = dependencies.auth,
+                                        ref = key.ref,
+                                        actions =
+                                            PersonActions(
+                                                onBack = { navigator.back() },
+                                                onOpenBike = { id -> navigator.openBike(id.value) },
+                                                onOpenFollowers = { ref ->
+                                                    navigator.open(
+                                                        Destination.People(ref, following = false)
+                                                    )
+                                                },
+                                                onOpenFollowing = { ref ->
+                                                    navigator.open(
+                                                        Destination.People(ref, following = true)
+                                                    )
+                                                },
+                                                onOpenAccount = {
+                                                    navigator.select(Destination.Profile)
+                                                },
+                                            ),
+                                    )
+                                }
+                                entry<Destination.People> { key ->
+                                    PeopleListRoute(
+                                        repository = dependencies.people,
+                                        ref = key.ref,
+                                        kind =
+                                            if (key.following) PeopleListKind.Following
+                                            else PeopleListKind.Followers,
+                                        onBack = { navigator.back() },
+                                        onOpenPerson = { ref ->
+                                            navigator.open(Destination.Person(ref))
+                                        },
+                                    )
+                                }
+                                entry<Destination.Search> {
+                                    SearchRoute(
+                                        bikes = dependencies.bikes,
+                                        people = dependencies.people,
+                                        onBack = { navigator.back() },
+                                        onOpenBike = { id -> navigator.openBike(id.value) },
+                                        onOpenPerson = { ref ->
+                                            navigator.open(Destination.Person(ref))
+                                        },
                                     )
                                 }
                                 entry<Destination.Profile> {
@@ -161,6 +228,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         dependencies,
                                         onOpenDevices = { navigator.open(Destination.Devices) },
                                         onOpenAbout = { navigator.open(Destination.About) },
+                                        onOpenPublicProfile = { id ->
+                                            navigator.open(Destination.Person(id))
+                                        },
                                     )
                                 }
                                 entry<Destination.Devices> {

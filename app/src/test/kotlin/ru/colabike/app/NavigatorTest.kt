@@ -165,4 +165,29 @@ class NavigatorTest {
         assertThat(navigator.back()).isTrue()
         assertThat(state.currentStack).containsExactly(profile)
     }
+
+    @Test
+    fun `a link to a person goes to the bikes section with the person on top`() {
+        navigator.select(profile)
+
+        navigator.go(Destination.Person("test-rider"))
+
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+        assertThat(state.currentStack)
+            .containsExactly(bikes, Destination.Person("test-rider"))
+            .inOrder()
+        assertThat(navigator.back()).isTrue()
+        assertThat(state.currentStack).containsExactly(bikes)
+    }
+
+    @Test
+    fun `a bike opened from a person is pushed over the person`() {
+        navigator.open(Destination.Person("u1"))
+
+        navigator.openBike("b3")
+
+        assertThat(state.currentStack)
+            .containsExactly(bikes, Destination.Person("u1"), Destination.Bike("b3"))
+            .inOrder()
+    }
 }

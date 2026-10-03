@@ -9,7 +9,12 @@ import ru.colabike.api.models.BikeComponent as BikeComponentDto
 import ru.colabike.api.models.BikePage as BikePageDto
 import ru.colabike.api.models.BikePhoto as BikePhotoDto
 import ru.colabike.api.models.BikeSummary as BikeSummaryDto
+import ru.colabike.api.models.FollowResult as FollowResultDto
 import ru.colabike.api.models.Me as MeDto
+import ru.colabike.api.models.Profile as ProfileDto
+import ru.colabike.api.models.Relationship as RelationshipDto
+import ru.colabike.api.models.UserPage as UserPageDto
+import ru.colabike.api.models.UserSummary as UserSummaryDto
 import ru.colabike.core.model.Account
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.BikeClassification
@@ -17,9 +22,14 @@ import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeSummary
+import ru.colabike.core.model.FollowState
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.Person
+import ru.colabike.core.model.PersonSummary
 import ru.colabike.core.model.Photo
+import ru.colabike.core.model.Profile
+import ru.colabike.core.model.ProfileCounts
+import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UserId
@@ -163,3 +173,33 @@ internal fun AccountSessionDto.toModel(): AccountSession =
         lastSeenAt = lastSeenAt.toInstant(),
         isCurrent = current,
     )
+
+internal fun RelationshipDto.toModel(): Relationship =
+    Relationship(
+        isSelf = isSelf,
+        following = following,
+        followedBy = followedBy,
+        friends = friends,
+    )
+
+internal fun UserSummaryDto.toModel(media: MediaUrls): PersonSummary =
+    PersonSummary(
+        person = Person(UserId(id.toString()), username, name, media.resolve(avatarUrl)),
+        relationship = relationship?.toModel(),
+    )
+
+internal fun UserPageDto.toModel(media: MediaUrls): Page<PersonSummary> =
+    Page(items.map { it.toModel(media) }, nextCursor)
+
+internal fun ProfileDto.toModel(media: MediaUrls): Profile =
+    Profile(
+        person = Person(UserId(id.toString()), username, name, media.resolve(avatarUrl)),
+        bio = bio,
+        location = location,
+        joined = createdAt.toInstant(),
+        counts = ProfileCounts(counts.bikes, counts.followers, counts.following),
+        relationship = relationship?.toModel(),
+    )
+
+internal fun FollowResultDto.toModel(): FollowState =
+    FollowState(relationship = relationship.toModel(), followers = followers)
