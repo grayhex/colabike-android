@@ -23,7 +23,8 @@ import org.junit.runner.RunWith
  * (the device session is revoked, the account does not collect devices).
  *
  * Credentials come only as instrumentation arguments from CI secrets (smokeEmail, smokePassword);
- * without them the test is skipped, never faked.
+ * without them the test is skipped, never faked. CI leaves the class out instead (notClass): AGP's
+ * test engine reports an assumption failure as a failure.
  */
 @RunWith(AndroidJUnit4::class)
 class LiveSmokeTest {

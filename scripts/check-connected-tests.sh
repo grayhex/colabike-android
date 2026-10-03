@@ -2,10 +2,10 @@
 # Fails unless every module with instrumented tests really ran them on the device.
 #   scripts/check-connected-tests.sh [gradle-output.log]
 #
-# A green connectedDebugAndroidTest proves nothing by itself: when an APK does not install,
-# AGP's test engine logs "AndroidTestRunner failed on <device>" and still finishes the task
-# successfully with 0 tests. So each module with src/androidTest must report at least one test
-# that ran (not skipped) and no failures.
+# A green connectedDebugAndroidTest proves nothing by itself. When an APK does not install, AGP's
+# test engine logs "AndroidTestRunner failed on <device>" and finishes the task successfully with
+# 0 tests; it also stayed green with a failed test in its report. So each module with
+# src/androidTest must report at least one test that ran (not skipped) and no failures.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

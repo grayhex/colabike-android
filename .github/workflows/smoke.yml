@@ -2,8 +2,8 @@ name: Android 17 smoke
 
 # Live smoke on an Android 17 emulator against production (#325): sign in with the dedicated
 # smoke account, /bikes, a bike, /me, sign out. Also runs the Keystore and startup instrumented
-# tests. Without the COLABIKE_SMOKE_EMAIL / COLABIKE_SMOKE_PASSWORD secrets the live test is
-# skipped and says so; it never passes on fake data.
+# tests. Without the COLABIKE_SMOKE_EMAIL / COLABIKE_SMOKE_PASSWORD secrets the live test class is
+# left out of the run and the job says so; it never passes on fake data.
 
 on:
   push:
@@ -40,7 +40,7 @@ jobs:
       - name: Smoke credentials
         run: |
           if [ -z "$SMOKE_EMAIL" ] || [ -z "$SMOKE_PASSWORD" ]; then
-            echo "::notice title=Live smoke skipped::COLABIKE_SMOKE_EMAIL / COLABIKE_SMOKE_PASSWORD are not set; only the Keystore and startup tests run."
+            echo "::notice title=Live smoke not run::COLABIKE_SMOKE_EMAIL / COLABIKE_SMOKE_PASSWORD are not set; only the Keystore and startup tests run."
           fi
       - run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :core:auth:assembleDebugAndroidTest
       - name: Start the Android 17 emulator
@@ -53,6 +53,9 @@ jobs:
           if [ -n "$SMOKE_EMAIL" ] && [ -n "$SMOKE_PASSWORD" ]; then
             args+=("-Pandroid.testInstrumentationRunnerArguments.smokeEmail=$SMOKE_EMAIL")
             args+=("-Pandroid.testInstrumentationRunnerArguments.smokePassword=$SMOKE_PASSWORD")
+          else
+            # Left out rather than skipped: AGP's test engine reports an assumption failure as a failure.
+            args+=("-Pandroid.testInstrumentationRunnerArguments.notClass=ru.colabike.app.LiveSmokeTest")
           fi
           ./gradlew connectedDebugAndroidTest "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/connected.log"
       # The task stays green when an APK does not install; the reports say whether tests ran.
@@ -69,8 +72,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: android-test-reports
+          # Per-test logcat stays out: the live smoke types real credentials on the device.
           path: |
             **/build/reports/androidTests/
             **/build/outputs/androidTest-results/
+            !**/build/outputs/androidTest-results/**/logcat-*.txt
             ${{ runner.temp }}/emulator.log
           retention-days: 7

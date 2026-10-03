@@ -100,14 +100,14 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 | `core:auth` androidTest | настоящий Keystore: шифрование, удалённый ключ | эмулятор |
 | `core:designsystem` | компоненты в обеих темах и с шрифтом 200 % | Robolectric + Roborazzi |
 | `app` | ViewModel с фейками, экраны в compact и expanded, обе темы, list-detail в две панели | JUnit, Robolectric + Roborazzi |
-| `app` androidTest | запуск на Android 17 до экрана входа; live smoke: вход → `/bikes` → велосипед → `/me` → выход | эмулятор API 37, `smoke.yml` |
+| `app` androidTest | `StartupTest` — запуск на Android 17 до экрана входа; `LiveSmokeTest` — вход → `/bikes` → велосипед → `/me` → выход | эмулятор API 37, `smoke.yml` |
 
 - `ci.yml` запускает `./gradlew verify` на каждый PR и push в `main`.
-- `smoke.yml` поднимает эмулятор API 37 (`google_apis`, x86_64, KVM) и выполняет `connectedDebugAndroidTest`. Учётные данные приходят из secrets `COLABIKE_SMOKE_EMAIL` и `COLABIKE_SMOKE_PASSWORD`, без них live-тест пропускается с пометкой.
+- `smoke.yml` поднимает эмулятор API 37 (`google_apis`, x86_64, KVM) и выполняет `connectedDebugAndroidTest`. Учётные данные приходят из secrets `COLABIKE_SMOKE_EMAIL` и `COLABIKE_SMOKE_PASSWORD`. Без них `LiveSmokeTest` исключается из прогона (`notClass`), и job об этом сообщает. Не пропускается через assumption, потому что test engine AGP 9.4 записывает невыполненное assumption как падение.
   - `scripts/emulator.sh start` задаёт AVD 6 ГБ `/data` и 4 ГБ RAM. После `sys.boot_completed` скрипт ждёт, пока package manager отвечает, внутренний том смонтирован, а `system_server` минуту не перезапускается. Иначе установка APK падает с «not enough space» или «Can't find service: package».
   - Эмулятор запускается с `-gpu swiftshader -feature GLDirectMem,HasSharedSlotsHostMemoryAllocator`. Gralloc-mapper образа API 37 читает буферы только через `ANDROID_EMU_read_color_buffer_dma`, а рендерер предлагает это расширение лишь при обеих функциях. Вторую образ не объявляет, и без флага SurfaceFlinger каждые 20–30 секунд падает на `Assertion failed: !rcEnc->featureInfo()->hasReadColorBufferDma`, утягивая за собой `system_server`.
-  - Зелёная задача ещё не значит, что тесты прошли: если APK не установился, test engine AGP 9.4 пишет «AndroidTestRunner failed» и завершается успешно с нулём тестов. Поэтому `scripts/check-connected-tests.sh` по отчётам требует от каждого модуля с `src/androidTest` хотя бы один выполненный, не пропущенный тест и ноль падений.
-  - При сбое `scripts/emulator.sh diagnose` выводит состояние устройства и отфильтрованный logcat в лог job, а не в артефакт: GitHub маскирует секреты только в логах.
+  - Зелёная задача ещё не значит, что тесты прошли. Если APK не установился, test engine AGP 9.4 пишет «AndroidTestRunner failed» и завершается успешно с нулём тестов; зелёной задача оставалась и с упавшим тестом в отчёте. Поэтому `scripts/check-connected-tests.sh` по отчётам требует от каждого модуля с `src/androidTest` хотя бы один выполненный, не пропущенный тест и ноль падений.
+  - При сбое `scripts/emulator.sh diagnose` выводит состояние устройства и отфильтрованный logcat в лог job: GitHub маскирует секреты только в логах. Logcat по тестам в артефакт не попадает, потому что live smoke вводит на устройстве настоящие учётные данные.
 
 ## Release и RuStore
 
