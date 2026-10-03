@@ -3,6 +3,7 @@
     <string name="cola_no_photo">Нет фото</string>
     <string name="cola_former_bike">Бывший</string>
     <string name="cola_open">Открыть</string>
+    <string name="cola_back">Назад</string>
     <string name="cola_retry">Повторить</string>
     <string name="cola_loading">Загрузка</string>
     <string name="cola_ride_planned">План</string>

@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -55,7 +53,7 @@ fun RideCard(ride: RideSummary, onClick: () -> Unit, modifier: Modifier = Modifi
     val description =
         listOfNotNull(ride.title, status, day, distance, duration, ride.bikeName).joinToString(", ")
     val openLabel = stringResource(R.string.cola_open)
-    OutlinedCard(
+    ColaCard(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
         modifier =
@@ -68,34 +66,22 @@ fun RideCard(ride: RideSummary, onClick: () -> Unit, modifier: Modifier = Modifi
                 }
             },
     ) {
-        Column(Modifier.padding(Spacing.m), verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+        Column(
+            Modifier.padding(Spacing.l),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
                 Text(
                     ride.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                if (status != null) {
-                    Surface(
-                        color =
-                            if (ride.status == RideStatus.Planned)
-                                MaterialTheme.colorScheme.tertiaryContainer
-                            else MaterialTheme.colorScheme.secondaryContainer,
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        Text(
-                            status,
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier =
-                                Modifier.padding(horizontal = Spacing.s, vertical = Spacing.xxs),
-                        )
-                    }
-                }
+                if (status != null) PillBadge(status)
             }
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.m),

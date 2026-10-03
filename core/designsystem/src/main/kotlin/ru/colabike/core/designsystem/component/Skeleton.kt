@@ -15,11 +15,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -29,8 +30,11 @@ import ru.colabike.core.designsystem.R
 import ru.colabike.core.designsystem.theme.LocalReducedMotion
 import ru.colabike.core.designsystem.theme.Spacing
 
-/** A placeholder block; it pulses unless the system removes animations. */
-fun Modifier.skeleton(): Modifier = composed {
+/**
+ * A placeholder block in the theme's small shape, or [shape]; it pulses unless the system removes
+ * animations.
+ */
+fun Modifier.skeleton(shape: Shape? = null): Modifier = composed {
     val pulse =
         if (LocalReducedMotion.current) 1f
         else
@@ -44,21 +48,23 @@ fun Modifier.skeleton(): Modifier = composed {
                 )
                 .value
     alpha(pulse)
-        .background(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.shapes.small)
+        .background(
+            MaterialTheme.colorScheme.surfaceContainerHighest,
+            shape ?: MaterialTheme.shapes.small,
+        )
 }
 
 /** The shape of a [BikeCard] while it loads. */
 @Composable
 fun BikeCardSkeleton(modifier: Modifier = Modifier) {
-    OutlinedCard(
-        modifier = modifier.fillMaxWidth().clearAndSetSemantics {},
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).skeleton())
-        Column(Modifier.padding(Spacing.m), verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+    ColaCard(modifier = modifier.fillMaxWidth().clearAndSetSemantics {}) {
+        Box(Modifier.fillMaxWidth().aspectRatio(BikePhotoAspect).skeleton(RectangleShape))
+        Column(
+            Modifier.padding(Spacing.card),
+            verticalArrangement = Arrangement.spacedBy(Spacing.s),
+        ) {
             Box(Modifier.fillMaxWidth(0.7f).height(18.dp).skeleton())
             Box(Modifier.fillMaxWidth(0.45f).height(14.dp).skeleton())
-            Box(Modifier.fillMaxWidth(0.3f).height(12.dp).skeleton())
         }
     }
 }

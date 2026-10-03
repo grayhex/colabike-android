@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Material Symbols Rounded "lock" (Apache 2.0, google/material-design-icons). -->
+<!-- Material Symbols Rounded "lock", weight 300 (Apache 2.0, google/material-design-icons via @material-symbols/svg-300). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960">
     <group android:translateY="960">
-        <path android:fillColor="@android:color/white" android:pathData="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm0-80h480v-400H240v400Zm240-120q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80ZM240-160v-400 400Z" />
+        <path android:fillColor="@android:color/white" android:pathData="M237.69-100q-23.59 0-40.64-17.05T180-157.69v-400.15q0-23.9 17.05-40.8t40.64-16.9h69.62v-91.77q0-71.89 50.44-122.29Q408.19-880 480.13-880q71.95 0 122.25 50.4 50.31 50.4 50.31 122.29v91.77h69.62q23.59 0 40.64 16.9t17.05 40.8v400.15q0 23.59-17.05 40.64T722.31-100H237.69Zm0-45.39h484.62q5.38 0 8.84-3.46t3.46-8.84v-400.15q0-5.39-3.46-8.85t-8.84-3.46H237.69q-5.38 0-8.84 3.46t-3.46 8.85v400.15q0 5.38 3.46 8.84t8.84 3.46Zm290.27-164.14q19.81-19.53 19.81-47.01 0-26.54-19.98-47.77-19.97-21.23-47.96-21.23-27.98 0-47.79 21.23t-19.81 48.27q0 27.04 19.98 46.54 19.97 19.5 47.96 19.5 27.98 0 47.79-19.53ZM352.69-615.54h254.62v-91.77q0-53.04-37.09-90.17t-90.08-37.13q-52.99 0-90.22 37.13t-37.23 90.17v91.77Zm-127.3 470.15v-424.76 424.76Z" />
     </group>
 </vector>
