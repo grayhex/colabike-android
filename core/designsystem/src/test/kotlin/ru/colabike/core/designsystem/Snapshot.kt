@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -21,7 +20,6 @@ import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
-import com.github.takahirom.roborazzi.captureRoboImage
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 
 /** Photos in screenshots are flat colour: no network, the same pixels on every machine. */
@@ -61,5 +59,5 @@ fun ComposeContentTestRule.snapshot(
     waitForIdle()
     mainClock.advanceTimeBy(3_000)
     waitForIdle()
-    onRoot().captureRoboImage("src/test/screenshots/$name.png")
+    captureWhenDrawn("src/test/screenshots/$name.png")
 }

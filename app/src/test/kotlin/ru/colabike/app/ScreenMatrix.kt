@@ -10,14 +10,12 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
-import com.github.takahirom.roborazzi.captureRoboImage
 import ru.colabike.app.login.LoginScreen
 import ru.colabike.app.login.LoginUiState
 import ru.colabike.app.ui.AppShell
@@ -91,5 +89,5 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
     }
     mainClock.advanceTimeBy(3_000)
     waitForIdle()
-    onRoot().captureRoboImage("src/test/screenshots/${screen.file}_${window}_${look.file}.png")
+    captureWhenDrawn("src/test/screenshots/${screen.file}_${window}_${look.file}.png")
 }

@@ -10,14 +10,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
-import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -101,9 +99,9 @@ class StateScreenshotTest(private val state: ScreenState, private val look: Look
         compose.waitForIdle()
         compose.mainClock.advanceTimeBy(3_000)
         compose.waitForIdle()
-        compose
-            .onRoot()
-            .captureRoboImage("src/test/screenshots/state_${state.file}_compact_${look.file}.png")
+        compose.captureWhenDrawn(
+            "src/test/screenshots/state_${state.file}_compact_${look.file}.png"
+        )
     }
 
     companion object {
