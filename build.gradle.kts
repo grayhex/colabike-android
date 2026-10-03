@@ -10,15 +10,17 @@ plugins {
     alias(libs.plugins.spotless)
 }
 
+// Targets name the source folders instead of "**": targetExclude only subtracts files after the
+// walk, so "**/*.kt" still read build/generated while openApiGenerate rewrote it ("Could not read
+// path"). Modules live at <module>/src or <group>/<module>/src.
 spotless {
     kotlin {
-        target("**/*.kt")
-        targetExclude("**/build/**", ".claude/**")
+        target("*/src/**/*.kt", "*/*/src/**/*.kt")
+        targetExclude(".claude/**")
         ktfmt(libs.versions.ktfmt.get()).kotlinlangStyle()
     }
     kotlinGradle {
-        target("**/*.gradle.kts")
-        targetExclude("**/build/**", ".claude/**")
+        target("*.gradle.kts", "*/*.gradle.kts", "*/*/*.gradle.kts")
         ktfmt(libs.versions.ktfmt.get()).kotlinlangStyle()
     }
 }
