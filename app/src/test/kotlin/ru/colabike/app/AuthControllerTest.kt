@@ -35,7 +35,11 @@ class AuthControllerTest {
     private val code = "cola_ac_" + "a".repeat(43)
     private val verifier = Memory()
 
-    private suspend fun controller(scope: TestScope, signedIn: Boolean): AuthController {
+    private suspend fun controller(
+        scope: TestScope,
+        signedIn: Boolean,
+        yandexReady: () -> Boolean = { true },
+    ): AuthController {
         val session =
             DeviceSession(
                 plainSessions = ColaBikeApi(config, HttpClients.base(config)).sessions,
@@ -47,10 +51,20 @@ class AuthControllerTest {
         return AuthController(
             session = session,
             yandex = YandexSignIn(config.siteUrl, "https://colabike.test/app/auth", verifier),
-            yandexReady = { true },
+            yandexReady = yandexReady,
             revoke = {},
             scope = scope,
         )
+    }
+
+    @Test
+    fun `the Yandex button follows the build and the server, asked each time`() = runTest {
+        var ready = false
+        val auth = controller(this, signedIn = false, yandexReady = { ready })
+
+        assertThat(auth.yandexEnabled).isFalse()
+        ready = true
+        assertThat(auth.yandexEnabled).isTrue()
     }
 
     @Test

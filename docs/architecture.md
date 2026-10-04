@@ -99,7 +99,8 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 ## API v1 и контракт
 
 - Источник истины — `https://colabike.ru/api/v1/openapi.json`. В репозитории лежит снимок `api/openapi.json` (pretty JSON) и его SHA-256 в `api/openapi.json.sha256`. Задача `verifyApiContract` входит в `check` и `verify`, поэтому изменённый снимок без новой суммы ломает сборку.
-- Обновление: `./gradlew :core:network:updateApiContract`, затем ревью diff. Еженедельный workflow `contract.yml` сравнивает снимок с production (`checkApiContractDrift`).
+- Обновление: `./gradlew :core:network:updateApiContract`, затем ревью diff (`-PcontractUrl=…` берёт документ из другого места, например из файла, собранного из исходников бэкенда, пока production отстаёт). Еженедельный workflow `contract.yml` сравнивает снимок с production (`checkApiContractDrift`): пока бэкенд не выложен, он честно красный.
+- Конфигурация, которой управляет сервер (`/app-config`), — кэш в файле с версией формата, `ETag`, картинки в отдельной папке, флаги функций и политика версий: [ADR 0014](adr/0014-remote-app-config.md). Холодный старт сети не ждёт.
 - Генерация: OpenAPI Generator 7.25.0 со следующими настройками:
   - `kotlin`, `jvm-okhttp4`;
   - `serializationLibrary=kotlinx_serialization`;

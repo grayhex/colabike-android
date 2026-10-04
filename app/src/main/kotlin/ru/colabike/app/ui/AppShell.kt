@@ -45,8 +45,6 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import ru.colabike.app.AppDependencies
 import ru.colabike.app.R
 import ru.colabike.app.about.AboutRoute
@@ -56,7 +54,6 @@ import ru.colabike.app.bikes.BikesRoute
 import ru.colabike.app.comments.CommentsRoute
 import ru.colabike.app.components.ComponentRoute
 import ru.colabike.app.components.ComponentsRoute
-import ru.colabike.app.config.LocalFeatures
 import ru.colabike.app.devices.DevicesRoute
 import ru.colabike.app.feed.FeedActions
 import ru.colabike.app.feed.FeedRoute
@@ -107,7 +104,6 @@ import ru.colabike.core.model.Feature
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.ListingId
 import ru.colabike.core.model.RideId
-import ru.colabike.core.model.ServiceLinks
 
 /**
  * The signed-in shell. The window decides the navigation: a floating bar below the medium width, a
@@ -120,13 +116,10 @@ import ru.colabike.core.model.ServiceLinks
 fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
     // The tabs are those of the config the app started on: a section does not vanish under a
     // person who is in it. A change of flags reaches the tabs at the next start (and the entry
-    // points inside the screens at once, see LocalFeatures).
-    val features = LocalFeatures.current
-    val serviceLinks by
-        remember(dependencies) {
-                dependencies.appConfig.state.map { it.config.links }.distinctUntilChanged()
-            }
-            .collectAsStateWithLifecycle(ServiceLinks.None)
+    // points inside the screens at once).
+    val config by dependencies.appConfig.state.collectAsStateWithLifecycle()
+    val features = config.features
+    val serviceLinks = config.config.links
     val startFeatures = remember { features }
     val sections = remember(startFeatures) { TopLevel.shown(startFeatures) }
     val state =

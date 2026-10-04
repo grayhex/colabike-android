@@ -1,7 +1,6 @@
 package ru.colabike.app.config
 
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -44,9 +43,6 @@ interface AppConfigSource {
      */
     fun refreshIfStale()
 }
-
-/** The functions that are on, for any screen: a flag read here is the one the server last gave. */
-val LocalFeatures = staticCompositionLocalOf { FeatureAvailability.AllOn }
 
 /**
  * Keeps [AppConfigState] up to date. The cold start never waits on the network: the kept config is

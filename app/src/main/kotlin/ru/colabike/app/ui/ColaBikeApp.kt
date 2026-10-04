@@ -21,7 +21,6 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.app.AppDependencies
-import ru.colabike.app.config.LocalFeatures
 import ru.colabike.app.login.LoginRoute
 import ru.colabike.core.auth.AuthState
 
@@ -66,19 +65,17 @@ fun ColaBikeApp(dependencies: AppDependencies) {
         onPauseOrDispose {}
     }
 
-    CompositionLocalProvider(LocalFeatures provides config.features) {
-        ColaBikeContent(
-            dependencies = dependencies,
-            auth = auth,
-            configLoaded = config.loaded,
-            guest = guest,
-            signedIn = signedIn,
-            signInOpen = signInOpen,
-            onSignInOpen = { signInOpen = it },
-            sessionStores = sessionStores,
-            shellState = shellState,
-        )
-    }
+    ColaBikeContent(
+        dependencies = dependencies,
+        auth = auth,
+        configLoaded = config.loaded,
+        guest = guest,
+        signedIn = signedIn,
+        signInOpen = signInOpen,
+        onSignInOpen = { signInOpen = it },
+        sessionStores = sessionStores,
+        shellState = shellState,
+    )
 }
 
 @Composable
