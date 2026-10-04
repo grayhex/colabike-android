@@ -14,6 +14,8 @@ import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.AuthController
 import ru.colabike.app.comments.CommentDrafts
 import ru.colabike.app.comments.InMemoryCommentDrafts
+import ru.colabike.app.config.AppConfigController
+import ru.colabike.app.config.AppConfigSource
 import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.PreferencesPendingNavigation
 import ru.colabike.app.links.SiteLinks
@@ -38,6 +40,8 @@ import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.ChatRepository
 import ru.colabike.core.model.CommentsRepository
 import ru.colabike.core.model.ComponentsRepository
+import ru.colabike.core.model.ConfigAssets
+import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.MarketRepository
@@ -45,11 +49,14 @@ import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.RidesRepository
 import ru.colabike.core.network.ApiConfig
+import ru.colabike.core.network.AppConfigCache
 import ru.colabike.core.network.ColaBikeApi
+import ru.colabike.core.network.FileConfigAssets
 import ru.colabike.core.network.HttpClients
 import ru.colabike.core.network.MediaUrls
 import ru.colabike.core.network.NetworkAccountRepository
 import ru.colabike.core.network.NetworkAccountSessionsRepository
+import ru.colabike.core.network.NetworkAppConfigRepository
 import ru.colabike.core.network.NetworkBikesRepository
 import ru.colabike.core.network.NetworkChatRepository
 import ru.colabike.core.network.NetworkCommentsRepository
@@ -86,6 +93,14 @@ interface AppDependencies {
 
     /** The provider's screens: the SDK's in the app, drawings in tests. */
     val chatScreens: ChatScreens
+
+    /**
+     * The server-managed config: the flags of the app's functions, the service links, the policy.
+     */
+    val appConfig: AppConfigSource
+
+    /** The pictures of the config, kept on the device apart from the image cache. */
+    val configAssets: ConfigAssets
 
     /** Unsent comment text, in memory for this session only. */
     val drafts: CommentDrafts
@@ -155,6 +170,24 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val components: ComponentsRepository =
         NetworkComponentsRepository(api.components, media)
     override val market: MarketRepository = NetworkMarketRepository(api.market, api.personal, media)
+
+    // The config and its pictures live outside the image cache and outside the session: they are
+    // the same for everybody, and a sign-out takes nothing of them (nor do they hold anything of a
+    // person). The pictures are fetched without the session.
+    override val configAssets: ConfigAssets =
+        FileConfigAssets(File(context.filesDir, "app-config/assets"), baseClient, config.siteUrl)
+    private val appConfigController =
+        AppConfigController(
+            repository =
+                NetworkAppConfigRepository(
+                    api = api.app,
+                    media = media,
+                    cache = AppConfigCache(File(context.filesDir, "app-config/app-config.json")),
+                    assets = configAssets,
+                ),
+            scope = scope,
+        )
+    override val appConfig: AppConfigSource = appConfigController
     override val chat: ChatRepository = NetworkChatRepository(api.chat, api::chatWithKey, media)
     override val chatSession: ChatSession = ChatSession(chat, StreamChatGateway(context), scope)
     override val chatScreens: ChatScreens = StreamChatScreens
@@ -184,13 +217,19 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
                             KeystoreTokenCipher("colabike.pkce.v1"),
                         ),
                 ),
-            yandexEnabled = BuildConfig.YANDEX_SIGN_IN,
+            // The build and the server must both be ready; the server can also switch it off.
+            yandexReady = {
+                BuildConfig.YANDEX_SIGN_IN &&
+                    appConfigController.state.value.features.isEnabled(Feature.NativeYandexSignIn)
+            },
             revoke = { api.sessions.revokeCurrentSession() },
             scope = scope,
         )
 
     init {
         scope.launch { session.restore() }
+        // Reads what the device kept and asks the server afterwards; nothing waits for the network.
+        appConfigController.start()
         // Only a person leaving clears what they leave behind: a start without a session is no
         // sign-out, and a guest's cached pictures survive it.
         scope.launch {

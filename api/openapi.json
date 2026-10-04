@@ -3,7 +3,7 @@
     "info": {
         "title": "ColaBike API",
         "version": "1.0.0",
-        "description": "API ColaBike: вход устройств, текущий пользователь, чтение велосипедов, людей, журнала, покатушек и комментариев.\n\n**Вход.** Два способа. Браузер — HttpOnly cookie `cola_session`, которую выдаёт вход на сайте. Нативный клиент — сессия устройства: `POST /auth/sessions` возвращает пару непрозрачных токенов, токен доступа (`cola_at_…`, 15 минут) передаётся как `Authorization: Bearer`, одноразовый refresh-токен (`cola_rt_…`) обновляется через `POST /auth/sessions/refresh`. Cookie и Bearer в одном запросе — 400 `ambiguous_authentication`; другие схемы Authorization — 401 `unsupported_authentication`. Просроченный токен доступа — 401 `token_expired`, любой другой негодный — 401 `invalid_token`. CORS не включён.\n\n**Ошибки.** Тело ошибки — `{ \"error\": { \"code\", \"message\", \"details?\" } }`; клиент ветвится по `code`. Неизвестный адрес под `/api/v1` отвечает 404, неподдерживаемый метод — 405 с заголовком `Allow`. Каждый ответ несёт `X-Request-ID` для обращения в поддержку.\n\n**Кэш.** Ответы зависят от того, кто спрашивает, и не кэшируются (`Cache-Control: no-store`), кроме самого документа.\n\n**Изображения.** Адреса фото (`url`, `avatarUrl`, `coverUrl`) — пути сайта относительно его адреса. Публичные открываются без входа; приватные (фото закрытого велосипеда, картинки черновика журнала) — владельцу, с тем же `Authorization: Bearer` (или cookie), что и API; чужому и гостю — 404, недействительному токену — 401. Ответы зависят от зрителя (`Vary: Cookie, Authorization`), поддерживают `ETag`/304 и `?width=`.\n\n**Видимость.** Публичный велосипед видят все, приватный — только владелец. Чужой приватный и несуществующий велосипед неотличимы: оба дают 404. Велосипеды заблокированных владельцев никому не видны.\n\n**Что не входит.** Личные ответы владельца о покатушках, участие в них, поиск, рынок и операции записи, а также нативный вход через внешних провайдеров — отдельные срезы.",
+        "description": "API ColaBike: вход устройств, текущий пользователь, чтение велосипедов, людей, журнала, покатушек и комментариев, настройки приложения.\n\n**Вход.** Два способа. Браузер — HttpOnly cookie `cola_session`, которую выдаёт вход на сайте. Нативный клиент — сессия устройства: `POST /auth/sessions` возвращает пару непрозрачных токенов, токен доступа (`cola_at_…`, 15 минут) передаётся как `Authorization: Bearer`, одноразовый refresh-токен (`cola_rt_…`) обновляется через `POST /auth/sessions/refresh`. Cookie и Bearer в одном запросе — 400 `ambiguous_authentication`; другие схемы Authorization — 401 `unsupported_authentication`. Просроченный токен доступа — 401 `token_expired`, любой другой негодный — 401 `invalid_token`. CORS не включён.\n\n**Ошибки.** Тело ошибки — `{ \"error\": { \"code\", \"message\", \"details?\" } }`; клиент ветвится по `code`. Неизвестный адрес под `/api/v1` отвечает 404, неподдерживаемый метод — 405 с заголовком `Allow`. Каждый ответ несёт `X-Request-ID` для обращения в поддержку.\n\n**Кэш.** Ответы зависят от того, кто спрашивает, и не кэшируются (`Cache-Control: no-store`). Исключения — сам документ и настройки приложения `/app-config`: они одинаковы для всех; настройки свежи минуту, затем проверяются по `ETag` (304 без тела).\n\n**Изображения.** Адреса фото (`url`, `avatarUrl`, `coverUrl`) — пути сайта относительно его адреса. Публичные открываются без входа; приватные (фото закрытого велосипеда, картинки черновика журнала) — владельцу, с тем же `Authorization: Bearer` (или cookie), что и API; чужому и гостю — 404, недействительному токену — 401. Ответы зависят от зрителя (`Vary: Cookie, Authorization`), поддерживают `ETag`/304 и `?width=`.\n\n**Видимость.** Публичный велосипед видят все, приватный — только владелец. Чужой приватный и несуществующий велосипед неотличимы: оба дают 404. Велосипеды заблокированных владельцев никому не видны.\n\n**Что не входит.** Личные ответы владельца о покатушках, участие в них, поиск, рынок и операции записи, а также нативный вход через внешних провайдеров — отдельные срезы.",
         "license": {
             "name": "Пользовательское соглашение ColaBike",
             "url": "https://colabike.ru/legal/terms"
@@ -62,6 +62,10 @@
         {
             "name": "Users",
             "description": "Публичные профили, их велосипеды и подписки."
+        },
+        {
+            "name": "App",
+            "description": "Настройки нативного приложения из админки: экран запуска, знакомство, сообщение, ссылки, доступность функций и политика версий. Без входа."
         },
         {
             "name": "Contract",
@@ -6428,6 +6432,91 @@
                 }
             }
         },
+        "/app-config": {
+            "get": {
+                "operationId": "getAppConfig",
+                "tags": [
+                    "App"
+                ],
+                "summary": "Настройки приложения",
+                "description": "Что приложение может менять без новой сборки: экран запуска после системного splash, знакомство, сообщение, служебные ссылки, доступность уже встроенных функций и политика версий. Без входа, одинаково для всех; заголовки входа не читаются. Только перечисленные поля, без разметки, стилей и кода; поля со временем только добавляются, неизвестные приложение пропускает. Ответ свеж минуту (`Cache-Control: public, max-age=60`), затем запрос с `If-None-Match` получает 304 без тела, если ничего не изменилось. `revision` растёт с каждым сохранением в админке; `ETag` меняется и при смене настроек сервера (например, готовности входа через Яндекс ID).",
+                "security": [
+                    
+                ],
+                "parameters": [
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "`ETag` прошлого ответа: без изменений ответ — 304.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Настройки приложения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Валидатор этого ответа для `If-None-Match`.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Cache-Control": {
+                                "description": "`public, max-age=60`.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AppConfig"
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Настройки не изменились: тела нет, `ETag` тот же.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Тот же валидатор.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "405": {
+                        "description": "Другой метод: разрешены GET, HEAD и OPTIONS.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
         "/openapi.json": {
             "get": {
                 "operationId": "getOpenApiDocument",
@@ -11882,6 +11971,314 @@
                 ],
                 "additionalProperties": false,
                 "description": "Число непрочитанных сообщений во всех каналах человека."
+            },
+            "AppLaunch": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Показывать ли экран; `true` только вместе с `imageUrl`."
+                    },
+                    "imageUrl": {
+                        "description": "Путь к растровому изображению (WebP) относительно адреса сайта или null. Файл публичный и не меняется: новая картинка получает новый адрес. Принимает `?width=` из набора 160, 320, 640, 1280, 1920, 2400.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "contentMode": {
+                        "type": "string",
+                        "enum": [
+                            "fit",
+                            "crop"
+                        ],
+                        "description": "`fit` — вписать изображение целиком, `crop` — заполнить экран с обрезкой. Неизвестное значение трактуйте как `crop`."
+                    },
+                    "title": {
+                        "description": "Короткая подпись или null.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "enabled",
+                    "imageUrl",
+                    "contentMode",
+                    "title"
+                ],
+                "additionalProperties": false,
+                "description": "Экран запуска, который приложение показывает после системного splash. Системный SplashScreen и иконка остаются в APK и отсюда не меняются."
+            },
+            "AppOnboardingItem": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "imageUrl": {
+                        "description": "Путь к растровому изображению (WebP) относительно адреса сайта или null. Файл публичный и не меняется: новая картинка получает новый адрес. Принимает `?width=` из набора 160, 320, 640, 1280, 1920, 2400.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "title",
+                    "body",
+                    "imageUrl"
+                ],
+                "additionalProperties": false,
+                "description": "Карточка знакомства с приложением. Обычный текст без разметки."
+            },
+            "AppOnboarding": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "revision": {
+                        "type": "integer",
+                        "description": "Редакция знакомства. Меняется, когда администратор публикует новую; сравнивайте на равенство с редакцией, которую человек уже прошёл на устройстве."
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AppOnboardingItem"
+                        }
+                    }
+                },
+                "required": [
+                    "enabled",
+                    "revision",
+                    "items"
+                ],
+                "additionalProperties": false,
+                "description": "Знакомство с приложением: карточки по порядку. Выключенное приходит с пустым `items`."
+            },
+            "AppNoticeAction": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "label",
+                    "url"
+                ],
+                "additionalProperties": false,
+                "description": "Кнопка сообщения: текст и абсолютный адрес — страница ColaBike или https-адрес разрешённого администратором сайта."
+            },
+            "AppNotice": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "integer",
+                        "description": "Редакция сообщения: меняется вместе с его содержанием. Закрытое человеком сообщение запоминайте по ней."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "promo",
+                            "service",
+                            "maintenance"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "imageUrl": {
+                        "description": "Путь к растровому изображению (WebP) относительно адреса сайта или null. Файл публичный и не меняется: новая картинка получает новый адрес. Принимает `?width=` из набора 160, 320, 640, 1280, 1920, 2400.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "action": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AppNoticeAction"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "revision",
+                    "kind",
+                    "title",
+                    "body",
+                    "imageUrl",
+                    "action"
+                ],
+                "additionalProperties": false,
+                "description": "Сообщение приложения. `promo` — обычное, `service` — служебное, заметнее, `maintenance` — о технических работах, самое заметное; оно только сообщает и ничего не блокирует. Неизвестный тип показывайте как `promo`."
+            },
+            "AppLinks": {
+                "type": "object",
+                "properties": {
+                    "help": {
+                        "type": "string"
+                    },
+                    "privacy": {
+                        "type": "string"
+                    },
+                    "terms": {
+                        "type": "string"
+                    },
+                    "about": {
+                        "type": "string"
+                    },
+                    "support": {
+                        "description": "null — действие поддержки не показывается.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "help",
+                    "privacy",
+                    "terms",
+                    "about",
+                    "support"
+                ],
+                "additionalProperties": false,
+                "description": "Служебные ссылки, абсолютные адреса: страница ColaBike или https-адрес разрешённого сайта. Без настройки — страницы сайта по умолчанию; у поддержки умолчания нет."
+            },
+            "AppCompatibility": {
+                "type": "object",
+                "properties": {
+                    "minimumSupportedVersionCode": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "latestVersionCode": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "updateMode": {
+                        "type": "string",
+                        "enum": [
+                            "soft",
+                            "hard"
+                        ],
+                        "description": "`hard` бывает только вместе с `minimumSupportedVersionCode` и `updateUrl`. Неизвестное значение трактуйте как `soft`."
+                    },
+                    "updateUrl": {
+                        "description": "Абсолютный адрес обновления.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updateMessage": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "minimumSupportedVersionCode",
+                    "latestVersionCode",
+                    "updateMode",
+                    "updateUrl",
+                    "updateMessage"
+                ],
+                "additionalProperties": false,
+                "description": "Совместимость версий по `versionCode` сборки. Ниже `minimumSupportedVersionCode` версия не поддерживается: при `updateMode: hard` приложение показывает экран обновления, при `soft` — настойчивое предложение без блокировки. Ниже `latestVersionCode` — ненавязчивое предложение обновиться. Не привязано к магазину приложений: адрес обновления даёт `updateUrl`."
+            },
+            "AppConfig": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "integer",
+                        "description": "Версия настроек: растёт при каждом сохранении в админке."
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "launch": {
+                        "$ref": "#/components/schemas/AppLaunch"
+                    },
+                    "onboarding": {
+                        "$ref": "#/components/schemas/AppOnboarding"
+                    },
+                    "notice": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AppNotice"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Текущее сообщение или null, если его нет."
+                    },
+                    "links": {
+                        "$ref": "#/components/schemas/AppLinks"
+                    },
+                    "features": {
+                        "type": "object",
+                        "propertyNames": {
+                            "type": "string"
+                        },
+                        "additionalProperties": {
+                            "type": "boolean"
+                        },
+                        "description": "Доступность функций, которые уже есть в приложении: `chat`, `market`, `componentCatalog`, `rides`, `bikeEditor`, `journalEditor`, `nativeYandexSignIn`. Известные ключи приходят всегда. `false` скрывает функцию; `true` не создаёт того, чего в приложении нет, а неизвестные ключи пропускайте. `chat` и `nativeYandexSignIn` бывают `true`, только когда сервер для них настроен. Это не граница доступа: права проверяет API."
+                    },
+                    "compatibility": {
+                        "$ref": "#/components/schemas/AppCompatibility"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "updatedAt",
+                    "launch",
+                    "onboarding",
+                    "notice",
+                    "links",
+                    "features",
+                    "compatibility"
+                ],
+                "additionalProperties": false,
+                "description": "Настройки нативного приложения из админки ColaBike: экран запуска, знакомство, сообщение, служебные ссылки, доступность функций и политика версий. Одинаковы для всех, без входа."
             }
         },
         "parameters": {

@@ -29,10 +29,19 @@ import ru.colabike.core.designsystem.component.ColaListItem
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ListItemAction
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.ServiceLinks
 
 @Composable
-fun AboutRoute(links: SiteLinks, onBack: () -> Unit, onLicenses: () -> Unit) {
+fun AboutRoute(
+    links: SiteLinks,
+    service: ServiceLinks,
+    onBack: () -> Unit,
+    onLicenses: () -> Unit,
+) {
     val opener = LocalLinkOpener.current
+    // The pages the server names (checked to be plain https); the site's own when it names none.
+    // Support has no page of ours: without one the row is not there.
+    val support = service.support
     AboutScreen(
         versionName = BuildConfig.VERSION_NAME,
         build =
@@ -42,8 +51,11 @@ fun AboutRoute(links: SiteLinks, onBack: () -> Unit, onLicenses: () -> Unit) {
                 BuildConfig.CONTRACT_VERSION,
             ),
         onBack = onBack,
-        onTerms = { opener.open(links.terms) },
-        onPrivacy = { opener.open(links.privacy) },
+        onTerms = { opener.open(service.terms ?: links.terms) },
+        onPrivacy = { opener.open(service.privacy ?: links.privacy) },
+        onHelp = { opener.open(service.help ?: links.help) },
+        onAbout = { opener.open(service.about ?: links.about) },
+        onSupport = support?.let { { opener.open(it) } },
         onLicenses = onLicenses,
     )
 }
@@ -57,6 +69,9 @@ fun AboutScreen(
     onTerms: () -> Unit,
     onPrivacy: () -> Unit,
     onLicenses: () -> Unit,
+    onHelp: () -> Unit = {},
+    onAbout: () -> Unit = {},
+    onSupport: (() -> Unit)? = null,
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -103,6 +118,29 @@ fun AboutScreen(
                     Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(Spacing.m),
                 ) {
+                    ColaListItem(
+                        title = stringResource(R.string.about_help),
+                        supporting = stringResource(R.string.about_opens_in_browser),
+                        icon = ColaIcons.Info,
+                        action = ListItemAction.External,
+                        onClick = onHelp,
+                    )
+                    if (onSupport != null) {
+                        ColaListItem(
+                            title = stringResource(R.string.about_support),
+                            supporting = stringResource(R.string.about_opens_in_browser),
+                            icon = ColaIcons.Mail,
+                            action = ListItemAction.External,
+                            onClick = onSupport,
+                        )
+                    }
+                    ColaListItem(
+                        title = stringResource(R.string.about_site),
+                        supporting = stringResource(R.string.about_opens_in_browser),
+                        icon = ColaIcons.OpenInNew,
+                        action = ListItemAction.External,
+                        onClick = onAbout,
+                    )
                     ColaListItem(
                         title = stringResource(R.string.about_terms),
                         supporting = stringResource(R.string.about_opens_in_browser),

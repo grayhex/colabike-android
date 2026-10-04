@@ -1,0 +1,39 @@
+{
+  "revision": 1,
+  "updatedAt": "2026-10-01T08:00:00.000Z",
+  "launch": {
+    "enabled": false,
+    "imageUrl": null,
+    "contentMode": "crop",
+    "title": null
+  },
+  "onboarding": {
+    "enabled": false,
+    "revision": 0,
+    "items": []
+  },
+  "notice": null,
+  "links": {
+    "help": "https://colabike.ru/about#guide",
+    "privacy": "https://colabike.ru/legal/privacy",
+    "terms": "https://colabike.ru/legal/terms",
+    "about": "https://colabike.ru/about",
+    "support": null
+  },
+  "features": {
+    "chat": true,
+    "market": true,
+    "componentCatalog": true,
+    "rides": true,
+    "bikeEditor": true,
+    "journalEditor": true,
+    "nativeYandexSignIn": true
+  },
+  "compatibility": {
+    "minimumSupportedVersionCode": null,
+    "latestVersionCode": null,
+    "updateMode": "soft",
+    "updateUrl": null,
+    "updateMessage": null
+  }
+}

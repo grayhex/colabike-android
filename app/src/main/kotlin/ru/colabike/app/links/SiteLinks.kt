@@ -19,6 +19,8 @@ class SiteLinks(siteUrl: String) {
     val account = "$base/account?tab=account"
     val terms = "$base/legal/terms"
     val privacy = "$base/legal/privacy"
+    val help = "$base/about#guide"
+    val about = "$base/about"
 
     /**
      * The address of a public bike to share. API v1 gives no public id, so this is the permanent

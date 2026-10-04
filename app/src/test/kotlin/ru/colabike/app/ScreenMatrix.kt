@@ -26,17 +26,20 @@ import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import ru.colabike.app.login.LoginScreen
 import ru.colabike.app.login.LoginUiState
+import ru.colabike.app.navigation.Destination
 import ru.colabike.app.ui.AppShell
 import ru.colabike.app.ui.UiText
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.ListingBikeLink
 import ru.colabike.core.model.ListingCatalogLink
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.Page
+import ru.colabike.core.model.ServiceLinks
 
 /** Every screen of the app, as AGENTS.md requires it in screenshots. */
 enum class Screen(val file: String) {
@@ -92,6 +95,10 @@ enum class Screen(val file: String) {
     Components("components"),
     Component("component"),
     ComponentCredits("component_credits"),
+
+    /** About with the pages the server names (support among them), and a link into what is off. */
+    AboutConfigured("about_configured"),
+    FeatureOff("feature_off"),
 
     /** The market list, with its filters open, a listing's page, its contact, the saved ones. */
     Market("market"),
@@ -184,6 +191,34 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                             onYandex = {},
                             onBrowseAsGuest = {},
                         )
+                    Screen.AboutConfigured ->
+                        AppShell(
+                            FakeDependencies(
+                                appConfig =
+                                    FakeAppConfig().apply {
+                                        set(
+                                            links =
+                                                ServiceLinks(
+                                                    help = "https://help.example.ru/guide",
+                                                    privacy = null,
+                                                    terms = null,
+                                                    about = null,
+                                                    support = "https://help.example.ru/support",
+                                                )
+                                        )
+                                    }
+                            )
+                        )
+                    Screen.FeatureOff ->
+                        AppShell(
+                            FakeDependencies(
+                                appConfig =
+                                    FakeAppConfig().apply {
+                                        set(features = featuresOff(Feature.Market))
+                                    },
+                                pending = FakePending().apply { offer(Destination.Listing("l1")) },
+                            )
+                        )
                     Screen.ProfileGuest,
                     Screen.FeedGuest,
                     Screen.CommentsGuest,
@@ -250,6 +285,10 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.ProfileMore -> {
             section("Профиль").performClick()
             onNodeWithText("О приложении").performScrollTo()
+        }
+        Screen.AboutConfigured -> {
+            section("Профиль").performClick()
+            onNodeWithText("О приложении").performScrollTo().performClick()
         }
         Screen.Devices -> {
             section("Профиль").performClick()

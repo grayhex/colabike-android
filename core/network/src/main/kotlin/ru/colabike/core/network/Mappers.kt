@@ -156,7 +156,7 @@ internal fun httpsOrNull(value: String?): String? =
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
         ?.toHttpUrlOrNull()
-        ?.takeIf { it.scheme == "https" }
+        ?.takeIf { it.scheme == "https" && it.username.isEmpty() && it.password.isEmpty() }
         ?.toString()
 
 /** Public for core:auth: a token grant carries the same `Me`. */

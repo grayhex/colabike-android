@@ -67,7 +67,7 @@ fun ProfileRoute(
     onOpenAbout: () -> Unit,
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
-    onOpenSavedMarket: () -> Unit = {},
+    onOpenSavedMarket: (() -> Unit)? = {},
 ) {
     val viewModel = viewModel { ProfileViewModel(dependencies.account, dependencies.auth) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -105,7 +105,7 @@ fun ProfileScreen(
     onOpenAbout: () -> Unit,
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
-    onOpenSavedMarket: () -> Unit = {},
+    onOpenSavedMarket: (() -> Unit)? = {},
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -236,7 +236,7 @@ private fun MemberSections(
     state: ProfileUiState.Loaded,
     onOpenPublicProfile: (id: String) -> Unit,
     onOpenSaved: () -> Unit,
-    onOpenSavedMarket: () -> Unit,
+    onOpenSavedMarket: (() -> Unit)?,
     onOpenDevices: () -> Unit,
     onManageOnWeb: () -> Unit,
 ) {
@@ -306,12 +306,15 @@ private fun MemberSections(
             icon = ColaIcons.Bookmark,
             onClick = onOpenSaved,
         )
-        ColaListItem(
-            title = stringResource(R.string.profile_saved_market),
-            supporting = stringResource(R.string.profile_saved_market_hint),
-            icon = ColaIcons.Tag,
-            onClick = onOpenSavedMarket,
-        )
+        // The market may be switched off by the server: then its saved listings have no row.
+        if (onOpenSavedMarket != null) {
+            ColaListItem(
+                title = stringResource(R.string.profile_saved_market),
+                supporting = stringResource(R.string.profile_saved_market_hint),
+                icon = ColaIcons.Tag,
+                onClick = onOpenSavedMarket,
+            )
+        }
         ColaListItem(
             title = stringResource(R.string.profile_devices),
             supporting = stringResource(R.string.profile_devices_hint),

@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import ru.colabike.core.model.FeatureAvailability
 
 /**
  * Navigation state: one back stack per top-level section and the section that is on screen. Both
@@ -91,7 +92,13 @@ fun rememberNavigationState(startRoute: NavKey, topLevelRoutes: Set<NavKey>): Na
  * - Back pops the current stack; at the root of a section other than the start it returns to the
  *   start section; at the start root it is not handled and the system leaves the app.
  */
-class Navigator(private val state: NavigationState) {
+class Navigator(
+    private val state: NavigationState,
+    /** The functions that are on now. */
+    private val features: () -> FeatureAvailability = { FeatureAvailability.AllOn },
+    /** Called instead of opening a screen whose function the server has switched off. */
+    private val onUnavailable: () -> Unit = {},
+) {
     private val reselectEvents = MutableSharedFlow<NavKey>(extraBufferCapacity = 1)
 
     fun select(section: NavKey) {
@@ -108,8 +115,17 @@ class Navigator(private val state: NavigationState) {
         }
     }
 
+    /** A switched-off function is not opened from anywhere; the person is told, and stays put. */
+    private fun allowed(destination: Destination): Boolean {
+        val feature = destination.requiredFeature() ?: return true
+        if (features().isEnabled(feature)) return true
+        onUnavailable()
+        return false
+    }
+
     /** A screen above the current one (profile → devices): pushed, and Back pops it. */
     fun open(destination: Destination) {
+        if (!allowed(destination)) return
         val stack = state.currentStack
         if (stack.lastOrNull() != destination) stack.add(destination)
     }
@@ -124,21 +140,31 @@ class Navigator(private val state: NavigationState) {
     /**
      * Goes where a link points: the section that owns the destination, then the destination on its
      * stack (a bike replaces the bike already shown). Back from it works as for any opened screen.
+     * The objects of a ride belong to the Rides section, a conversation to Messages; every other
+     * object (a bike, a person, a journal entry, a listing, a catalog model) opens over Bikes. A
+     * destination with no place in the shell, or whose function the server has switched off, goes
+     * nowhere.
      */
     fun go(destination: Destination) {
-        when (destination) {
-            is Destination.Bike -> {
-                if (TopLevel.Bikes.root !in state.backStacks) return
-                state.topLevelRoute = TopLevel.Bikes.root
-                openBike(destination.id)
+        val section =
+            when (destination) {
+                is Destination.Ride,
+                is Destination.BikeRides -> TopLevel.Rides.root
+                is Destination.Conversation -> TopLevel.Messages.root
+                is Destination.Bike,
+                is Destination.Person,
+                is Destination.Journal,
+                is Destination.Listing,
+                is Destination.Component -> TopLevel.Bikes.root
+                else -> return
             }
-            is Destination.Person -> {
-                if (TopLevel.Bikes.root !in state.backStacks) return
-                state.topLevelRoute = TopLevel.Bikes.root
-                open(destination)
-            }
-            else -> Unit
-        }
+        if (!allowed(destination)) return
+        // A section the app does not show (a function that is off was caught above; a build
+        // without the section) falls back to Bikes, where the object opens as well.
+        val owner = if (section in state.backStacks) section else TopLevel.Bikes.root
+        if (owner !in state.backStacks) return
+        state.topLevelRoute = owner
+        if (destination is Destination.Bike) openBike(destination.id) else open(destination)
     }
 
     /** True when Back was used here; false when it belongs to the system. */

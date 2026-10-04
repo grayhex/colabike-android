@@ -111,6 +111,9 @@
     <string name="about_version">Версия %1$s</string>
     <string name="about_build">Сборка %1$d · контракт API %2$s</string>
     <string name="about_tagline">Нативное приложение сообщества ColaBike для Android. Без сервисов Google Play и без аналитики.</string>
+    <string name="about_help">Справка</string>
+    <string name="about_support">Поддержка</string>
+    <string name="about_site">О проекте на сайте</string>
     <string name="about_terms">Условия использования</string>
     <string name="about_privacy">Политика конфиденциальности</string>
     <string name="about_opens_in_browser">Откроется на сайте, в браузере</string>
@@ -478,4 +481,7 @@
     <string name="listing_unsave_description">Убрать объявление из сохранённых</string>
     <string name="listing_open_site">Объявление на сайте</string>
     <string name="listing_open_site_hint">Откроется в браузере</string>
+    <string name="feature_off_title">Пока недоступно</string>
+    <string name="feature_off">Эта возможность сейчас выключена. Попробуйте позже.</string>
+    <string name="feature_off_ok">Понятно</string>
 </resources>

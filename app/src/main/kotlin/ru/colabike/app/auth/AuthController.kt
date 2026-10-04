@@ -38,10 +38,13 @@ sealed interface YandexFailure {
 class AuthController(
     private val session: DeviceSession,
     private val yandex: YandexSignIn,
-    override val yandexEnabled: Boolean,
+    private val yandexReady: () -> Boolean,
     private val revoke: () -> Unit,
     private val scope: CoroutineScope,
 ) : AuthActions {
+    override val yandexEnabled: Boolean
+        get() = yandexReady()
+
     override val state: StateFlow<AuthState> = session.state
 
     private val failures = Channel<YandexFailure>(Channel.BUFFERED)

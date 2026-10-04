@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationRailDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
@@ -19,8 +22,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -94,6 +100,7 @@ import ru.colabike.core.model.ChannelCid
 import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.CommentTarget
 import ru.colabike.core.model.ComponentId
+import ru.colabike.core.model.Feature
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.ListingId
 import ru.colabike.core.model.RideId
@@ -107,13 +114,39 @@ import ru.colabike.core.model.RideId
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
-    val sections = TopLevel.shown
+    // The tabs are those of the config the app started on: a section does not vanish under a
+    // person who is in it. A change of flags reaches the tabs at the next start (and the entry
+    // points inside the screens at once).
+    val config by dependencies.appConfig.state.collectAsStateWithLifecycle()
+    val features = config.features
+    val serviceLinks = config.config.links
+    val startFeatures = remember { features }
+    val sections = remember(startFeatures) { TopLevel.shown(startFeatures) }
     val state =
         rememberNavigationState(
             startRoute = TopLevel.start.root,
             topLevelRoutes = sections.map { it.root }.toSet(),
         )
-    val navigator = remember(state) { Navigator(state) }
+    // A screen whose function the server has switched off is not opened from anywhere: the person
+    // is told, and stays where they are.
+    var unavailable by rememberSaveable { mutableStateOf(false) }
+    val currentFeatures by rememberUpdatedState(features)
+    val navigator =
+        remember(state) {
+            Navigator(state, features = { currentFeatures }, onUnavailable = { unavailable = true })
+        }
+    if (unavailable) {
+        AlertDialog(
+            onDismissRequest = { unavailable = false },
+            title = { Text(stringResource(R.string.feature_off_title)) },
+            text = { Text(stringResource(R.string.feature_off)) },
+            confirmButton = {
+                TextButton(onClick = { unavailable = false }) {
+                    Text(stringResource(R.string.feature_off_ok))
+                }
+            },
+        )
+    }
     // A link that arrived before the shell could take it (sign-in, a cold start) is carried out
     // now.
     val pendingDestination by dependencies.pending.destination.collectAsStateWithLifecycle()
@@ -397,12 +430,14 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             commentChanges = dependencies.comments.countChanges,
                                             onOpen = { id -> navigator.openBike(id.value) },
                                             onSearch = { navigator.open(Destination.Search()) },
-                                            onOpenCatalog = {
-                                                navigator.open(Destination.Components)
-                                            },
-                                            onOpenMarket = {
-                                                navigator.open(Destination.Market())
-                                            },
+                                            onOpenCatalog =
+                                                if (features.isEnabled(Feature.ComponentCatalog)) {
+                                                    { navigator.open(Destination.Components) }
+                                                } else null,
+                                            onOpenMarket =
+                                                if (features.isEnabled(Feature.Market)) {
+                                                    { navigator.open(Destination.Market()) }
+                                                } else null,
                                             scrollToTop =
                                                 remember(navigator) {
                                                     navigator.reselects(Destination.Bikes)
@@ -604,9 +639,10 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             onOpenSaved = {
                                                 navigator.open(Destination.SavedJournal)
                                             },
-                                            onOpenSavedMarket = {
-                                                navigator.open(Destination.SavedMarket)
-                                            },
+                                            onOpenSavedMarket =
+                                                if (features.isEnabled(Feature.Market)) {
+                                                    { navigator.open(Destination.SavedMarket) }
+                                                } else null,
                                         )
                                     }
                                     entry<Destination.Messages>(
@@ -681,6 +717,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                     entry<Destination.About> {
                                         AboutRoute(
                                             dependencies.links,
+                                            service = serviceLinks,
                                             onBack = { navigator.back() },
                                             onLicenses = { navigator.open(Destination.Licenses) },
                                         )
