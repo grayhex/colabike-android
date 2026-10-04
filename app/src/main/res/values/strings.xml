@@ -333,7 +333,6 @@
     <string name="components_none_title">Ничего не нашли</string>
     <string name="components_none">Попробуйте другое написание или сбросьте фильтры.</string>
     <string name="components_open">Каталог компонентов</string>
-    <string name="components_open_hint">Модели, фотографии и обсуждения</string>
     <string name="component_title">Компонент</string>
     <string name="component_archived_title">Архивная модель</string>
     <string name="component_archived">Её уже нет в каталоге, страница осталась по ссылке.</string>
