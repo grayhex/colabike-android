@@ -42,7 +42,10 @@ android {
         applicationId = "ru.colabike.app"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
+        // A new build over an installed one needs a bigger versionCode and the same signing key
+        // (docs/install.md). The owner sets -Pcolabike.versionCode=N for a build to hand out.
+        versionCode =
+            providers.gradleProperty("colabike.versionCode").map { it.toInt() }.orElse(1).get()
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")

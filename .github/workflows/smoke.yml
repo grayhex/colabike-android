@@ -79,3 +79,62 @@ jobs:
             !**/build/outputs/androidTest-results/**/logcat-*.txt
             ${{ runner.temp }}/emulator.log
           retention-days: 7
+
+  # The same instrumented tests, and the R8 release build, on AOSP images: no Google Play Services,
+  # no Play Store. There is no such image for Android 17, so this is minSdk 31 and the newest AOSP
+  # one (36); the job asserts that the device really has no Play Services.
+  no-gms:
+    name: no-gms (API ${{ matrix.api }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [31, 36]
+    env:
+      EMULATOR_IMAGE: system-images;android-${{ matrix.api }};default;x86_64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :core:auth:assembleDebugAndroidTest :app:assembleRelease
+      - name: Start the emulator
+        timeout-minutes: 20
+        run: scripts/emulator.sh start
+      - name: The device has no Google Play Services
+        run: scripts/emulator.sh assert-no-gms
+      # No smoke account here: the live test stays in the Android 17 job.
+      - name: Instrumented tests
+        run: |
+          ./gradlew connectedDebugAndroidTest \
+            -Pandroid.testInstrumentationRunnerArguments.notClass=ru.colabike.app.LiveSmokeTest \
+            2>&1 | tee "$RUNNER_TEMP/connected.log"
+      - name: Tests ran on the device
+        run: scripts/check-connected-tests.sh "$RUNNER_TEMP/connected.log"
+      - name: The R8 release build starts and restores its section
+        run: scripts/release-smoke.sh app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Device diagnostics
+        if: failure()
+        run: scripts/emulator.sh diagnose
+      - name: Stop the emulator
+        if: always()
+        run: scripts/emulator.sh stop
+      - name: Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: no-gms-${{ matrix.api }}-reports
+          path: |
+            **/build/reports/androidTests/
+            **/build/outputs/androidTest-results/
+            !**/build/outputs/androidTest-results/**/logcat-*.txt
+            ${{ runner.temp }}/emulator.log
+          retention-days: 7
