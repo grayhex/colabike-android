@@ -76,6 +76,7 @@ fun BikesRoute(
     auth: AuthActions,
     onOpen: (BikeId) -> Unit,
     onSearch: () -> Unit = {},
+    onOpenCatalog: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
@@ -95,6 +96,7 @@ fun BikesRoute(
         onLoadMore = viewModel::loadMore,
         onOpen = onOpen,
         onOpenSearch = onSearch,
+        onOpenCatalog = onOpenCatalog,
         scrollToTop = scrollToTop,
     )
 }
@@ -117,6 +119,7 @@ fun BikesScreen(
     onLoadMore: () -> Unit,
     onOpen: (BikeId) -> Unit,
     onOpenSearch: (() -> Unit)? = null,
+    onOpenCatalog: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
 ) {
     Scaffold(
@@ -131,6 +134,15 @@ fun BikesScreen(
                             Icon(
                                 painterResource(ColaIcons.Search),
                                 contentDescription = stringResource(R.string.search_open),
+                            )
+                        }
+                    }
+                    // The catalog of component models, apart from the bikes that carry them.
+                    if (onOpenCatalog != null) {
+                        IconButton(onClick = onOpenCatalog) {
+                            Icon(
+                                painterResource(ColaIcons.Build),
+                                contentDescription = stringResource(R.string.components_open),
                             )
                         }
                     }

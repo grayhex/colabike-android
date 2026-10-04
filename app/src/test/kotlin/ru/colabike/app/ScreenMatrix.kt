@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import coil3.ColorImage
@@ -82,6 +84,11 @@ enum class Screen(val file: String) {
 
     /** The inbox, opened by the bell of the first screen. */
     Notifications("notifications"),
+
+    /** The component catalog, a model's page, and the credits of its photos further down. */
+    Components("components"),
+    Component("component"),
+    ComponentCredits("component_credits"),
 
     /**
      * The Messages section with the SDK's list, a conversation, the form for a new one, a guest.
@@ -259,6 +266,15 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         }
         Screen.Notifications ->
             onNode(hasContentDescription("Уведомления", substring = true)).performClick()
+        Screen.Components -> onNodeWithContentDescription("Каталог компонентов").performClick()
+        Screen.Component,
+        Screen.ComponentCredits -> {
+            onNodeWithContentDescription("Каталог компонентов").performClick()
+            onNodeWithTag("component:c1").performClick()
+            if (screen == Screen.ComponentCredits) {
+                onNodeWithTag("component:page").performScrollToNode(hasText("Фотографии"))
+            }
+        }
         Screen.Messages,
         Screen.MessagesGuest -> section("Сообщения").performClick()
         Screen.Conversation -> {

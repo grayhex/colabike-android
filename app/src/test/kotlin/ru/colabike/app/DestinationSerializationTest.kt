@@ -21,6 +21,8 @@ class DestinationSerializationTest {
         listOf(
             Destination.Feed,
             Destination.Bikes,
+            Destination.Components,
+            Destination.Component("c0000000-0000-4000-8000-000000000001"),
             Destination.Bike("6e7f8091-a2b3-4c4d-9e5f-60718293a4b5"),
             Destination.Rides,
             Destination.Ride("b2000000-0000-4000-8000-000000000002"),

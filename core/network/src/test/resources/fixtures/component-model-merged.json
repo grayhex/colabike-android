@@ -1,0 +1,12 @@
+{
+  "id": "c0000000-0000-4000-8000-000000000001",
+  "category": "Трансмиссия",
+  "brand": "Shimano",
+  "name": "Deore M6100 кассета 12 ск.",
+  "description": "Кассета на 12 скоростей для горного велосипеда.",
+  "path": "/components/deore-m6100-c0000000",
+  "builds": 42,
+  "firstPublicAt": "2026-08-01T10:00:00.000Z",
+  "coverUrl": "/media/components/deore.jpg",
+  "archived": false
+}

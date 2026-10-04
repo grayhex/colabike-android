@@ -37,6 +37,7 @@ import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.ChatRepository
 import ru.colabike.core.model.CommentsRepository
+import ru.colabike.core.model.ComponentsRepository
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.NotificationsRepository
@@ -51,6 +52,7 @@ import ru.colabike.core.network.NetworkAccountSessionsRepository
 import ru.colabike.core.network.NetworkBikesRepository
 import ru.colabike.core.network.NetworkChatRepository
 import ru.colabike.core.network.NetworkCommentsRepository
+import ru.colabike.core.network.NetworkComponentsRepository
 import ru.colabike.core.network.NetworkFeedRepository
 import ru.colabike.core.network.NetworkJournalRepository
 import ru.colabike.core.network.NetworkNotificationsRepository
@@ -67,6 +69,9 @@ interface AppDependencies {
     val comments: CommentsRepository
     val rides: RidesRepository
     val notifications: NotificationsRepository
+
+    /** The public component catalog: models, their photos and filters. */
+    val components: ComponentsRepository
 
     /** ColaBike's side of the chat: the token, new channels, who one may write to. */
     val chat: ChatRepository
@@ -142,6 +147,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val rides: RidesRepository = NetworkRidesRepository(api.rides, api.personal, media)
     override val notifications: NotificationsRepository =
         NetworkNotificationsRepository(api.personal, media)
+    override val components: ComponentsRepository =
+        NetworkComponentsRepository(api.components, media)
     override val chat: ChatRepository = NetworkChatRepository(api.chat, api::chatWithKey, media)
     override val chatSession: ChatSession = ChatSession(chat, StreamChatGateway(context), scope)
     override val chatScreens: ChatScreens = StreamChatScreens

@@ -1,5 +1,6 @@
 package ru.colabike.app.bikes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -85,6 +87,7 @@ fun ComponentsCard(
     locale: Locale,
     onOpenLink: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenModel: (modelId: String) -> Unit = {},
 ) {
     ColaCard(modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = Spacing.card, vertical = Spacing.s)) {
@@ -106,7 +109,7 @@ fun ComponentsCard(
                         modifier = Modifier.padding(top = Spacing.m).semantics { heading() },
                     )
                 }
-                ComponentRow(component, locale, onOpenLink)
+                ComponentRow(component, locale, onOpenLink, onOpenModel)
             }
         }
     }
@@ -118,9 +121,26 @@ private fun BikeComponent.groupKey() = groupId.ifBlank { category }
 private const val SOFT_DIVIDER = 0.5f
 
 @Composable
-private fun ComponentRow(component: BikeComponent, locale: Locale, onOpenLink: (String) -> Unit) {
+private fun ComponentRow(
+    component: BikeComponent,
+    locale: Locale,
+    onOpenLink: (String) -> Unit,
+    onOpenModel: (modelId: String) -> Unit,
+) {
+    val modelId = component.modelId
+    val openModel = stringResource(R.string.component_open_named, component.name)
     Row(
-        Modifier.fillMaxWidth().padding(vertical = Spacing.s),
+        Modifier.fillMaxWidth()
+            .then(
+                // A component chosen from the catalog has a page of its own: the whole row opens
+                // it.
+                if (modelId != null) {
+                    Modifier.clickable(role = Role.Button, onClickLabel = openModel) {
+                        onOpenModel(modelId)
+                    }
+                } else Modifier
+            )
+            .padding(vertical = Spacing.s),
         horizontalArrangement = Arrangement.spacedBy(Spacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -140,6 +160,14 @@ private fun ComponentRow(component: BikeComponent, locale: Locale, onOpenLink: (
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        if (modelId != null) {
+            Icon(
+                painterResource(ColaIcons.ChevronRight),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
         }
         component.url?.let { url ->
             IconButton(onClick = { onOpenLink(url) }) {

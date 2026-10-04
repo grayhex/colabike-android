@@ -84,6 +84,7 @@ fun BikeDetailRoute(
     onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    onOpenComponent: (modelId: String) -> Unit = {},
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
@@ -108,6 +109,7 @@ fun BikeDetailRoute(
         onOpenJournal = onOpenJournal,
         onOpenComments = onOpenComments,
         onOpenRides = onOpenRides,
+        onOpenComponent = onOpenComponent,
     )
 }
 
@@ -130,6 +132,7 @@ fun BikeDetailScreen(
     onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    onOpenComponent: (modelId: String) -> Unit = {},
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
     Scaffold(
@@ -189,6 +192,7 @@ fun BikeDetailScreen(
                         onOpenJournal,
                         onOpenComments,
                         onOpenRides,
+                        onOpenComponent,
                     )
             }
         }
@@ -209,6 +213,7 @@ private fun BikeContent(
     onOpenJournal: (id: BikeId, name: String) -> Unit,
     onOpenComments: (id: BikeId, name: String) -> Unit,
     onOpenRides: (id: BikeId, name: String) -> Unit,
+    onOpenComponent: (modelId: String) -> Unit,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -329,7 +334,12 @@ private fun BikeContent(
                             }
                         )
                     ) {
-                        ComponentsCard(components, locale, onOpenLink)
+                        ComponentsCard(
+                            components,
+                            locale,
+                            onOpenLink,
+                            onOpenModel = onOpenComponent,
+                        )
                     }
                 }
                 // Only a public bike has a discussion (the API answers 404 for the rest).

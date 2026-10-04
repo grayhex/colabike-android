@@ -1,0 +1,12 @@
+{
+  "id": "c0000000-0000-4000-8000-000000000009",
+  "category": "Трансмиссия",
+  "brand": "Shimano",
+  "name": "Deore M4100 кассета 9 ск.",
+  "description": "Снята с производства.",
+  "path": "/components/deore-m4100-c0000000",
+  "builds": 3,
+  "firstPublicAt": "2024-01-02T10:00:00.000Z",
+  "coverUrl": null,
+  "archived": true
+}

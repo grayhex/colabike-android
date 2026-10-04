@@ -28,6 +28,7 @@ import ru.colabike.core.designsystem.component.ColaNavItem
 import ru.colabike.core.designsystem.component.ColaNavigationBar
 import ru.colabike.core.designsystem.component.ColaNavigationRail
 import ru.colabike.core.designsystem.component.ColaTopBar
+import ru.colabike.core.designsystem.component.ComponentCard
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.HaloTone
@@ -154,6 +155,48 @@ class ComponentScreenshotTest {
     @Test
     fun notificationRowsLargeText() =
         notificationRows(dark = false, fontScale = 2f, name = "notification_rows_font_200")
+
+    private fun componentCards(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                ComponentCard(
+                    name = "Deore M6100 кассета 12 ск.",
+                    brand = "Shimano",
+                    category = "Трансмиссия",
+                    builds = 42,
+                    coverUrl = null,
+                    archived = false,
+                    onClick = {},
+                )
+                ComponentCard(
+                    name = "Level T",
+                    brand = "SRAM",
+                    category = "Тормоза",
+                    builds = 1,
+                    coverUrl = null,
+                    archived = true,
+                    onClick = {},
+                )
+                ComponentCard(
+                    name =
+                        "Очень длинное название модели компонента, которое не помещается в одну строку",
+                    brand = "",
+                    category = "",
+                    builds = 0,
+                    coverUrl = null,
+                    archived = false,
+                    onClick = {},
+                )
+            }
+        }
+
+    @Test fun componentCardsLight() = componentCards(dark = false, name = "component_cards_light")
+
+    @Test fun componentCardsDark() = componentCards(dark = true, name = "component_cards_dark")
+
+    @Test
+    fun componentCardsLargeText() =
+        componentCards(dark = false, fontScale = 2f, name = "component_cards_font_200")
 
     private fun charts(dark: Boolean, fontScale: Float = 1f, name: String) =
         compose.snapshot(name, dark, fontScale) {

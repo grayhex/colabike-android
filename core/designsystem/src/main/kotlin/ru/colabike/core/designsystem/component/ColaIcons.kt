@@ -53,4 +53,5 @@ object ColaIcons {
     @DrawableRes val Journal = R.drawable.cola_ic_journal
     @DrawableRes val Send = R.drawable.cola_ic_send
     @DrawableRes val Notifications = R.drawable.cola_ic_notifications
+    @DrawableRes val Build = R.drawable.cola_ic_build
 }

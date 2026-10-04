@@ -46,6 +46,8 @@ import ru.colabike.app.about.LicensesRoute
 import ru.colabike.app.bikes.BikeDetailRoute
 import ru.colabike.app.bikes.BikesRoute
 import ru.colabike.app.comments.CommentsRoute
+import ru.colabike.app.components.ComponentRoute
+import ru.colabike.app.components.ComponentsRoute
 import ru.colabike.app.devices.DevicesRoute
 import ru.colabike.app.feed.FeedActions
 import ru.colabike.app.feed.FeedRoute
@@ -87,6 +89,7 @@ import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.ChannelCid
 import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.CommentTarget
+import ru.colabike.core.model.ComponentId
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.RideId
 
@@ -269,6 +272,11 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                             )
                                                         )
                                                     },
+                                                    onOpenComponent = { modelId ->
+                                                        navigator.open(
+                                                            Destination.Component(modelId)
+                                                        )
+                                                    },
                                                 ),
                                             commentChanges = dependencies.comments.countChanges,
                                         )
@@ -379,10 +387,39 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             commentChanges = dependencies.comments.countChanges,
                                             onOpen = { id -> navigator.openBike(id.value) },
                                             onSearch = { navigator.open(Destination.Search()) },
+                                            onOpenCatalog = {
+                                                navigator.open(Destination.Components)
+                                            },
                                             scrollToTop =
                                                 remember(navigator) {
                                                     navigator.reselects(Destination.Bikes)
                                                 },
+                                        )
+                                    }
+                                    entry<Destination.Components> {
+                                        ComponentsRoute(
+                                            repository = dependencies.components,
+                                            onBack = { navigator.back() },
+                                            onOpen = { id ->
+                                                navigator.open(Destination.Component(id.value))
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Component> { key ->
+                                        ComponentRoute(
+                                            repository = dependencies.components,
+                                            links = dependencies.links,
+                                            id = ComponentId(key.id),
+                                            onBack = { navigator.back() },
+                                            onOpenComments = { id, name ->
+                                                navigator.open(
+                                                    Destination.Comments(
+                                                        "component",
+                                                        id.value,
+                                                        name,
+                                                    )
+                                                )
+                                            },
                                         )
                                     }
                                     entry<Destination.Bike>(
@@ -420,6 +457,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 navigator.open(
                                                     Destination.BikeRides(id.value, name)
                                                 )
+                                            },
+                                            onOpenComponent = { modelId ->
+                                                navigator.open(Destination.Component(modelId))
                                             },
                                             commentChanges = dependencies.comments.countChanges,
                                         )
