@@ -34,13 +34,13 @@
 | Что | Чем подтверждено | Чего нет |
 | --- | --- | --- |
 | Android 17 (API 37) | эмулятор `google_apis` в `smoke.yml` | реального устройства |
-| minSdk 31 | Robolectric и lint с `minSdk = 31`; в [PR поставки](https://github.com/grayhex/colabike-android/issues/11) добавляется эмулятор API 31 | запуска на реальном устройстве с Android 12 |
+| minSdk 31 | Robolectric и lint с `minSdk = 31`; эмулятор AOSP API 31 (`smoke.yml`, job `no-gms (API 31)`): инструментальные тесты и запуск release-сборки | запуска на реальном устройстве с Android 12 |
 | Телефон и широкое окно, светлая и тёмная темы | Roborazzi: `compact` и `expanded`, `light` и `dark` для каждого экрана | складного устройства, режима разделённого экрана |
 | 200 % шрифт | скриншоты `*_font200` для каждого экрана | — |
 | TalkBack | роли, подписи, `heading()`, `liveRegion` проверяются тестами по семантике | прослушивания живым TalkBack (руками) |
 | IME и edge-to-edge | форма входа использует `imePadding()`, поле комментария — `WindowInsets.safeDrawing` (в нём клавиатура); верх и низ экранов не уходят под системные панели | показа клавиатуры: Robolectric её не рисует, проверять на устройстве; SDK чата ведёт своё поле ввода сам |
 | Predictive back | `android:enableOnBackInvokedCallback`, `NavDisplay`; «назад» нажимается в `ShellNavigationTest` и `ProcessDeathTest` | жеста «назад» с анимацией на устройстве |
-| Без Google Play Services | `checkNoPlayServices` в `verify` (ни Play Services, ни Firebase, ни Billing, ни Integrity, ни push-вендоров в classpath release и debug); эмулятор без GMS — [PR поставки](https://github.com/grayhex/colabike-android/issues/11) | устройства вендора (Huawei, Xiaomi) |
+| Без Google Play Services | `checkNoPlayServices` в `verify` (ни Play Services, ни Firebase, ни Billing, ни Integrity, ни push-вендоров в classpath release и debug); эмуляторы AOSP API 31 и 36 (job `no-gms`), на которых `scripts/emulator.sh assert-no-gms` проверяет, что Play Services, Play Store и GSF на устройстве нет. Для Android 17 AOSP-образа не существует: он идёт на `google_apis` | устройства вендора (Huawei, Xiaomi) |
 
 ## Надёжность
 
@@ -59,11 +59,11 @@
 
 ## Сборка и поставка
 
-- **R8.** `:app:assembleRelease` собирается с SDK чата, картой и сгенерированным клиентом. Сериализаторы `Destination` и API-моделей остались в `mapping.txt` (правило `-keepclassmembers` в `proguard-rules.pro`). Запуск release на устройстве пока не проверялся: он войдёт в [PR поставки](https://github.com/grayhex/colabike-android/issues/11).
+- **R8.** `:app:assembleRelease` собирается с SDK чата, картой и сгенерированным клиентом. Сериализаторы `Destination` и API-моделей остались в `mapping.txt` (правило `-keepclassmembers` в `proguard-rules.pro`). Запуск release на устройстве: job `no-gms` подписывает R8-сборку одноразовым ключом, ставит, запускает, открывает оболочку гостем, переходит в «Сообщения», после `am kill` в фоне возвращается в тот же раздел (`scripts/release-smoke.sh`; ничего не вводится, аккаунт не нужен). Это проверяет, что R8 не сломал запуск и сохранённый back stack; работу SDK чата в release эта проверка не охватывает (нужен вход).
 - **Манифест release.** Только `INTERNET`, `ACCESS_NETWORK_STATE` и `WAKE_LOCK` (последний нужен WorkManager). Микрофона, уведомлений, автозапуска, foreground-службы, push-провайдера и экспортируемого `PreviewActivity` нет.
 - **Размер.** Release 53 МБ без подписи, в основном четыре ABI библиотеки карты. Фильтры ABI — решение владельца ([архитектура](architecture.md)).
-- **16 КБ страницы.** В `arm64-v8a` и `x86_64` все сегменты `LOAD` выровнены на 16 КБ и `zipalign -P 16` проходит. В 32-битных `armeabi-v7a` и `x86` `libmaplibre.so` выровнена на 4 КБ: требование 16 КБ к 32-битным ABI не предъявляется.
-- **Версии.** `versionCode = 1`, `versionName = 0.1.0` в `app/build.gradle.kts`. Для обновления поверх установленной сборки `versionCode` растёт, а подпись остаётся той же.
+- **16 КБ страницы.** В `arm64-v8a` и `x86_64` все сегменты `LOAD` выровнены на 16 КБ и `zipalign -P 16` проходит; на каждом PR это проверяет job `release` (`scripts/check-native-alignment.sh`), он же сохраняет `mapping.txt`. В 32-битных `armeabi-v7a` и `x86` `libmaplibre.so` выровнена на 4 КБ: требование 16 КБ к 32-битным ABI не предъявляется.
+- **Версии и установка.** `versionName = 0.1.0` в `app/build.gradle.kts`, `versionCode` по умолчанию 1 (`-Pcolabike.versionCode=N` для раздаваемой сборки). Как поставить и обновить APK, где ключ и отпечаток для App Link, как читать стек по `mapping.txt` — [install.md](install.md).
 
 ## Диагностика без утечек
 
@@ -85,5 +85,5 @@ Macrobenchmark и Baseline Profile добавляются для путей, г�
 
 - Живой обмен сообщениями, authenticated live-smoke и вход через Яндекс ID проверяет владелец (данные и секреты у него).
 - Карта рисует маршрут без подложки, пока не выбран источник тайлов.
-- Подписанный release-кандидат и публикация в RuStore — отдельное решение владельца (keystore, отпечаток для App Link). Условия Stream License (аккаунт клиента Stream, ограничения на открытое ПО и конкурентов) прочитать и подтвердить тоже ему: см. [ADR 0011](adr/0011-messenger.md).
+- Подписанный release-кандидат (ключ у владельца) и публикация в RuStore — отдельное решение владельца (keystore, отпечаток для App Link). Условия Stream License (аккаунт клиента Stream, ограничения на открытое ПО и конкурентов) прочитать и подтвердить тоже ему: см. [ADR 0011](adr/0011-messenger.md).
 - Не делается: полноценный offline-first режим, push, GPS-рекордер, офлайн-карты.

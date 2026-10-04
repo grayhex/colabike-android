@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Starts, inspects or stops a headless Android 17 (API 37) emulator for instrumented tests in CI.
-#   scripts/emulator.sh start | diagnose | stop
+# Starts, inspects or stops a headless emulator for instrumented tests in CI. By default Android 17
+# (API 37) with Google APIs; EMULATOR_IMAGE picks another image, e.g. an AOSP one without Google
+# Play Services ("system-images;android-31;default;x86_64": there is no such image for API 37).
+#   scripts/emulator.sh start | assert-no-gms | diagnose | stop
 set -euo pipefail
 
-IMAGE="system-images;android-37.0;google_apis;x86_64"
-AVD="colabike-api37"
+IMAGE="${EMULATOR_IMAGE:-system-images;android-37.0;google_apis;x86_64}"
+AVD="${EMULATOR_AVD:-colabike-avd}"
 SDK="${ANDROID_HOME:?ANDROID_HOME is not set}"
 SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
 AVDMANAGER="$SDK/cmdline-tools/latest/bin/avdmanager"
@@ -111,6 +113,18 @@ start)
   done
   "$ADB" shell input keyevent 82
   ;;
+assert-no-gms)
+  # The point of an AOSP image is that Google Play Services are not there; say so instead of
+  # trusting the image name.
+  packages="$(device pm list packages || true)"
+  [[ "$packages" == *package:android* ]] || fail "could not list the packages of the device"
+  if printf '%s\n' "$packages" |
+    grep -E '^package:(com\.google\.android\.gms|com\.android\.vending|com\.google\.android\.gsf)$'; then
+    fail "this image has Google Play Services; the run would not show the app works without them"
+  fi
+  echo "No Google Play Services, Play Store or GSF on this device"
+  echo "API level $(device getprop ro.build.version.sdk || true), $(device getprop ro.build.fingerprint || true)"
+  ;;
 diagnose)
   # Printed into the job log rather than uploaded: GitHub masks secrets only in logs.
   "$ADB" devices || true
@@ -138,7 +152,7 @@ stop)
   "$ADB" emu kill || true
   ;;
 *)
-  echo "usage: $0 start|diagnose|stop" >&2
+  echo "usage: $0 start|assert-no-gms|diagnose|stop" >&2
   exit 2
   ;;
 esac
