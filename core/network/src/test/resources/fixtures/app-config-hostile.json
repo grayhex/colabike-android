@@ -1,0 +1,89 @@
+{
+  "revision": -3,
+  "updatedAt": "2026-10-04T08:00:00.000Z",
+  "somethingNew": {
+    "a": 1
+  },
+  "launch": {
+    "enabled": true,
+    "imageUrl": "https://evil.example/launch.webp",
+    "contentMode": "stretch",
+    "title": "  "
+  },
+  "onboarding": {
+    "enabled": true,
+    "revision": 2,
+    "items": [
+      {
+        "title": "1",
+        "body": "x",
+        "imageUrl": "//evil.example/a.webp"
+      },
+      {
+        "title": "   ",
+        "body": "пустой заголовок",
+        "imageUrl": null
+      },
+      {
+        "title": "3",
+        "body": null,
+        "imageUrl": "/api/assets/a0000000-0000-4000-8000-000000000009"
+      },
+      {
+        "title": "4",
+        "body": null,
+        "imageUrl": null
+      },
+      {
+        "title": "5",
+        "body": null,
+        "imageUrl": null
+      },
+      {
+        "title": "6",
+        "body": null,
+        "imageUrl": null
+      },
+      {
+        "title": "7",
+        "body": null,
+        "imageUrl": null
+      },
+      {
+        "title": "8",
+        "body": null,
+        "imageUrl": null
+      }
+    ]
+  },
+  "notice": {
+    "revision": 2,
+    "kind": "holiday",
+    "title": "Праздник",
+    "body": "  ",
+    "imageUrl": "/../../etc/passwd",
+    "action": {
+      "label": "Открыть",
+      "url": "intent://scan/#Intent;scheme=zxing;end"
+    }
+  },
+  "links": {
+    "help": "javascript:alert(1)",
+    "privacy": "http://colabike.ru/legal/privacy",
+    "terms": "https://user:pass@colabike.ru/legal/terms",
+    "about": "colabike://about",
+    "support": "https://help.example.ru/x"
+  },
+  "features": {
+    "chat": false,
+    "teleport": false,
+    "market": true
+  },
+  "compatibility": {
+    "minimumSupportedVersionCode": 5,
+    "latestVersionCode": 3,
+    "updateMode": "hard",
+    "updateUrl": "http://store.example/app",
+    "updateMessage": "  Обновитесь  "
+  }
+}

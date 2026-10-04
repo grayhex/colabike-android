@@ -1,0 +1,61 @@
+{
+  "revision": 7,
+  "updatedAt": "2026-10-04T08:00:00.000Z",
+  "launch": {
+    "enabled": true,
+    "imageUrl": "/api/assets/a0000000-0000-4000-8000-000000000001",
+    "contentMode": "fit",
+    "title": "Сезон открыт"
+  },
+  "onboarding": {
+    "enabled": true,
+    "revision": 3,
+    "items": [
+      {
+        "title": "Гараж",
+        "body": "Соберите свой велосипед и покажите его друзьям.",
+        "imageUrl": "/api/assets/a0000000-0000-4000-8000-000000000002"
+      },
+      {
+        "title": "Покатушки",
+        "body": null,
+        "imageUrl": null
+      }
+    ]
+  },
+  "notice": {
+    "revision": 5,
+    "kind": "service",
+    "title": "Плановые работы",
+    "body": "В воскресенье с 3 до 5 утра сайт может быть недоступен.",
+    "imageUrl": null,
+    "action": {
+      "label": "Подробнее",
+      "url": "https://colabike.ru/about#status"
+    }
+  },
+  "links": {
+    "help": "https://colabike.ru/about#guide",
+    "privacy": "https://colabike.ru/legal/privacy",
+    "terms": "https://colabike.ru/legal/terms",
+    "about": "https://colabike.ru/about",
+    "support": "https://help.example.ru/colabike"
+  },
+  "features": {
+    "chat": true,
+    "market": false,
+    "componentCatalog": true,
+    "rides": true,
+    "bikeEditor": true,
+    "journalEditor": true,
+    "nativeYandexSignIn": false,
+    "holograms": true
+  },
+  "compatibility": {
+    "minimumSupportedVersionCode": 3,
+    "latestVersionCode": 10,
+    "updateMode": "hard",
+    "updateUrl": "https://www.rustore.ru/catalog/app/ru.colabike.app",
+    "updateMessage": "Обновите приложение, чтобы продолжить."
+  }
+}

@@ -2,6 +2,7 @@ package ru.colabike.app.navigation
 
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
+import ru.colabike.core.model.Feature
 
 /**
  * Navigation 3 keys. Serializable, so the back stacks survive process death; arguments are ids,
@@ -90,3 +91,30 @@ sealed interface Destination : NavKey {
 
     @Serializable data object Licenses : Destination
 }
+
+/**
+ * The function of the app that a screen belongs to, if the server can switch that function off. A
+ * switched-off function is not opened from anywhere (a link, a notification, a row): the person is
+ * told it is not available and stays where they are.
+ */
+fun Destination.requiredFeature(): Feature? =
+    when (this) {
+        Destination.Rides,
+        is Destination.Ride,
+        is Destination.BikeRides -> Feature.Rides
+        Destination.Messages,
+        is Destination.Conversation,
+        Destination.NewConversation -> Feature.Chat
+        is Destination.Market,
+        is Destination.Listing,
+        Destination.SavedMarket -> Feature.Market
+        Destination.Components,
+        is Destination.Component -> Feature.ComponentCatalog
+        is Destination.Comments ->
+            when (kind) {
+                "ride" -> Feature.Rides
+                "component" -> Feature.ComponentCatalog
+                else -> null
+            }
+        else -> null
+    }

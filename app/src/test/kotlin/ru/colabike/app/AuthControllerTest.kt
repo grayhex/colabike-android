@@ -47,7 +47,7 @@ class AuthControllerTest {
         return AuthController(
             session = session,
             yandex = YandexSignIn(config.siteUrl, "https://colabike.test/app/auth", verifier),
-            yandexEnabled = true,
+            yandexReady = { true },
             revoke = {},
             scope = scope,
         )

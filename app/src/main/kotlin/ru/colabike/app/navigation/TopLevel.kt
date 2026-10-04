@@ -4,6 +4,8 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import ru.colabike.app.R
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.model.Feature
+import ru.colabike.core.model.FeatureAvailability
 
 /**
  * The target top-level sections of the app: Feed, Bikes, Rides, Messages, Profile. A section is
@@ -20,13 +22,22 @@ enum class TopLevel(
     @param:DrawableRes val icon: Int,
     @param:DrawableRes val selectedIcon: Int,
     val available: Boolean,
+    /** The function the server can switch off; its section then has no tab. */
+    val feature: Feature? = null,
 ) {
     /** Following feed, journal, saved: slice 6. */
     Feed(Destination.Feed, R.string.nav_feed, ColaIcons.Feed, ColaIcons.FeedFilled, true),
     Bikes(Destination.Bikes, R.string.nav_bikes, ColaIcons.Bike, ColaIcons.BikeFilled, true),
 
     /** Rides and plans, one's own (the map: second part of slice 7). */
-    Rides(Destination.Rides, R.string.nav_rides, ColaIcons.Route, ColaIcons.Route, true),
+    Rides(
+        Destination.Rides,
+        R.string.nav_rides,
+        ColaIcons.Route,
+        ColaIcons.Route,
+        true,
+        Feature.Rides,
+    ),
 
     /** Personal chat (the provider's SDK in the app's look): slice 8. */
     Messages(
@@ -35,6 +46,7 @@ enum class TopLevel(
         ColaIcons.Chat,
         ColaIcons.ChatFilled,
         true,
+        Feature.Chat,
     ),
     Profile(
         Destination.Profile,
@@ -45,8 +57,16 @@ enum class TopLevel(
     );
 
     companion object {
-        /** The sections the shell shows, in order. */
+        /** The sections the app has, in order. */
         val shown: List<TopLevel> = entries.filter { it.available }
+
+        /**
+         * The sections the shell shows now: the ones the app has, minus those whose function the
+         * server has switched off. The start section is always there.
+         */
+        fun shown(features: FeatureAvailability): List<TopLevel> = shown.filter {
+            it == start || it.feature == null || features.isEnabled(it.feature)
+        }
 
         /** Where the app opens and where Back leaves from ("exit through home"). */
         val start: TopLevel = Bikes

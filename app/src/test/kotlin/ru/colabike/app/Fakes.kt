@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.YandexFailure
 import ru.colabike.app.comments.InMemoryCommentDrafts
+import ru.colabike.app.config.AppConfigSource
+import ru.colabike.app.config.AppConfigState
 import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.SiteLinks
 import ru.colabike.app.messages.ChatGateway
@@ -33,6 +35,7 @@ import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.AnalysisChannel
 import ru.colabike.core.model.AnalysisPoint
+import ru.colabike.core.model.AppConfig
 import ru.colabike.core.model.AppNotification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
@@ -54,13 +57,17 @@ import ru.colabike.core.model.CommentTarget
 import ru.colabike.core.model.CommentThread
 import ru.colabike.core.model.CommentThreads
 import ru.colabike.core.model.CommentsRepository
+import ru.colabike.core.model.Compatibility
 import ru.colabike.core.model.ComponentFilters
 import ru.colabike.core.model.ComponentId
 import ru.colabike.core.model.ComponentModel
 import ru.colabike.core.model.ComponentPhoto
 import ru.colabike.core.model.ComponentQuery
 import ru.colabike.core.model.ComponentsRepository
+import ru.colabike.core.model.ConfigAssets
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.Feature
+import ru.colabike.core.model.FeatureAvailability
 import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.FeedRepository
@@ -109,6 +116,7 @@ import ru.colabike.core.model.RidesRepository
 import ru.colabike.core.model.SavedChange
 import ru.colabike.core.model.SavedListingChange
 import ru.colabike.core.model.SellerListings
+import ru.colabike.core.model.ServiceLinks
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UpcomingRide
@@ -1344,6 +1352,48 @@ class FakeMarket(
     }
 }
 
+/** The config in memory: a state to set, and a count of the times the app asked to look again. */
+class FakeAppConfig(initial: AppConfigState = AppConfigState(loaded = true)) : AppConfigSource {
+    override val state = MutableStateFlow(initial)
+    var refreshes = 0
+
+    override fun refreshIfStale() {
+        refreshes++
+    }
+
+    /** The app as the server configured it. */
+    fun set(
+        features: FeatureAvailability = FeatureAvailability.AllOn,
+        links: ServiceLinks = ServiceLinks.None,
+        compatibility: Compatibility = Compatibility.None,
+    ) {
+        state.value =
+            AppConfigState(
+                config =
+                    AppConfig.Builtin.copy(
+                        revision = 1,
+                        features = features,
+                        links = links,
+                        compatibility = compatibility,
+                    ),
+                loaded = true,
+                validatedAt = Instant.parse("2026-10-03T20:00:00Z"),
+            )
+    }
+}
+
+/** The kept pictures of the config, as a set of addresses with a file each. */
+class FakeConfigAssets(val kept: MutableMap<String, java.io.File> = mutableMapOf()) : ConfigAssets {
+    override suspend fun prefetch(urls: List<String>) = true
+
+    override suspend fun retainOnly(urls: List<String>) = Unit
+
+    override fun fileOf(url: String): java.io.File? = kept[url]
+}
+
+/** A switch for [FeatureAvailability]: everything on, except the named ones. */
+fun featuresOff(vararg off: Feature) = FeatureAvailability(off.associate { it.key to false })
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -1355,6 +1405,8 @@ class FakeDependencies(
     override val notifications: FakeNotifications = FakeNotifications(),
     override val components: FakeComponents = FakeComponents(),
     override val market: FakeMarket = FakeMarket(),
+    override val appConfig: FakeAppConfig = FakeAppConfig(),
+    override val configAssets: ConfigAssets = FakeConfigAssets(),
     override val chat: FakeChat = FakeChat(),
     val chatGateway: FakeChatGateway = FakeChatGateway(),
     override val chatSession: ChatSession =
