@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
+import ru.colabike.app.rides.AnalysisUiState
 import ru.colabike.app.rides.BikeRidesViewModel
 import ru.colabike.app.rides.RideRow
 import ru.colabike.app.rides.RideSegment
@@ -292,5 +293,76 @@ class RideViewModelTest {
 
         assertThat((vm.state.value as RideUiState.Loaded).ride.summary.comments)
             .isEqualTo(before + 1)
+    }
+
+    // --- the charts' series: a request of their own ------------------------------------------
+
+    @Test
+    fun `the series are not asked for until the page asks`() = runTest {
+        val vm = RideViewModel(repository, RideId("ride-0"))
+
+        assertThat(vm.analysis.value).isEqualTo(AnalysisUiState.NotAsked)
+        assertThat(repository.analysisCalls).isEmpty()
+
+        vm.loadAnalysis()
+
+        assertThat(vm.analysis.value).isInstanceOf(AnalysisUiState.Loaded::class.java)
+        assertThat(repository.analysisCalls).containsExactly("ride-0")
+    }
+
+    @Test
+    fun `asking again while they are in or on the way does not ask twice`() = runTest {
+        val vm = RideViewModel(repository, RideId("ride-0"))
+
+        vm.loadAnalysis()
+        vm.loadAnalysis()
+
+        assertThat(repository.analysisCalls).hasSize(1)
+    }
+
+    @Test
+    fun `a plan has no route and no series are asked for`() = runTest {
+        val vm = RideViewModel(repository, RideId("plan-1"))
+
+        vm.loadAnalysis()
+
+        assertThat(vm.analysis.value).isEqualTo(AnalysisUiState.NotAsked)
+        assertThat(repository.analysisCalls).isEmpty()
+    }
+
+    @Test
+    fun `a ride without an analysis is absent, not an error`() = runTest {
+        // ride-1 has a route, and the server has no analysis for it (404).
+        val vm = RideViewModel(repository, RideId("ride-1"))
+
+        vm.loadAnalysis()
+
+        assertThat(vm.analysis.value).isEqualTo(AnalysisUiState.Absent)
+    }
+
+    @Test
+    fun `a failed request offers asking again and the page stays`() = runTest {
+        val vm = RideViewModel(repository, RideId("ride-0"))
+        repository.nextError = DataError.Offline(java.io.IOException())
+
+        vm.loadAnalysis()
+
+        assertThat(vm.analysis.value)
+            .isEqualTo(AnalysisUiState.Failed(UiText.Res(R.string.error_offline)))
+        assertThat(vm.state.value).isInstanceOf(RideUiState.Loaded::class.java)
+
+        vm.loadAnalysis()
+
+        assertThat(vm.analysis.value).isInstanceOf(AnalysisUiState.Loaded::class.java)
+    }
+
+    @Test
+    fun `loading the page again forgets the series`() = runTest {
+        val vm = RideViewModel(repository, RideId("ride-0"))
+        vm.loadAnalysis()
+
+        vm.load()
+
+        assertThat(vm.analysis.value).isEqualTo(AnalysisUiState.NotAsked)
     }
 }

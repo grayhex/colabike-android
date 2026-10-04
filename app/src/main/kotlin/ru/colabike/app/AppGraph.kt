@@ -17,6 +17,8 @@ import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.PreferencesPendingNavigation
 import ru.colabike.app.links.SiteLinks
+import ru.colabike.app.rides.map.MapLibreRouteMaps
+import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.settings.AppSettings
 import ru.colabike.app.settings.PreferencesSettings
 import ru.colabike.core.auth.AuthInterceptor
@@ -69,6 +71,9 @@ interface AppDependencies {
 
     /** What time it is; a fixed clock in tests, so a screenshot does not age. */
     val clock: Clock
+
+    /** Where a ride's route is drawn: the real map in the app, a drawing in tests. */
+    val maps: RouteMaps
 }
 
 /**
@@ -124,6 +129,7 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
         PreferencesSettings(context.getSharedPreferences("settings", Context.MODE_PRIVATE))
     override val links = SiteLinks(config.siteUrl)
     override val clock: Clock = Clock.systemUTC()
+    override val maps: RouteMaps = MapLibreRouteMaps(BuildConfig.MAP_STYLE_URL)
     override val pending: PendingNavigation =
         PreferencesPendingNavigation(
             context.getSharedPreferences("pending-navigation", Context.MODE_PRIVATE),

@@ -6,8 +6,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Test
+import ru.colabike.core.model.AnalysisChannel
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.GeoPoint
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.RideRecurrence
 import ru.colabike.core.model.RideRole
@@ -121,6 +123,89 @@ class RidesRepositoryTest {
             assertThat(detail.meetingHidden).isFalse()
             assertThat(detail.meetingPoint).isNull()
         }
+
+    @Test
+    fun `a route keeps the server's lines apart and reads longitude first`() = runTest {
+        site.json(200, site.fixture("ride-recorded.json"))
+
+        val route = rides.ride(RideId(ride)).route!!
+
+        // Two lines: what lies between them is a privacy cut and is never drawn as a segment.
+        assertThat(route.lines).hasSize(2)
+        assertThat(route.lines[0].first()).isEqualTo(GeoPoint(latitude = 55.75, longitude = 37.61))
+        assertThat(route.lines[1].last()).isEqualTo(GeoPoint(latitude = 55.78, longitude = 37.65))
+        assertThat(route.pointCount).isEqualTo(4)
+    }
+
+    @Test
+    fun `a point off the Earth ends its line, a lone point and an empty line are no route`() =
+        runTest {
+            site.json(200, site.fixture("ride-dirty-route.json"))
+
+            val route = rides.ride(RideId(ride)).route!!
+
+            // Longitude 200 ends the first line; [37.63, 37.64] starts a new one; latitude 95 is
+            // dropped, so the third line is only its two good points; the lone point is dropped.
+            assertThat(route.lines.map { it.size }).containsExactly(2, 2, 2).inOrder()
+            assertThat(route.lines[0].map { it.longitude }).containsExactly(37.61, 37.62).inOrder()
+            assertThat(route.lines[1].map { it.longitude }).containsExactly(37.63, 37.64).inOrder()
+            assertThat(route.lines[2].map { it.longitude }).containsExactly(37.72, 37.73).inOrder()
+            assertThat(route.lines.flatten().none { it.latitude > 90.0 }).isTrue()
+        }
+
+    @Test
+    fun `a ride without a public track has no route`() = runTest {
+        site.json(200, site.fixture("ride-planned.json"))
+
+        assertThat(rides.ride(RideId(ride)).route).isNull()
+    }
+
+    @Test
+    fun `the analysis comes from its own request and keeps breaks, gaps and missing sensors`() =
+        runTest {
+            site.json(200, site.fixture("ride-analysis.json"))
+
+            val analysis = rides.analysis(RideId(ride))!!
+
+            assertThat(site.server.takeRequest().url.encodedPath)
+                .isEqualTo("/api/v1/rides/$ride/analysis")
+            assertThat(analysis.downsampled).isTrue()
+            assertThat(analysis.pointCount).isEqualTo(6)
+            // The empty third segment is dropped; the two real ones stay separate.
+            assertThat(analysis.segments.map { it.size }).containsExactly(3, 3).inOrder()
+            val (start, middle, end) = analysis.segments[0]
+            assertThat(start.values[AnalysisChannel.Elevation]).isEqualTo(120.5)
+            assertThat(start.distanceM).isEqualTo(0.0)
+            // The author gave no heart rate at the middle point, and the server says so by a gap.
+            assertThat(middle.values).doesNotContainKey(AnalysisChannel.HeartRate)
+            assertThat(middle.gapBefore(AnalysisChannel.HeartRate)).isTrue()
+            assertThat(middle.gapBefore(AnalysisChannel.Speed)).isFalse()
+            assertThat(end.gapBefore(AnalysisChannel.Elevation)).isTrue()
+            assertThat(end.gapBefore(AnalysisChannel.Grade)).isTrue()
+            // A point whose position is not on the Earth keeps its numbers but has no position.
+            assertThat(analysis.segments[1].last().position).isNull()
+            assertThat(analysis.segments[1].last().values[AnalysisChannel.Elevation])
+                .isEqualTo(128.0)
+            // Heart rate has two values; cadence and power have none, so they get no chart.
+            assertThat(analysis.channels)
+                .containsExactly(
+                    AnalysisChannel.Elevation,
+                    AnalysisChannel.Speed,
+                    AnalysisChannel.Grade,
+                    AnalysisChannel.HeartRate,
+                )
+                .inOrder()
+        }
+
+    @Test
+    fun `no analysis is not an error, any other answer is`() = runTest {
+        site.json(404, error("not_found"))
+        assertThat(rides.analysis(RideId(ride))).isNull()
+
+        site.json(500, error("internal_error"))
+        assertThat(runCatching { rides.analysis(RideId(ride)) }.exceptionOrNull())
+            .isInstanceOf(DataError.Server::class.java)
+    }
 
     @Test
     fun `a private, cancelled or missing ride is not found, and an id that is no UUID is not asked`() =

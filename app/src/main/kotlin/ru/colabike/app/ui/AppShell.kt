@@ -286,6 +286,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         repository = dependencies.rides,
                                         auth = dependencies.auth,
                                         id = RideId(key.id),
+                                        maps = dependencies.maps,
                                         actions =
                                             RideActions(
                                                 onBack = { navigator.back() },

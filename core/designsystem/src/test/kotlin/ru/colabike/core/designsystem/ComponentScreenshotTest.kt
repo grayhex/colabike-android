@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
+import kotlin.math.sin
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,6 +19,8 @@ import org.robolectric.annotation.GraphicsMode
 import ru.colabike.core.designsystem.component.BikeCard
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
 import ru.colabike.core.designsystem.component.BrandMark
+import ru.colabike.core.designsystem.component.ChartPoint
+import ru.colabike.core.designsystem.component.ChartSeries
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaListItem
@@ -37,6 +40,7 @@ import ru.colabike.core.designsystem.component.PhotoTile
 import ru.colabike.core.designsystem.component.PillBadge
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.component.RideCard
+import ru.colabike.core.designsystem.component.SeriesChart
 import ru.colabike.core.designsystem.component.StatTile
 import ru.colabike.core.designsystem.component.UserRow
 import ru.colabike.core.designsystem.theme.Spacing
@@ -109,6 +113,46 @@ class ComponentScreenshotTest {
     @Test
     fun rideVariantsLargeText() =
         rideVariants(dark = false, fontScale = 2f, name = "ride_variants_font_200")
+
+    private fun charts(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            val hills = (0..30).map { ChartPoint(it * 1.0, 130.0 + 24 * sin(it / 4.0)) }.chunked(16)
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                SeriesChart(
+                    ChartSeries(
+                        title = "Высота",
+                        runs = hills,
+                        minLabel = "106 м",
+                        maxLabel = "154 м",
+                        startLabel = "0 км",
+                        endLabel = "30 км",
+                        summary = "от 106 до 154 м на 30 км пути; есть разрыв, где участок скрыт",
+                    )
+                )
+                SeriesChart(
+                    ChartSeries(
+                        title = "Пульс",
+                        runs =
+                            listOf(
+                                listOf(ChartPoint(0.0, 120.0), ChartPoint(5.0, 150.0)),
+                                listOf(ChartPoint(8.0, 140.0)),
+                                listOf(ChartPoint(12.0, 133.0), ChartPoint(20.0, 128.0)),
+                            ),
+                        minLabel = "120 уд/мин",
+                        maxLabel = "150 уд/мин",
+                        startLabel = "0 км",
+                        endLabel = "20 км",
+                        summary = "от 120 до 150 уд/мин",
+                    )
+                )
+            }
+        }
+
+    @Test fun chartsLight() = charts(dark = false, name = "charts_light")
+
+    @Test fun chartsDark() = charts(dark = true, name = "charts_dark")
+
+    @Test fun chartsLargeText() = charts(dark = false, fontScale = 2f, name = "charts_font_200")
 
     private fun feedCards(dark: Boolean, fontScale: Float = 1f, name: String) =
         compose.snapshot(name, dark, fontScale) {

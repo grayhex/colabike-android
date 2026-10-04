@@ -127,6 +127,62 @@ data class RideDetail(
     val passport: RidePassport?,
     /** Sensor and device numbers the author allowed to show, by the server's own names. */
     val extraMetrics: Map<String, Double>,
-    /** The ride has a route the viewer may see. */
-    val hasPublicRoute: Boolean,
-)
+    /** The route the server allows this viewer to see, or null if there is none. */
+    val route: RideRoute?,
+) {
+    val hasPublicRoute: Boolean
+        get() = route != null
+}
+
+/** A place in degrees. */
+data class GeoPoint(val latitude: Double, val longitude: Double)
+
+/**
+ * The public route as the server gave it: several lines, because the parts inside a privacy zone
+ * are cut out. Whatever is between two lines is hidden on purpose and is never joined by a segment.
+ */
+data class RideRoute(val lines: List<List<GeoPoint>>) {
+    val pointCount: Int
+        get() = lines.sumOf { it.size }
+}
+
+/** A series of a ride's analysis. [bit] is its place in the server's mask of gaps. */
+enum class AnalysisChannel(val bit: Int) {
+    Elevation(1),
+    Speed(2),
+    Grade(4),
+    HeartRate(8),
+    Cadence(16),
+    Power(32),
+}
+
+/**
+ * One shown point of the analysis. There is no absolute time, only [elapsedS] along the way;
+ * [values] holds the channels the server gave (a sensor the author did not open is absent), and
+ * [gaps] says which channels lost values between the previous point and this one.
+ */
+data class AnalysisPoint(
+    val position: GeoPoint?,
+    val distanceM: Double?,
+    val elapsedS: Double?,
+    val values: Map<AnalysisChannel, Double>,
+    val gaps: Int,
+) {
+    fun gapBefore(channel: AnalysisChannel): Boolean = gaps and channel.bit != 0
+}
+
+/**
+ * The series of a public track for charts. [segments] are continuous parts with breaks between them
+ * (privacy cuts); a line is never drawn across a break, nor across a gap of one channel.
+ */
+data class RideAnalysis(
+    val pointCount: Int,
+    val downsampled: Boolean,
+    val segments: List<List<AnalysisPoint>>,
+) {
+    /** The channels that have at least two values somewhere: enough to draw a line. */
+    val channels: List<AnalysisChannel> =
+        AnalysisChannel.entries.filter { channel ->
+            segments.sumOf { segment -> segment.count { channel in it.values } } >= 2
+        }
+}

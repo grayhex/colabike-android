@@ -10,6 +10,18 @@ plugins {
 // tests and previews use fakes (docs/architecture.md, "Environments").
 val siteUrl = "https://colabike.ru"
 
+// The style of the map under a route (an `https` MapLibre style URL), chosen by the owner and given
+// as -Pcolabike.mapStyleUrl=... or in gradle.properties. Empty: the route is drawn on a plain
+// background and the app makes no tile request at all (docs/adr/0009-route-map-and-analysis.md).
+val mapStyleUrl = providers.gradleProperty("colabike.mapStyleUrl").orElse("").get().trim()
+
+check(
+    mapStyleUrl.isEmpty() ||
+        (mapStyleUrl.startsWith("https://") && '"' !in mapStyleUrl && '\\' !in mapStyleUrl)
+) {
+    "colabike.mapStyleUrl must be an https URL without quotes"
+}
+
 android {
     namespace = "ru.colabike.app"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -23,6 +35,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
         buildConfigField("String", "NATIVE_AUTH_RETURN_URL", "\"$siteUrl/app/auth\"")
+        buildConfigField("String", "MAP_STYLE_URL", "\"$mapStyleUrl\"")
         // The Yandex ID button waits for cola#324 (App Link and NATIVE_AUTH_RETURN_URL on the
         // site): ./gradlew assembleDebug -Pcolabike.yandexSignIn=true to try it earlier.
         buildConfigField(
@@ -76,6 +89,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:auth"))
     implementation(project(":core:designsystem"))
+    implementation(libs.maplibre.android)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

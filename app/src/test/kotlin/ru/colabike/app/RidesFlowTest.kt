@@ -1,5 +1,6 @@
 package ru.colabike.app
 
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
@@ -263,7 +264,7 @@ class RidesFlowTest {
     }
 
     @Test
-    fun `a completed ride page shows its numbers, the sensor numbers and that the map is coming`() {
+    fun `a completed ride page shows its numbers, the sensor numbers and its route`() {
         start(dependencies())
         openRides()
         chip("Состоявшиеся").performClick()
@@ -276,7 +277,7 @@ class RidesFlowTest {
         compose.onNodeWithText("Показатели датчиков").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("avgHeartRate").performScrollTo().assertIsDisplayed()
         compose
-            .onNode(hasText("карта появится", substring = true))
+            .onNodeWithContentDescription("Схема маршрута", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
     }
@@ -371,5 +372,107 @@ class RidesFlowTest {
 
         compose.onNodeWithText("Вечерняя по набережной").assertIsDisplayed()
         compose.onNodeWithText("Показатели датчиков").performScrollTo().assertIsDisplayed()
+    }
+
+    // --- the route and its charts ----------------------------------------------------------
+
+    private fun openCompleted(rides: FakeRides = FakeRides()) {
+        start(dependencies(rides = rides))
+        openRides()
+        chip("Состоявшиеся").performClick()
+        compose.onNodeWithContentDescription("Покатушка 0", substring = true).performClick()
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `a ride with a route shows its drawing and the way to the map`() {
+        openCompleted()
+
+        compose
+            .onNodeWithContentDescription("Схема маршрута", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText("Маршрут разорван", substring = true).assertExists()
+        compose.onNodeWithText("Открыть карту").assertExists()
+    }
+
+    @Test
+    fun `the map opens on its own screen, says it is only a route, and Back returns to the page`() {
+        openCompleted()
+
+        compose.onNodeWithText("Открыть карту").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Маршрут").assertIsDisplayed()
+        compose.onNodeWithText("Подложка карты не подключена", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Открыть карту").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription("Назад").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Покатушка 0").assertIsDisplayed()
+        compose.onNodeWithText("Открыть карту").assertExists()
+    }
+
+    @Test
+    fun `the charts come in a request of their own, with a summary instead of the picture`() {
+        val rides = FakeRides()
+        openCompleted(rides)
+
+        assertThat(rides.analysisCalls).containsExactly("ride-0")
+        compose.onNodeWithText("Разбор маршрута").performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithContentDescription("Высота: от", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithContentDescription("Скорость: от", substring = true).assertExists()
+        compose.onNodeWithContentDescription("Уклон: от", substring = true).assertExists()
+        // Heart rate has a gap, and the summary says so.
+        compose
+            .onNodeWithContentDescription("Пульс: от", substring = true)
+            .assertContentDescriptionContains("есть разрывы", substring = true)
+        compose.onNodeWithContentDescription("Мощность", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a ride the server has no analysis for shows its route and no charts`() {
+        val rides = FakeRides(analyses = emptyMap())
+        openCompleted(rides)
+
+        compose.onNodeWithContentDescription("Схема маршрута", substring = true).assertExists()
+        compose.onNodeWithText("Разбор маршрута").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed series request offers a retry and the page is still there`() {
+        val rides = FakeRides()
+        rides.nextError = null
+        start(dependencies(rides = rides))
+        openRides()
+        chip("Состоявшиеся").performClick()
+        compose.waitForIdle()
+        // The page loads, then the series fail once.
+        rides.failAnalysisOnce = true
+        compose.onNodeWithContentDescription("Покатушка 0", substring = true).performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Покатушка 0").assertIsDisplayed()
+        compose.onNodeWithText("Не удалось загрузить разбор маршрута.").performScrollTo()
+        compose.onNodeWithText("Повторить").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithContentDescription("Высота: от", substring = true).assertExists()
+        assertThat(rides.analysisCalls).containsExactly("ride-0", "ride-0")
+    }
+
+    @Test
+    fun `a plan has no route section and asks for no series`() {
+        val rides = FakeRides()
+        start(dependencies(rides = rides))
+        openFirstPlan()
+
+        compose.onNodeWithText("Открыть карту").assertDoesNotExist()
+        compose.onNodeWithText("Разбор маршрута").assertDoesNotExist()
+        assertThat(rides.analysisCalls).isEmpty()
     }
 }

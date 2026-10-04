@@ -1,0 +1,92 @@
+{
+  "channels": [
+    "elevation",
+    "speed",
+    "grade",
+    "heartRate"
+  ],
+  "pointCount": 6,
+  "downsampled": true,
+  "segments": [
+    [
+      {
+        "coord": [
+          37.61,
+          55.75
+        ],
+        "distanceM": 0,
+        "elapsedS": 0,
+        "elevationM": 120.5,
+        "speedMps": 5.0,
+        "gradePct": 0.0,
+        "hrBpm": 131.0,
+        "gaps": 0
+      },
+      {
+        "coord": [
+          37.62,
+          55.76
+        ],
+        "distanceM": 1200.5,
+        "elapsedS": 240,
+        "elevationM": 126.0,
+        "speedMps": 5.5,
+        "gradePct": 1.2,
+        "hrBpm": null,
+        "gaps": 8
+      },
+      {
+        "coord": [
+          37.63,
+          55.77
+        ],
+        "distanceM": 2500,
+        "elapsedS": 500,
+        "elevationM": null,
+        "speedMps": 6.1,
+        "gradePct": null,
+        "hrBpm": 140.0,
+        "gaps": 5
+      }
+    ],
+    [
+      {
+        "coord": [
+          37.7,
+          55.8
+        ],
+        "distanceM": 9000,
+        "elapsedS": 1800,
+        "elevationM": 131.0,
+        "speedMps": null,
+        "gradePct": -0.5,
+        "gaps": 0
+      },
+      {
+        "coord": [
+          37.71,
+          55.81
+        ],
+        "distanceM": 9800,
+        "elapsedS": 1950,
+        "elevationM": 129.0,
+        "speedMps": 4.2,
+        "gradePct": -0.4,
+        "gaps": 2
+      },
+      {
+        "coord": [
+          500.0,
+          55.82
+        ],
+        "distanceM": 10400,
+        "elapsedS": 2100,
+        "elevationM": 128.0,
+        "speedMps": 4.0,
+        "gradePct": -0.2,
+        "gaps": 0
+      }
+    ],
+    []
+  ]
+}
