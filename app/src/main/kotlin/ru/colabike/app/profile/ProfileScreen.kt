@@ -67,6 +67,7 @@ fun ProfileRoute(
     onOpenAbout: () -> Unit,
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
+    onOpenSavedMarket: () -> Unit = {},
 ) {
     val viewModel = viewModel { ProfileViewModel(dependencies.account, dependencies.auth) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -84,6 +85,7 @@ fun ProfileRoute(
         onOpenDevices = onOpenDevices,
         onOpenPublicProfile = onOpenPublicProfile,
         onOpenSaved = onOpenSaved,
+        onOpenSavedMarket = onOpenSavedMarket,
         onManageOnWeb = { opener.open(dependencies.links.account) },
         onOpenAbout = onOpenAbout,
     )
@@ -103,6 +105,7 @@ fun ProfileScreen(
     onOpenAbout: () -> Unit,
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
+    onOpenSavedMarket: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -151,6 +154,7 @@ fun ProfileScreen(
                                         state,
                                         onOpenPublicProfile = onOpenPublicProfile,
                                         onOpenSaved = onOpenSaved,
+                                        onOpenSavedMarket = onOpenSavedMarket,
                                         onOpenDevices = onOpenDevices,
                                         onManageOnWeb = onManageOnWeb,
                                     )
@@ -232,6 +236,7 @@ private fun MemberSections(
     state: ProfileUiState.Loaded,
     onOpenPublicProfile: (id: String) -> Unit,
     onOpenSaved: () -> Unit,
+    onOpenSavedMarket: () -> Unit,
     onOpenDevices: () -> Unit,
     onManageOnWeb: () -> Unit,
 ) {
@@ -300,6 +305,12 @@ private fun MemberSections(
             supporting = stringResource(R.string.profile_saved_hint),
             icon = ColaIcons.Bookmark,
             onClick = onOpenSaved,
+        )
+        ColaListItem(
+            title = stringResource(R.string.profile_saved_market),
+            supporting = stringResource(R.string.profile_saved_market_hint),
+            icon = ColaIcons.Tag,
+            onClick = onOpenSavedMarket,
         )
         ColaListItem(
             title = stringResource(R.string.profile_devices),

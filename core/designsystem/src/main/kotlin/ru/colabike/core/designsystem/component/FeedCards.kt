@@ -155,8 +155,8 @@ fun JournalCard(entry: JournalSummary, onClick: () -> Unit, modifier: Modifier =
 }
 
 /**
- * A market listing in the feed: a small picture, what is offered, the price and the place. Without
- * [onClick] it only tells (the listing page belongs to a later slice) and says no "open".
+ * A market listing in a list or the feed: a small picture, what is offered, the price and the
+ * place. Without [onClick] it only tells and says no "open".
  */
 @Composable
 fun ListingCard(
@@ -164,26 +164,8 @@ fun ListingCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
-    val locale = LocalConfiguration.current.locales[0]
-    val type =
-        when (listing.type) {
-            "sale" -> stringResource(R.string.cola_listing_sale)
-            "wanted" -> stringResource(R.string.cola_listing_wanted)
-            "exchange" -> stringResource(R.string.cola_listing_exchange)
-            "free" -> stringResource(R.string.cola_listing_free)
-            else -> null
-        }
-    val price =
-        when {
-            listing.type == "free" -> stringResource(R.string.cola_price_free)
-            listing.price == null -> stringResource(R.string.cola_price_by_agreement)
-            else ->
-                stringResource(
-                    R.string.cola_price_value,
-                    amount(listing.price!!, locale),
-                    currencySign(listing.currency),
-                )
-        }
+    val type = listingTypeLabel(listing.type)
+    val price = listingPrice(listing.type, listing.price, listing.currency)
     val description =
         listOfNotNull(
                 type,
@@ -234,7 +216,7 @@ fun ListingCard(
                 Text(
                     price,
                     style =
-                        if (listing.price != null && listing.type != "free")
+                        if (listingPriceIsSum(listing.type, listing.price))
                             ColaTheme.textStyles.numeral
                         else MaterialTheme.typography.titleMedium,
                 )
@@ -243,6 +225,35 @@ fun ListingCard(
         }
     }
 }
+
+/** The kind of a listing in words ("Продаётся"); null for one a later server version adds. */
+@Composable
+fun listingTypeLabel(type: String): String? =
+    when (type) {
+        "sale" -> stringResource(R.string.cola_listing_sale)
+        "wanted" -> stringResource(R.string.cola_listing_wanted)
+        "exchange" -> stringResource(R.string.cola_listing_exchange)
+        "free" -> stringResource(R.string.cola_listing_free)
+        else -> null
+    }
+
+/**
+ * A price as a person reads it: the sum in its own currency, "free" for a gift, "by agreement" for
+ * no price. Nothing is converted between currencies.
+ */
+@Composable
+fun listingPrice(type: String, price: Double?, currency: String): String {
+    val locale = LocalConfiguration.current.locales[0]
+    return when {
+        type == "free" -> stringResource(R.string.cola_price_free)
+        price == null -> stringResource(R.string.cola_price_by_agreement)
+        else ->
+            stringResource(R.string.cola_price_value, amount(price, locale), currencySign(currency))
+    }
+}
+
+/** Only a sum is set as a numeral; "free" and "by agreement" are words and may wrap. */
+fun listingPriceIsSum(type: String, price: Double?): Boolean = price != null && type != "free"
 
 private val ThumbnailSize = 80.dp
 private const val BigFontScale = 1.3f
@@ -276,8 +287,9 @@ private fun currencySign(code: String): String =
         else -> code
     }
 
+/** A small icon with a line of quiet text: where, when, how far. */
 @Composable
-internal fun Fact(icon: Int, text: String) {
+fun Fact(icon: Int, text: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),

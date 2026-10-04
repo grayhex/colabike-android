@@ -137,8 +137,7 @@ fun AppLink.target(site: SiteLinks): LinkTarget =
         is AppLink.Person -> LinkTarget.InApp(Destination.Person(username))
         is AppLink.Journal -> LinkTarget.InApp(Destination.Journal(id))
         is AppLink.Ride -> LinkTarget.InApp(Destination.Ride(id))
-        // No screen yet (#9): the site, by the same address.
-        is AppLink.Market -> LinkTarget.OnSite(site.page("market", id))
+        is AppLink.Market -> LinkTarget.InApp(Destination.Listing(id))
         // The site can resolve its own address, the app cannot: hand the page over as it is.
         is AppLink.NeedsResolver -> LinkTarget.OnSite(site.pageAt(encodedPath))
         AppLink.NativeAuth,

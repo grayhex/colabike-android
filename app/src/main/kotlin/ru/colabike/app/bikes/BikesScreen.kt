@@ -77,6 +77,7 @@ fun BikesRoute(
     onOpen: (BikeId) -> Unit,
     onSearch: () -> Unit = {},
     onOpenCatalog: (() -> Unit)? = null,
+    onOpenMarket: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
@@ -97,6 +98,7 @@ fun BikesRoute(
         onOpen = onOpen,
         onOpenSearch = onSearch,
         onOpenCatalog = onOpenCatalog,
+        onOpenMarket = onOpenMarket,
         scrollToTop = scrollToTop,
     )
 }
@@ -120,6 +122,7 @@ fun BikesScreen(
     onOpen: (BikeId) -> Unit,
     onOpenSearch: (() -> Unit)? = null,
     onOpenCatalog: (() -> Unit)? = null,
+    onOpenMarket: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
 ) {
     Scaffold(
@@ -143,6 +146,15 @@ fun BikesScreen(
                             Icon(
                                 painterResource(ColaIcons.Build),
                                 contentDescription = stringResource(R.string.components_open),
+                            )
+                        }
+                    }
+                    // The market: listings of bikes, components and accessories.
+                    if (onOpenMarket != null) {
+                        IconButton(onClick = onOpenMarket) {
+                            Icon(
+                                painterResource(ColaIcons.Tag),
+                                contentDescription = stringResource(R.string.market_open),
                             )
                         }
                     }

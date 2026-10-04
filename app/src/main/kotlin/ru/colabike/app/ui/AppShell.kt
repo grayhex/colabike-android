@@ -55,6 +55,10 @@ import ru.colabike.app.journal.JournalActions
 import ru.colabike.app.journal.JournalListRoute
 import ru.colabike.app.journal.JournalRoute
 import ru.colabike.app.journal.JournalSource
+import ru.colabike.app.market.ListingActions
+import ru.colabike.app.market.ListingRoute
+import ru.colabike.app.market.MarketRoute
+import ru.colabike.app.market.SavedMarketRoute
 import ru.colabike.app.messages.ConversationRoute
 import ru.colabike.app.messages.ConversationsRoute
 import ru.colabike.app.messages.NewConversationRoute
@@ -91,6 +95,7 @@ import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.CommentTarget
 import ru.colabike.core.model.ComponentId
 import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.ListingId
 import ru.colabike.core.model.RideId
 
 /**
@@ -242,6 +247,11 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                     onBrowseBikes = {
                                                         navigator.select(Destination.Bikes)
                                                     },
+                                                    onOpenListing = { id ->
+                                                        navigator.open(
+                                                            Destination.Listing(id.value)
+                                                        )
+                                                    },
                                                 ),
                                             scrollToTop =
                                                 remember(navigator) {
@@ -390,6 +400,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             onOpenCatalog = {
                                                 navigator.open(Destination.Components)
                                             },
+                                            onOpenMarket = {
+                                                navigator.open(Destination.Market())
+                                            },
                                             scrollToTop =
                                                 remember(navigator) {
                                                     navigator.reselects(Destination.Bikes)
@@ -402,6 +415,56 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             onBack = { navigator.back() },
                                             onOpen = { id ->
                                                 navigator.open(Destination.Component(id.value))
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Market> { key ->
+                                        MarketRoute(
+                                            repository = dependencies.market,
+                                            seller = key.seller,
+                                            onBack = { navigator.back() },
+                                            onOpen = { id ->
+                                                navigator.open(Destination.Listing(id.value))
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Listing> { key ->
+                                        ListingRoute(
+                                            repository = dependencies.market,
+                                            auth = dependencies.auth,
+                                            links = dependencies.links,
+                                            id = ListingId(key.id),
+                                            actions =
+                                                ListingActions(
+                                                    onBack = { navigator.back() },
+                                                    onOpenListing = { id ->
+                                                        navigator.open(
+                                                            Destination.Listing(id.value)
+                                                        )
+                                                    },
+                                                    onOpenSeller = { ref ->
+                                                        navigator.open(Destination.Person(ref))
+                                                    },
+                                                    onOpenSellerListings = { username ->
+                                                        navigator.open(Destination.Market(username))
+                                                    },
+                                                    onOpenComponent = { modelId ->
+                                                        navigator.open(
+                                                            Destination.Component(modelId)
+                                                        )
+                                                    },
+                                                    onOpenBike = { id ->
+                                                        navigator.openBike(id.value)
+                                                    },
+                                                ),
+                                        )
+                                    }
+                                    entry<Destination.SavedMarket> {
+                                        SavedMarketRoute(
+                                            repository = dependencies.market,
+                                            onBack = { navigator.back() },
+                                            onOpen = { id ->
+                                                navigator.open(Destination.Listing(id.value))
                                             },
                                         )
                                     }
@@ -540,6 +603,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             },
                                             onOpenSaved = {
                                                 navigator.open(Destination.SavedJournal)
+                                            },
+                                            onOpenSavedMarket = {
+                                                navigator.open(Destination.SavedMarket)
                                             },
                                         )
                                     }

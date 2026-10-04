@@ -48,6 +48,14 @@ import ru.colabike.app.journal.JournalActions
 import ru.colabike.app.journal.JournalListScreen
 import ru.colabike.app.journal.JournalScreen
 import ru.colabike.app.journal.JournalUiState
+import ru.colabike.app.market.ContactState
+import ru.colabike.app.market.ListingActions
+import ru.colabike.app.market.ListingScreen
+import ru.colabike.app.market.ListingUiState
+import ru.colabike.app.market.MarketFields
+import ru.colabike.app.market.MarketScreen
+import ru.colabike.app.market.MarketUiState
+import ru.colabike.app.market.SavedMarketScreen
 import ru.colabike.app.messages.ChatConnection
 import ru.colabike.app.messages.ChatFailure
 import ru.colabike.app.messages.ChatStatusScreen
@@ -79,6 +87,7 @@ import ru.colabike.app.search.SearchUiState
 import ru.colabike.app.settings.ThemeMode
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.UiText
+import ru.colabike.app.ui.toUiText
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.designsystem.theme.ColaCanvas
@@ -90,13 +99,22 @@ import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.ComponentFilters
 import ru.colabike.core.model.ComponentQuery
 import ru.colabike.core.model.ComponentSort
+import ru.colabike.core.model.DataError
 import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.JournalStatus
 import ru.colabike.core.model.JournalSummary
+import ru.colabike.core.model.Listing
+import ru.colabike.core.model.ListingCategory
+import ru.colabike.core.model.ListingCondition
+import ru.colabike.core.model.ListingSort
+import ru.colabike.core.model.ListingStatus
+import ru.colabike.core.model.ListingType
+import ru.colabike.core.model.MarketQuery
 import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RideRole
 import ru.colabike.core.model.RideStatus
+import ru.colabike.core.model.SellerListings
 
 /** The states a screen has besides its content (DESIGN.md): loading, empty, error, an odd bike. */
 enum class ScreenState(val file: String) {
@@ -159,6 +177,26 @@ enum class ScreenState(val file: String) {
     ComponentNotFound("component_not_found"),
     ComponentFailed("component_failed"),
     ComponentNoPhotos("component_no_photos"),
+    MarketEmpty("market_empty"),
+    MarketNone("market_none"),
+    MarketError("market_error"),
+    MarketMoreError("market_more_error"),
+    MarketFiltered("market_filtered"),
+    MarketSeller("market_seller"),
+    ListingSold("listing_sold"),
+    ListingExpired("listing_expired"),
+    ListingDraft("listing_draft"),
+    ListingNotFound("listing_not_found"),
+    ListingNotFoundGuest("listing_not_found_guest"),
+    ListingFailed("listing_failed"),
+    ListingFree("listing_free"),
+    ListingNoContact("listing_no_contact"),
+    ListingGuest("listing_guest"),
+    ListingContactUnverified("listing_contact_unverified"),
+    ListingContactLimited("listing_contact_limited"),
+    ListingContactShown("listing_contact_shown"),
+    SavedMarketEmpty("saved_market_empty"),
+    SavedMarketError("saved_market_error"),
     ChatConnecting("chat_connecting"),
     ChatFailed("chat_failed"),
     ChatEmailUnconfirmed("chat_email_unconfirmed"),
@@ -678,6 +716,135 @@ private fun Content(state: ScreenState) {
                 ComponentUiState.Loaded(componentModel(2), photos = emptyList()),
                 onBack = {},
             )
+        ScreenState.MarketEmpty -> MarketWith(MarketUiState(page = PagedState(loading = false)))
+        ScreenState.MarketNone ->
+            MarketWith(
+                MarketUiState(
+                    fields = MarketFields(text = "рама 61", city = "Тверь"),
+                    query =
+                        MarketQuery(
+                            text = "рама 61",
+                            category = ListingCategory.Bikes,
+                            city = "Тверь",
+                        ),
+                    page = PagedState(loading = false),
+                ),
+                filtersOpen = true,
+            )
+        ScreenState.MarketError ->
+            MarketWith(
+                MarketUiState(
+                    page = PagedState(loading = false, error = UiText.Res(R.string.error_offline))
+                )
+            )
+        ScreenState.MarketMoreError ->
+            MarketWith(
+                MarketUiState(
+                    page =
+                        PagedState(
+                            items = listingBriefs(1, 3),
+                            nextCursor = "c1",
+                            loading = false,
+                            moreError = UiText.Res(R.string.error_offline),
+                        )
+                )
+            )
+        ScreenState.MarketFiltered ->
+            MarketWith(
+                MarketUiState(
+                    fields = MarketFields(priceMin = "1000", priceMax = "5000"),
+                    query =
+                        MarketQuery(
+                            category = ListingCategory.Components,
+                            type = ListingType.Sale,
+                            priceMin = 1000,
+                            priceMax = 5000,
+                            sort = ListingSort.PriceAsc,
+                        ),
+                    page =
+                        PagedState(
+                            items = listingBriefs(1, 3),
+                            loading = false,
+                        ),
+                ),
+                filtersOpen = true,
+            )
+        ScreenState.MarketSeller ->
+            MarketWith(
+                MarketUiState(
+                    query = MarketQuery(seller = "test-rider"),
+                    page = PagedState(items = listingBriefs(1, 3), loading = false),
+                ),
+                seller = "test-rider",
+            )
+        ScreenState.ListingSold ->
+            ListingWith(ListingLoaded(listingModel(1, status = ListingStatus.Sold)))
+        ScreenState.ListingExpired -> ListingWith(ListingLoaded(listingModel(1, expired = true)))
+        ScreenState.ListingDraft ->
+            ListingWith(
+                ListingLoaded(listingModel(1, status = ListingStatus.Draft, isOwner = true))
+            )
+        ScreenState.ListingNotFound ->
+            ListingWith(ListingUiState.Failed(UiText.Res(R.string.error_not_found), true))
+        ScreenState.ListingNotFoundGuest ->
+            ListingWith(
+                ListingUiState.Failed(UiText.Res(R.string.error_not_found), true),
+                onSignIn = {},
+                signedIn = false,
+            )
+        ScreenState.ListingFailed ->
+            ListingWith(ListingUiState.Failed(UiText.Res(R.string.error_offline)))
+        ScreenState.ListingFree ->
+            ListingWith(
+                ListingLoaded(
+                    listingModel(
+                        3,
+                        condition = ListingCondition.New,
+                        brief =
+                            listingBrief(
+                                3,
+                                title = "Отдам детское кресло",
+                                price = 0.0,
+                                type = "free",
+                                category = "accessories",
+                            ),
+                    )
+                )
+            )
+        ScreenState.ListingNoContact ->
+            ListingWith(ListingLoaded(listingModel(1, hasContact = false)))
+        ScreenState.ListingGuest -> ListingWith(ListingLoaded(listingModel(1)), signedIn = false)
+        ScreenState.ListingContactUnverified ->
+            ListingWith(
+                ListingLoaded(
+                    listingModel(1),
+                    contact = ContactState.Failed(UiText.Res(R.string.listing_contact_unverified)),
+                )
+            )
+        ScreenState.ListingContactLimited ->
+            ListingWith(
+                ListingLoaded(
+                    listingModel(1),
+                    contact =
+                        ContactState.Failed(
+                            DataError.RateLimited(retryAfterSeconds = 600).toUiText()
+                        ),
+                )
+            )
+        ScreenState.ListingContactShown ->
+            ListingWith(
+                ListingLoaded(
+                    listingModel(1),
+                    contact = ContactState.Shown("+7 900 111-22-33, Telegram @seller"),
+                )
+            )
+        ScreenState.SavedMarketEmpty ->
+            SavedMarketScreen(page = PagedState(loading = false), onBack = {})
+        ScreenState.SavedMarketError ->
+            SavedMarketScreen(
+                page = PagedState(loading = false, error = UiText.Res(R.string.error_offline)),
+                onBack = {},
+            )
         ScreenState.ChatConnecting -> ChatStatusWith(ChatConnection.Connecting)
         ScreenState.ChatFailed ->
             ChatStatusWith(
@@ -772,6 +939,37 @@ private val chatPeople = people(0, 4).map { it.person }
 
 private val catalogFilters =
     ComponentFilters(listOf("Трансмиссия", "Тормоза"), listOf("Shimano", "SRAM"))
+
+@Composable
+private fun MarketWith(
+    state: MarketUiState,
+    seller: String? = null,
+    filtersOpen: Boolean = false,
+) = MarketScreen(state = state, seller = seller, onBack = {}, filtersOpen = filtersOpen)
+
+private fun ListingLoaded(
+    listing: Listing,
+    contact: ContactState = ContactState.Hidden,
+) =
+    ListingUiState.Loaded(
+        listing = listing,
+        saved = listing.saved,
+        others = SellerListings(listingBriefs(11, 2), total = 6),
+        contact = contact,
+    )
+
+@Composable
+private fun ListingWith(
+    state: ListingUiState,
+    onSignIn: (() -> Unit)? = null,
+    signedIn: Boolean = true,
+) =
+    ListingScreen(
+        state = state,
+        actions = ListingActions(onBack = {}),
+        onSignIn = onSignIn,
+        signedIn = signedIn,
+    )
 
 @Composable
 private fun CatalogWith(state: ComponentsUiState) = ComponentsScreen(state = state, onBack = {})

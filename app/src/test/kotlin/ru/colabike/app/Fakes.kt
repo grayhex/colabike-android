@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.YandexFailure
 import ru.colabike.app.comments.InMemoryCommentDrafts
@@ -72,7 +73,16 @@ import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
 import ru.colabike.core.model.LikeChange
 import ru.colabike.core.model.LikeState
+import ru.colabike.core.model.Listing
+import ru.colabike.core.model.ListingBikeLink
+import ru.colabike.core.model.ListingBrief
+import ru.colabike.core.model.ListingCatalogLink
+import ru.colabike.core.model.ListingCondition
+import ru.colabike.core.model.ListingId
 import ru.colabike.core.model.ListingState
+import ru.colabike.core.model.ListingStatus
+import ru.colabike.core.model.MarketQuery
+import ru.colabike.core.model.MarketRepository
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.NotificationTarget
 import ru.colabike.core.model.NotificationsRepository
@@ -81,6 +91,7 @@ import ru.colabike.core.model.Page
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.PersonSummary
+import ru.colabike.core.model.Photo
 import ru.colabike.core.model.PhotoSource
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
@@ -96,6 +107,8 @@ import ru.colabike.core.model.RideStatus
 import ru.colabike.core.model.RideSummary
 import ru.colabike.core.model.RidesRepository
 import ru.colabike.core.model.SavedChange
+import ru.colabike.core.model.SavedListingChange
+import ru.colabike.core.model.SellerListings
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UpcomingRide
@@ -1196,6 +1209,141 @@ class FakeComponents(
     }
 }
 
+fun listingBrief(
+    n: Int,
+    title: String = "Втулка $n",
+    price: Double? = 2_500.0 + n,
+    type: String = "sale",
+    category: String = "components",
+    location: String = "Москва",
+    author: Person = rider,
+) =
+    ListingBrief(
+        id = "l$n",
+        title = title,
+        price = price,
+        currency = "RUB",
+        category = category,
+        type = type,
+        location = location,
+        cover = null,
+        author = author,
+    )
+
+fun listingBriefs(from: Int, count: Int): List<ListingBrief> =
+    (from until from + count).map { listingBrief(it) }
+
+fun listingModel(
+    n: Int,
+    status: ListingStatus = ListingStatus.Active,
+    expired: Boolean = false,
+    hasContact: Boolean = true,
+    isOwner: Boolean = false,
+    saved: Boolean = false,
+    condition: ListingCondition? = ListingCondition.Used,
+    componentModel: ListingCatalogLink? = null,
+    bikeModel: ListingCatalogLink? = null,
+    linkedBike: ListingBikeLink? = null,
+    brief: ListingBrief = listingBrief(n),
+) =
+    Listing(
+        brief = brief,
+        description = "Описание объявления $n.",
+        condition = condition,
+        status = status,
+        expired = expired,
+        hasContact = hasContact,
+        publishedAt = Instant.parse("2026-09-21T10:00:00Z"),
+        path = "/market/l$n",
+        photos = listOf(Photo("lp$n", "https://colabike.test/api/market/media/lp$n")),
+        isOwner = isOwner,
+        componentModel = componentModel,
+        bikeModel = bikeModel,
+        linkedBike = linkedBike,
+        saved = saved,
+    )
+
+/**
+ * The market in memory: pages by cursor, listings by id, what is saved, a contact per listing and
+ * queued failures. Every contact request is logged, so a test can say that none was made.
+ */
+class FakeMarket(
+    var pages: Map<String?, Page<ListingBrief>> = mapOf(null to Page(listingBriefs(1, 4), null)),
+    var listings: Map<String, Listing> = (1..4).associate { "l$it" to listingModel(it) },
+    var others: Map<String, SellerListings> =
+        mapOf("l1" to SellerListings(listingBriefs(11, 2), total = 6)),
+    var savedPages: Map<String?, Page<ListingBrief>> =
+        mapOf(null to Page(listingBriefs(1, 2), null)),
+    var contacts: Map<String, String> = mapOf("l1" to "+7 900 111-22-33, Telegram @seller"),
+) : MarketRepository {
+    val queries = mutableListOf<Pair<MarketQuery, String?>>()
+    val listingCalls = mutableListOf<String>()
+    val saveCalls = mutableListOf<Pair<String, Boolean>>()
+    val contactCalls = mutableListOf<String>()
+    var nextError: DataError? = null
+    var listingError: DataError? = null
+    var saveError: DataError? = null
+    var contactError: DataError? = null
+    var othersError: DataError? = null
+
+    private val changes = MutableSharedFlow<SavedListingChange>(extraBufferCapacity = 16)
+    override val savedChanges: SharedFlow<SavedListingChange> = changes.asSharedFlow()
+
+    private fun fail() {
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+
+    override suspend fun page(query: MarketQuery, cursor: String?, limit: Int): Page<ListingBrief> {
+        queries += query to cursor
+        fail()
+        return pages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun listing(id: ListingId): Listing {
+        listingCalls += id.value
+        listingError?.let {
+            listingError = null
+            throw it
+        }
+        return listings[id.value] ?: throw DataError.NotFound()
+    }
+
+    override suspend fun sellerOthers(id: ListingId): SellerListings {
+        othersError?.let {
+            othersError = null
+            throw it
+        }
+        return others[id.value] ?: SellerListings(emptyList(), 0)
+    }
+
+    override suspend fun saved(cursor: String?, limit: Int): Page<ListingBrief> {
+        fail()
+        return savedPages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun setSaved(id: ListingId, saved: Boolean): Boolean {
+        saveCalls += id.value to saved
+        saveError?.let {
+            saveError = null
+            throw it
+        }
+        changes.tryEmit(SavedListingChange(id, saved))
+        return saved
+    }
+
+    override suspend fun contact(id: ListingId): String {
+        contactCalls += id.value
+        contactError?.let {
+            contactError = null
+            throw it
+        }
+        return contacts[id.value] ?: throw DataError.NotFound()
+    }
+}
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -1206,6 +1354,7 @@ class FakeDependencies(
     override val rides: FakeRides = FakeRides(),
     override val notifications: FakeNotifications = FakeNotifications(),
     override val components: FakeComponents = FakeComponents(),
+    override val market: FakeMarket = FakeMarket(),
     override val chat: FakeChat = FakeChat(),
     val chatGateway: FakeChatGateway = FakeChatGateway(),
     override val chatSession: ChatSession =

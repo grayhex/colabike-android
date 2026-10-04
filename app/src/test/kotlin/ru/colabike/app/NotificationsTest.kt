@@ -69,6 +69,34 @@ class NotificationRouteTest {
     }
 
     @Test
+    fun `a listing and a catalog model have screens, a comment under a model opens the discussion`() {
+        assertThat(
+                notification(1, kind = "market_expiring", type = "market", path = "/market/$id")
+                    .route(site)
+            )
+            .isEqualTo(NotificationRoute.InApp(Destination.Listing(id)))
+        assertThat(
+                notification(1, kind = "component_like", type = "component", path = "/components/x")
+                    .route(site)
+            )
+            .isEqualTo(NotificationRoute.InApp(Destination.Component(id)))
+        assertThat(
+                notification(
+                        1,
+                        kind = "component_reply",
+                        type = "component",
+                        path = "/components/x#comment-$comment",
+                    )
+                    .route(site)
+            )
+            .isEqualTo(
+                NotificationRoute.InApp(
+                    Destination.Comments("component", id, "Городской Трэвел", comment.lowercase())
+                )
+            )
+    }
+
+    @Test
     fun `a reused sign-in opens the devices, other account events and unknown objects open the site`() {
         assertThat(
                 notification(1, kind = "session_reuse", type = "account", path = "/account")
@@ -80,11 +108,6 @@ class NotificationRouteTest {
                     .route(site)
             )
             .isEqualTo(NotificationRoute.OnSite("https://colabike.ru/account?tab=a"))
-        assertThat(
-                notification(1, kind = "market_expiring", type = "market", path = "/market/$id")
-                    .route(site)
-            )
-            .isEqualTo(NotificationRoute.OnSite("https://colabike.ru/market/$id"))
         assertThat(
                 notification(1, kind = "article_like", type = "article", path = "/a/x").route(site)
             )

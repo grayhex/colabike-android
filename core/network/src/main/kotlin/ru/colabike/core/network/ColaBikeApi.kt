@@ -8,6 +8,7 @@ import ru.colabike.api.apis.ChatApi
 import ru.colabike.api.apis.CommentsApi
 import ru.colabike.api.apis.ComponentsApi
 import ru.colabike.api.apis.JournalApi
+import ru.colabike.api.apis.MarketApi
 import ru.colabike.api.apis.PersonalApi
 import ru.colabike.api.apis.RidesApi
 import ru.colabike.api.apis.SearchApi
@@ -35,6 +36,7 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
     val rides = RidesApi(config.apiBaseUrl, client)
     val chat = ChatApi(config.apiBaseUrl, client)
     val components = ComponentsApi(config.apiBaseUrl, client)
+    val market = MarketApi(config.apiBaseUrl, client)
 
     /**
      * Comments with an `Idempotency-Key` on every request made through it. The contract describes

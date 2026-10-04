@@ -1,7 +1,6 @@
 package ru.colabike.app
 
 import androidx.compose.ui.test.assertHasClickAction
-import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -74,7 +73,7 @@ class FeedFlowTest {
     // --- the feed ---------------------------------------------------------------------------
 
     @Test
-    fun `the feed shows every kind of publication, a ride opens and a listing only tells`() {
+    fun `the feed shows every kind of publication, and each of them opens`() {
         start(dependencies())
 
         openFeed()
@@ -92,7 +91,28 @@ class FeedFlowTest {
             .performScrollToNode(hasContentDescription("Втулка Shimano Deore", substring = true))
         compose
             .onNodeWithContentDescription("Втулка Shimano Deore", substring = true)
-            .assertHasNoClickAction()
+            .assertHasClickAction()
+    }
+
+    @Test
+    fun `a listing in the feed opens its page, and Back returns to the feed`() {
+        val dependencies = dependencies()
+        start(dependencies)
+        openFeed()
+        compose
+            .onNodeWithTag("feed:grid")
+            .performScrollToNode(hasContentDescription("Втулка Shimano Deore", substring = true))
+
+        compose
+            .onNodeWithContentDescription("Втулка Shimano Deore", substring = true)
+            .performClick()
+        compose.waitForIdle()
+
+        assertThat(dependencies.market.listingCalls).containsExactly("l1")
+        compose.onNodeWithTag("listing:page").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Назад").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("feed:grid").assertIsDisplayed()
     }
 
     @Test

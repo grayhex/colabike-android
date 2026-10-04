@@ -183,9 +183,9 @@ class NotificationsFlowTest {
                             listOf(
                                 notification(
                                     1,
-                                    kind = "market_expiring",
-                                    type = "market",
-                                    path = "/market/6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+                                    kind = "article_published",
+                                    type = "article",
+                                    path = "/articles/6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
                                     actor = null,
                                 )
                             ),
@@ -199,7 +199,7 @@ class NotificationsFlowTest {
         compose.onNodeWithTag("notification:n1").performClick()
 
         assertThat(opened)
-            .containsExactly("https://colabike.test/market/6e7f8091-a2b3-4c4d-9e5f-60718293a4b5")
+            .containsExactly("https://colabike.test/articles/6e7f8091-a2b3-4c4d-9e5f-60718293a4b5")
     }
 
     @Test

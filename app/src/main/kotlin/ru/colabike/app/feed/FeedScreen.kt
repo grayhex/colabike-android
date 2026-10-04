@@ -70,6 +70,7 @@ import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.ListingId
 import ru.colabike.core.model.RideId
 
 /** Where the feed leads. Callbacks, so the screen never touches navigation itself. */
@@ -79,6 +80,7 @@ class FeedActions(
     val onOpenRide: (RideId) -> Unit,
     val onFindPeople: () -> Unit,
     val onBrowseBikes: () -> Unit,
+    val onOpenListing: (ListingId) -> Unit = {},
 )
 
 @Composable
@@ -274,8 +276,12 @@ private fun FeedGrid(
                         onClick = { actions.onOpenRide(item.ride.id) },
                         modifier = Modifier.testTag("ride:${item.ride.id.value}"),
                     )
-                // A listing has no page of its own yet: it is told, not opened.
-                is FeedItem.Listing -> ListingCard(item.listing)
+                is FeedItem.Listing ->
+                    ListingCard(
+                        item.listing,
+                        onClick = { actions.onOpenListing(ListingId(item.listing.id)) },
+                        modifier = Modifier.testTag("listing:${item.listing.id}"),
+                    )
             }
         }
         if (page.loadingMore || page.moreError != null) {

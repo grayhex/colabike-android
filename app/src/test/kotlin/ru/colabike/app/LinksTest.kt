@@ -149,9 +149,9 @@ class LinkTargetTest {
     }
 
     @Test
-    fun `what has no screen yet is shown by the site on the same address, a profile is not one`() {
+    fun `a listing and a profile have screens`() {
         assertThat(AppLink.Market(uuid).target(site))
-            .isEqualTo(LinkTarget.OnSite("https://colabike.ru/market/$uuid"))
+            .isEqualTo(LinkTarget.InApp(Destination.Listing(uuid)))
         assertThat(AppLink.Person("test-rider").target(site))
             .isEqualTo(LinkTarget.InApp(Destination.Person("test-rider")))
     }
@@ -222,10 +222,19 @@ class LinkHandlerTest {
 
     @Test
     fun `an address without a screen opens on the site`() {
+        // The site's own short id cannot be turned into the API's UUID: the site shows the page.
+        handler.handle("https://colabike.ru/market/rama-cube-5kq3f7ab")
+
+        assertThat(site).containsExactly("https://colabike.ru/market/rama-cube-5kq3f7ab")
+        assertThat(pending.destination.value).isNull()
+    }
+
+    @Test
+    fun `a listing waits for the shell like a bike does`() {
         handler.handle("https://colabike.ru/market/$uuid")
 
-        assertThat(site).containsExactly("https://colabike.ru/market/$uuid")
-        assertThat(pending.destination.value).isNull()
+        assertThat(pending.destination.value).isEqualTo(Destination.Listing(uuid))
+        assertThat(site).isEmpty()
     }
 
     @Test
