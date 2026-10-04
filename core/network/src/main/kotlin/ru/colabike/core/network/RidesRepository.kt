@@ -9,6 +9,7 @@ import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Page
+import ru.colabike.core.model.RideAnalysis
 import ru.colabike.core.model.RideDetail
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.RideSummary
@@ -45,6 +46,16 @@ class NetworkRidesRepository(
     override suspend fun ride(id: RideId): RideDetail {
         val uuid = uuidOrNotFound(id.value)
         return apiCall(dispatcher) { api.getRide(uuid) }.toModel(media)
+    }
+
+    override suspend fun analysis(id: RideId): RideAnalysis? {
+        val uuid = uuidOrNotFound(id.value)
+        return try {
+            apiCall(dispatcher) { api.getRideAnalysis(uuid) }.toModel()
+        } catch (_: DataError.NotFound) {
+            // No track, or no finished analysis: the server says 404 for both, and the page stays.
+            null
+        }
     }
 
     override suspend fun mine(cursor: String?, limit: Int): Page<OwnRide> {

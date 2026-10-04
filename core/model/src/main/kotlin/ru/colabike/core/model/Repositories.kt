@@ -118,6 +118,13 @@ interface RidesRepository {
 
     suspend fun ride(id: RideId): RideDetail
 
+    /**
+     * The charts' series of a ride's public track, or null if there is none (a ride without a track
+     * or without a finished analysis: the server answers 404 for both). A separate request, to keep
+     * the card and the lists light.
+     */
+    suspend fun analysis(id: RideId): RideAnalysis?
+
     /** The signed-in person's rides in any state, newest first. */
     suspend fun mine(cursor: String? = null, limit: Int = 24): Page<OwnRide>
 

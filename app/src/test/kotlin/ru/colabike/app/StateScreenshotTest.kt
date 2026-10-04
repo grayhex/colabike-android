@@ -2,9 +2,12 @@ package ru.colabike.app
 
 import android.content.Context
 import android.provider.Settings
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
@@ -49,6 +52,8 @@ import ru.colabike.app.people.PersonScreen
 import ru.colabike.app.people.PersonUiState
 import ru.colabike.app.profile.ProfileScreen
 import ru.colabike.app.profile.ProfileUiState
+import ru.colabike.app.rides.AnalysisSection
+import ru.colabike.app.rides.AnalysisUiState
 import ru.colabike.app.rides.RideActions
 import ru.colabike.app.rides.RideRow
 import ru.colabike.app.rides.RideScreen
@@ -66,6 +71,7 @@ import ru.colabike.app.ui.UiText
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.designsystem.theme.ColaCanvas
+import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
@@ -124,6 +130,8 @@ enum class ScreenState(val file: String) {
     RidesMine("rides_mine"),
     RidesMyPlans("rides_my_plans"),
     RideNotFoundGuest("ride_not_found_guest"),
+    AnalysisLoading("analysis_loading"),
+    AnalysisFailed("analysis_failed"),
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -539,6 +547,17 @@ private fun Content(state: ScreenState) {
                 onRetry = {},
                 onSignIn = {},
             )
+        ScreenState.AnalysisLoading ->
+            Box(Modifier.padding(Spacing.screen)) {
+                AnalysisSection(AnalysisUiState.Loading, onRetry = {})
+            }
+        ScreenState.AnalysisFailed ->
+            Box(Modifier.padding(Spacing.screen)) {
+                AnalysisSection(
+                    AnalysisUiState.Failed(UiText.Res(R.string.error_offline)),
+                    onRetry = {},
+                )
+            }
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),

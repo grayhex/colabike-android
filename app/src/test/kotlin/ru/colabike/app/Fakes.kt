@@ -14,6 +14,8 @@ import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.SiteLinks
 import ru.colabike.app.navigation.Destination
+import ru.colabike.app.rides.map.RouteMaps
+import ru.colabike.app.rides.map.SketchRouteMaps
 import ru.colabike.app.settings.AppSettings
 import ru.colabike.app.settings.ThemeMode
 import ru.colabike.core.auth.AuthState
@@ -22,6 +24,8 @@ import ru.colabike.core.model.Account
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
+import ru.colabike.core.model.AnalysisChannel
+import ru.colabike.core.model.AnalysisPoint
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
@@ -42,6 +46,7 @@ import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.FollowChange
 import ru.colabike.core.model.FollowState
+import ru.colabike.core.model.GeoPoint
 import ru.colabike.core.model.JournalEntry
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.JournalRepository
@@ -57,10 +62,12 @@ import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.Range
 import ru.colabike.core.model.Relationship
+import ru.colabike.core.model.RideAnalysis
 import ru.colabike.core.model.RideDetail
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.RidePassport
 import ru.colabike.core.model.RideRole
+import ru.colabike.core.model.RideRoute
 import ru.colabike.core.model.RideStatus
 import ru.colabike.core.model.RideSummary
 import ru.colabike.core.model.RidesRepository
@@ -658,8 +665,50 @@ fun rideDetail(n: Int, planned: Boolean = false) =
                 )
             else null,
         extraMetrics = if (planned) emptyMap() else mapOf("avgHeartRate" to 142.0),
-        hasPublicRoute = !planned,
+        route = if (planned) null else sampleRoute,
     )
+
+/** A loop through a park with a privacy cut in the middle: two lines, never joined. */
+val sampleRoute =
+    RideRoute(
+        listOf(
+            (0..11).map { i ->
+                val a = i / 11.0 * Math.PI
+                GeoPoint(55.7600 + 0.010 * Math.sin(a), 37.6100 + 0.020 * (1 - Math.cos(a)) / 2)
+            },
+            (0..9).map { i ->
+                val a = Math.PI + i / 9.0 * Math.PI
+                GeoPoint(55.7600 + 0.010 * Math.sin(a), 37.6100 + 0.020 * (1 - Math.cos(a)) / 2)
+            },
+        )
+    )
+
+/** A ride's charts: two continuous parts, heart rate with a gap, no cadence or power. */
+fun sampleAnalysis(): RideAnalysis {
+    fun point(i: Int, gaps: Int = 0, heart: Boolean = true) =
+        AnalysisPoint(
+            position = sampleRoute.lines[0][i.coerceAtMost(11)],
+            distanceM = i * 1_500.0,
+            elapsedS = i * 300.0,
+            values =
+                buildMap {
+                    put(AnalysisChannel.Elevation, 120.0 + 18 * Math.sin(i / 3.0) + i)
+                    put(AnalysisChannel.Speed, 5.0 + Math.cos(i / 2.0))
+                    put(AnalysisChannel.Grade, 2.0 * Math.cos(i / 3.0))
+                    if (heart) put(AnalysisChannel.HeartRate, 125.0 + 3 * i)
+                },
+            gaps = gaps,
+        )
+    return RideAnalysis(
+        pointCount = 20,
+        downsampled = true,
+        segments =
+            listOf(
+                (0..11).map { point(it, heart = it !in 5..6, gaps = if (it == 7) 8 else 0) },
+                (12..19).map { point(it) },
+            ),
+    )
+}
 
 /** Rides in memory: public lists by cursor, the viewer's own, and the details by id. */
 class FakeRides(
@@ -669,6 +718,8 @@ class FakeRides(
     var bikePages: Map<String?, Page<RideSummary>> = mapOf(null to Page(rides(10, 2), null)),
     var minePages: Map<String?, Page<OwnRide>> = mapOf(null to Page(emptyList(), null)),
     var myPlans: List<UpcomingRide> = emptyList(),
+    /** The analysis by ride id; a ride that is not here has none (the server answers 404). */
+    var analyses: Map<String, RideAnalysis> = mapOf("ride-0" to sampleAnalysis()),
     var details: Map<String, RideDetail> =
         (0..11).associate { "ride-$it" to rideDetail(it) } +
             (0..9).associate { "plan-$it" to rideDetail(it, planned = true) } +
@@ -680,6 +731,10 @@ class FakeRides(
     val bikeCalls = mutableListOf<Triple<BikeId, String?, String?>>()
     val mineCalls = mutableListOf<String?>()
     var myUpcomingCalls = 0
+    val analysisCalls = mutableListOf<String>()
+
+    /** The next request for series fails with no network; the one after it succeeds. */
+    var failAnalysisOnce = false
     var rideCalls = 0
     var nextError: DataError? = null
     var answer: (suspend (String?, String?) -> Page<RideSummary>)? = null
@@ -721,6 +776,16 @@ class FakeRides(
         rideCalls++
         fail()
         return details[id.value] ?: throw DataError.NotFound()
+    }
+
+    override suspend fun analysis(id: RideId): RideAnalysis? {
+        analysisCalls += id.value
+        if (failAnalysisOnce) {
+            failAnalysisOnce = false
+            throw DataError.Offline(java.io.IOException())
+        }
+        fail()
+        return analyses[id.value]
     }
 
     override suspend fun mine(cursor: String?, limit: Int): Page<OwnRide> {
@@ -834,4 +899,5 @@ class FakeDependencies(
     override val links: SiteLinks = SiteLinks("https://colabike.test"),
     override val pending: FakePending = FakePending(),
     override val clock: Clock = Clock.fixed(Instant.parse("2026-10-03T20:00:00Z"), ZoneOffset.UTC),
+    override val maps: RouteMaps = SketchRouteMaps,
 ) : AppDependencies

@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -69,12 +70,23 @@ enum class Screen(val file: String) {
     Rides("rides"),
     RidePlan("ride_plan"),
     RideCompleted("ride_completed"),
+
+    /** The same ride further down: the route and the charts of its series; and the route's map. */
+    RideCompletedAnalysis("ride_completed_analysis"),
+    RideMap("ride_map"),
 }
 
 enum class Look(val dark: Boolean, val fontScale: Float, val file: String) {
     Light(dark = false, fontScale = 1f, file = "light"),
     Dark(dark = true, fontScale = 1f, file = "dark"),
     LargeText(dark = false, fontScale = 2f, file = "font200"),
+}
+
+/** From the Rides section to the first completed ride's page. */
+private fun ComposeContentTestRule.openCompletedRide() {
+    section("Покатушки").performClick()
+    onNodeWithText("Состоявшиеся").performClick()
+    onNodeWithContentDescription("Покатушка 0", substring = true).performClick()
 }
 
 /** From the list to the first bike's page and from there to its journal. */
@@ -210,10 +222,18 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithContentDescription("Воскресный выезд за город", substring = true)
                 .performClick()
         }
-        Screen.RideCompleted -> {
-            section("Покатушки").performClick()
-            onNodeWithText("Состоявшиеся").performClick()
-            onNodeWithContentDescription("Покатушка 0", substring = true).performClick()
+        Screen.RideCompleted -> openCompletedRide()
+        Screen.RideCompletedAnalysis -> {
+            openCompletedRide()
+            // The last chart (heart rate, with its gap) brings the others into the picture too.
+            onNodeWithContentDescription("Пульс: от", substring = true).performScrollTo()
+        }
+        Screen.RideMap -> {
+            openCompletedRide()
+            // On a wide window the map is already beside the page; a phone opens it by a button.
+            if (onAllNodesWithText("Открыть карту").fetchSemanticsNodes().isNotEmpty()) {
+                onNodeWithText("Открыть карту").performScrollTo().performClick()
+            }
         }
         Screen.JournalList -> openJournal()
         Screen.Journal -> {
