@@ -484,4 +484,24 @@
     <string name="feature_off_title">Пока недоступно</string>
     <string name="feature_off">Эта возможность сейчас выключена. Попробуйте позже.</string>
     <string name="feature_off_ok">Понятно</string>
+    <string name="onboarding_skip">Пропустить</string>
+    <string name="onboarding_next">Далее</string>
+    <string name="onboarding_done">Готово</string>
+    <string name="onboarding_page">Страница %1$d из %2$d</string>
+    <string name="notice_promo">Новости</string>
+    <string name="notice_service">Сообщение сервиса</string>
+    <string name="notice_maintenance">Технические работы</string>
+    <string name="notice_close">Закрыть сообщение</string>
+    <string name="update_kind">Обновление</string>
+    <string name="update_title">Вышла новая версия</string>
+    <string name="update_body">Обновите приложение, когда будет удобно.</string>
+    <string name="update_firm_kind">Нужно обновить</string>
+    <string name="update_firm_title">Эта версия скоро перестанет работать</string>
+    <string name="update_firm_body">Обновите приложение: старые версии больше не поддерживаются.</string>
+    <string name="update_action">Обновить</string>
+    <string name="update_later">Позже</string>
+    <string name="update_required_title">Нужно обновить приложение</string>
+    <string name="update_required_body">Эта версия ColaBike больше не поддерживается. Обновите приложение, чтобы продолжить.</string>
+    <string name="update_check_again">Проверить снова</string>
+    <string name="update_check_failed">Не удалось проверить. Проверьте соединение и попробуйте снова.</string>
 </resources>

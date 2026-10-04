@@ -37,6 +37,24 @@ interface AppSettings {
     val browsingAsGuest: StateFlow<Boolean>
 
     fun setBrowsingAsGuest(value: Boolean)
+
+    /**
+     * What the person has already seen of what the server announces, so that it is not shown again:
+     * the revision of the introduction they went through (or skipped), the revision of the notice
+     * they closed, and the version whose update offer they closed. Null is "never". These are about
+     * the device, not the account: they stay through a sign-out.
+     */
+    val onboardingSeen: StateFlow<Int?>
+
+    fun setOnboardingSeen(revision: Int)
+
+    val noticeClosed: StateFlow<Int?>
+
+    fun setNoticeClosed(revision: Int)
+
+    val updateOfferClosed: StateFlow<Int?>
+
+    fun setUpdateOfferClosed(versionCode: Int)
 }
 
 /** [AppSettings] in SharedPreferences (never backed up: `allowBackup` is off). */
@@ -47,10 +65,37 @@ class PreferencesSettings(private val preferences: SharedPreferences) : AppSetti
     private val mutableGuest = MutableStateFlow(preferences.getBoolean(KEY_GUEST, false))
     override val browsingAsGuest: StateFlow<Boolean> = mutableGuest.asStateFlow()
 
+    private val mutableOnboarding = MutableStateFlow(readInt(KEY_ONBOARDING))
+    override val onboardingSeen: StateFlow<Int?> = mutableOnboarding.asStateFlow()
+
+    private val mutableNotice = MutableStateFlow(readInt(KEY_NOTICE))
+    override val noticeClosed: StateFlow<Int?> = mutableNotice.asStateFlow()
+
+    private val mutableUpdate = MutableStateFlow(readInt(KEY_UPDATE))
+    override val updateOfferClosed: StateFlow<Int?> = mutableUpdate.asStateFlow()
+
     override fun setThemeMode(mode: ThemeMode) {
         preferences.edit { putString(KEY_THEME, mode.name) }
         mutableTheme.value = mode
     }
+
+    override fun setOnboardingSeen(revision: Int) {
+        preferences.edit { putInt(KEY_ONBOARDING, revision) }
+        mutableOnboarding.value = revision
+    }
+
+    override fun setNoticeClosed(revision: Int) {
+        preferences.edit { putInt(KEY_NOTICE, revision) }
+        mutableNotice.value = revision
+    }
+
+    override fun setUpdateOfferClosed(versionCode: Int) {
+        preferences.edit { putInt(KEY_UPDATE, versionCode) }
+        mutableUpdate.value = versionCode
+    }
+
+    private fun readInt(key: String): Int? =
+        if (preferences.contains(key)) preferences.getInt(key, 0) else null
 
     override fun setBrowsingAsGuest(value: Boolean) {
         preferences.edit { putBoolean(KEY_GUEST, value) }
@@ -65,5 +110,8 @@ class PreferencesSettings(private val preferences: SharedPreferences) : AppSetti
     private companion object {
         const val KEY_THEME = "theme_mode"
         const val KEY_GUEST = "browsing_as_guest"
+        const val KEY_ONBOARDING = "onboarding_seen"
+        const val KEY_NOTICE = "notice_closed"
+        const val KEY_UPDATE = "update_offer_closed"
     }
 }

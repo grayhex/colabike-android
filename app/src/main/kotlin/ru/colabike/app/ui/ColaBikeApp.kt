@@ -21,8 +21,16 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.app.AppDependencies
+import ru.colabike.app.config.LaunchOverlay
+import ru.colabike.app.config.LaunchPlan
+import ru.colabike.app.config.OnboardingScreen
+import ru.colabike.app.config.UpdateRequiredScreen
+import ru.colabike.app.config.launchPlanOf
+import ru.colabike.app.config.rememberUpdateState
+import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.app.login.LoginRoute
 import ru.colabike.core.auth.AuthState
+import ru.colabike.core.model.UpdateState
 
 /**
  * What a screen calls when something needs a signed-in person: the app shows sign-in over the
@@ -68,7 +76,6 @@ fun ColaBikeApp(dependencies: AppDependencies) {
     ColaBikeContent(
         dependencies = dependencies,
         auth = auth,
-        configLoaded = config.loaded,
         guest = guest,
         signedIn = signedIn,
         signInOpen = signInOpen,
@@ -82,7 +89,6 @@ fun ColaBikeApp(dependencies: AppDependencies) {
 private fun ColaBikeContent(
     dependencies: AppDependencies,
     auth: AuthState,
-    configLoaded: Boolean,
     guest: Boolean,
     signedIn: Boolean,
     signInOpen: Boolean,
@@ -90,41 +96,83 @@ private fun ColaBikeContent(
     sessionStores: SessionStores,
     shellState: SaveableStateHolder,
 ) {
-    when {
-        // What the device kept is read in a moment; the screens that depend on it wait for it,
-        // the network is never waited for.
-        !configLoaded || auth is AuthState.Restoring ->
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-        auth is AuthState.SignedOut && !guest -> {
-            // The previous account's place in the app (a screen, a scroll) does not wait for the
-            // next.
-            LaunchedEffect(Unit) {
-                sessionStores.end()
-                shellState.removeState(SHELL_STATE)
+    val config by dependencies.appConfig.state.collectAsStateWithLifecycle()
+    val update = rememberUpdateState(dependencies)
+    val seen by dependencies.settings.onboardingSeen.collectAsStateWithLifecycle()
+    val opener = LocalLinkOpener.current
+    // The launch screen is decided once, from what the device held when the app started.
+    val launch =
+        remember(config.loaded) {
+            if (config.loaded) launchPlanOf(config.config, dependencies.configAssets)
+            else LaunchPlan.None
+        }
+    val onboarding = config.config.onboarding
+    val onboardingDue =
+        config.loaded &&
+            onboarding.enabled &&
+            onboarding.items.isNotEmpty() &&
+            seen != onboarding.revision
+    Box(Modifier.fillMaxSize()) {
+        when {
+            // What the device kept is read in a moment; the screens that depend on it wait for it,
+            // the network is never waited for.
+            !config.loaded -> Blank()
+            // A build the server blocks has nothing but the way to update; no sign-in, no content.
+            update is UpdateState.Required ->
+                UpdateRequiredScreen(
+                    state = update,
+                    refreshing = config.refreshing,
+                    refreshFailed = config.refreshFailed,
+                    onUpdate = opener::open,
+                    onCheckAgain = dependencies.appConfig::refreshNow,
+                )
+            auth is AuthState.Restoring -> Blank()
+            // The introduction the server asks for, once per revision; before sign-in as after it.
+            onboardingDue ->
+                OnboardingScreen(
+                    items = onboarding.items,
+                    imageOf = dependencies.configAssets::fileOf,
+                    onDone = { dependencies.settings.setOnboardingSeen(onboarding.revision) },
+                )
+            auth is AuthState.SignedOut && !guest -> {
+                // The previous account's place in the app (a screen, a scroll) does not wait for
+                // the
+                // next.
+                LaunchedEffect(Unit) {
+                    sessionStores.end()
+                    shellState.removeState(SHELL_STATE)
+                }
+                LoginRoute(
+                    dependencies.auth,
+                    dependencies.links,
+                    onBrowseAsGuest = { dependencies.settings.setBrowsingAsGuest(true) },
+                )
             }
-            LoginRoute(
-                dependencies.auth,
-                dependencies.links,
-                onBrowseAsGuest = { dependencies.settings.setBrowsingAsGuest(true) },
-            )
-        }
-        signInOpen && !signedIn -> {
-            BackHandler { onSignInOpen(false) }
-            LoginRoute(
-                dependencies.auth,
-                dependencies.links,
-                onClose = { onSignInOpen(false) },
-            )
-        }
-        else ->
-            shellState.SaveableStateProvider(SHELL_STATE) {
-                SessionScope(if (signedIn) Viewer.Member else Viewer.Guest, sessionStores) {
-                    CompositionLocalProvider(
-                        LocalSignInRequest provides remember { { onSignInOpen(true) } }
-                    ) {
-                        AppShell(dependencies)
+            signInOpen && !signedIn -> {
+                BackHandler { onSignInOpen(false) }
+                LoginRoute(
+                    dependencies.auth,
+                    dependencies.links,
+                    onClose = { onSignInOpen(false) },
+                )
+            }
+            else ->
+                shellState.SaveableStateProvider(SHELL_STATE) {
+                    SessionScope(if (signedIn) Viewer.Member else Viewer.Guest, sessionStores) {
+                        CompositionLocalProvider(
+                            LocalSignInRequest provides remember { { onSignInOpen(true) } }
+                        ) {
+                            AppShell(dependencies)
+                        }
                     }
                 }
-            }
+        }
+        // Over everything, for as long as the start itself takes and never longer than a moment.
+        LaunchOverlay(launch, startDone = config.loaded && auth !is AuthState.Restoring)
     }
+}
+
+@Composable
+private fun Blank() {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
 }

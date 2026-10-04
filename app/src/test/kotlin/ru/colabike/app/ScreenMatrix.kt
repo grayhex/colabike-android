@@ -24,6 +24,11 @@ import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
+import java.io.File
+import ru.colabike.app.config.LaunchFrame
+import ru.colabike.app.config.LaunchPlan
+import ru.colabike.app.config.OnboardingScreen
+import ru.colabike.app.config.UpdateRequiredScreen
 import ru.colabike.app.login.LoginScreen
 import ru.colabike.app.login.LoginUiState
 import ru.colabike.app.navigation.Destination
@@ -32,14 +37,22 @@ import ru.colabike.app.ui.UiText
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
+import ru.colabike.core.model.AppNotice
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.Compatibility
 import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedItem
+import ru.colabike.core.model.LaunchFill
 import ru.colabike.core.model.ListingBikeLink
 import ru.colabike.core.model.ListingCatalogLink
+import ru.colabike.core.model.NoticeAction
+import ru.colabike.core.model.NoticeKind
 import ru.colabike.core.model.NotificationCount
+import ru.colabike.core.model.OnboardingItem
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.ServiceLinks
+import ru.colabike.core.model.UpdateMode
+import ru.colabike.core.model.UpdateState
 
 /** Every screen of the app, as AGENTS.md requires it in screenshots. */
 enum class Screen(val file: String) {
@@ -100,6 +113,15 @@ enum class Screen(val file: String) {
     AboutConfigured("about_configured"),
     FeatureOff("feature_off"),
 
+    /** What the server announces: the launch screen, the introduction, a message, the update. */
+    Launch("launch"),
+    Onboarding("onboarding"),
+    NoticePromo("notice_promo"),
+    NoticeService("notice_service"),
+    NoticeMaintenance("notice_maintenance"),
+    UpdateOffer("update_offer"),
+    UpdateRequired("update_required"),
+
     /** The market list, with its filters open, a listing's page, its contact, the saved ones. */
     Market("market"),
     MarketFilters("market_filters"),
@@ -156,6 +178,31 @@ private val marketListings =
                     else null,
             )
     }
+
+private const val NOTICE_IMAGE = "https://colabike.ru/api/assets/notice?width=1280"
+
+private val onboardingItems =
+    listOf(
+        OnboardingItem(
+            "Ваш гараж",
+            "Соберите велосипед по частям и ведите журнал обслуживания.",
+            "p",
+        ),
+        OnboardingItem("Покатушки", "Планы, маршруты и разбор проезда: всё рядом с людьми.", null),
+        OnboardingItem("Сообщения", null, null),
+    )
+
+/** The shell as the server announces something: a message, or a version policy for build 10. */
+private fun announcing(
+    notice: AppNotice? = null,
+    compatibility: Compatibility = Compatibility.None,
+) =
+    FakeDependencies(
+        bikes = FakeBikes(mapOf(null to Page(bikes(0, 6), "c1"))),
+        appConfig = FakeAppConfig().apply { set(notice = notice, compatibility = compatibility) },
+        configAssets = FakeConfigAssets(mutableMapOf(NOTICE_IMAGE to File("notice.webp"))),
+        versionCode = 10,
+    )
 
 @OptIn(ExperimentalCoilApi::class)
 private val photos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
@@ -217,6 +264,61 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                         set(features = featuresOff(Feature.Market))
                                     },
                                 pending = FakePending().apply { offer(Destination.Listing("l1")) },
+                            )
+                        )
+                    Screen.Launch ->
+                        LaunchFrame(
+                            LaunchPlan.Show(File("launch.webp"), LaunchFill.Crop, "Сезон открыт")
+                        )
+                    Screen.Onboarding ->
+                        OnboardingScreen(
+                            items = onboardingItems,
+                            imageOf = { File("onboarding.webp") },
+                            onDone = {},
+                        )
+                    Screen.UpdateRequired ->
+                        UpdateRequiredScreen(
+                            state = UpdateState.Required("https://play.example.ru/colabike", null),
+                            refreshing = false,
+                            refreshFailed = true,
+                            onUpdate = {},
+                            onCheckAgain = {},
+                        )
+                    Screen.NoticePromo,
+                    Screen.NoticeService,
+                    Screen.NoticeMaintenance ->
+                        AppShell(
+                            announcing(
+                                notice =
+                                    AppNotice(
+                                        revision = 1,
+                                        kind =
+                                            when (screen) {
+                                                Screen.NoticePromo -> NoticeKind.Promo
+                                                Screen.NoticeService -> NoticeKind.Service
+                                                else -> NoticeKind.Maintenance
+                                            },
+                                        title = "В воскресенье — общая покатушка",
+                                        body = "Собираемся в 10:00 у главного входа в парк.",
+                                        imageUrl =
+                                            if (screen == Screen.NoticePromo) NOTICE_IMAGE
+                                            else null,
+                                        action =
+                                            NoticeAction("Подробнее", "https://colabike.ru/r/1"),
+                                    )
+                            )
+                        )
+                    Screen.UpdateOffer ->
+                        AppShell(
+                            announcing(
+                                compatibility =
+                                    Compatibility(
+                                        minimumSupportedVersionCode = 15,
+                                        latestVersionCode = 20,
+                                        mode = UpdateMode.Soft,
+                                        updateUrl = "https://play.example.ru/colabike",
+                                        message = null,
+                                    )
                             )
                         )
                     Screen.ProfileGuest,

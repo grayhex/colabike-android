@@ -36,6 +36,7 @@ import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.AnalysisChannel
 import ru.colabike.core.model.AnalysisPoint
 import ru.colabike.core.model.AppConfig
+import ru.colabike.core.model.AppNotice
 import ru.colabike.core.model.AppNotification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
@@ -78,6 +79,7 @@ import ru.colabike.core.model.JournalEntry
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
+import ru.colabike.core.model.LaunchConfig
 import ru.colabike.core.model.LikeChange
 import ru.colabike.core.model.LikeState
 import ru.colabike.core.model.Listing
@@ -93,6 +95,7 @@ import ru.colabike.core.model.MarketRepository
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.NotificationTarget
 import ru.colabike.core.model.NotificationsRepository
+import ru.colabike.core.model.OnboardingConfig
 import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.PeopleRepository
@@ -993,6 +996,22 @@ class FakeSettings(theme: ThemeMode = ThemeMode.System, guest: Boolean = false) 
     override fun setBrowsingAsGuest(value: Boolean) {
         browsingAsGuest.value = value
     }
+
+    override val onboardingSeen = MutableStateFlow<Int?>(null)
+    override val noticeClosed = MutableStateFlow<Int?>(null)
+    override val updateOfferClosed = MutableStateFlow<Int?>(null)
+
+    override fun setOnboardingSeen(revision: Int) {
+        onboardingSeen.value = revision
+    }
+
+    override fun setNoticeClosed(revision: Int) {
+        noticeClosed.value = revision
+    }
+
+    override fun setUpdateOfferClosed(versionCode: Int) {
+        updateOfferClosed.value = versionCode
+    }
 }
 
 class FakePending : PendingNavigation {
@@ -1361,11 +1380,21 @@ class FakeAppConfig(initial: AppConfigState = AppConfigState(loaded = true)) : A
         refreshes++
     }
 
+    var forced = 0
+
+    override fun refreshNow() {
+        forced++
+    }
+
     /** The app as the server configured it. */
     fun set(
         features: FeatureAvailability = FeatureAvailability.AllOn,
         links: ServiceLinks = ServiceLinks.None,
         compatibility: Compatibility = Compatibility.None,
+        notice: AppNotice? = null,
+        launch: LaunchConfig = LaunchConfig.Off,
+        onboarding: OnboardingConfig = OnboardingConfig.Off,
+        validatedAt: Instant = Instant.parse("2026-10-03T20:00:00Z"),
     ) {
         state.value =
             AppConfigState(
@@ -1375,9 +1404,12 @@ class FakeAppConfig(initial: AppConfigState = AppConfigState(loaded = true)) : A
                         features = features,
                         links = links,
                         compatibility = compatibility,
+                        notice = notice,
+                        launch = launch,
+                        onboarding = onboarding,
                     ),
                 loaded = true,
-                validatedAt = Instant.parse("2026-10-03T20:00:00Z"),
+                validatedAt = validatedAt,
             )
     }
 }
@@ -1406,6 +1438,7 @@ class FakeDependencies(
     override val components: FakeComponents = FakeComponents(),
     override val market: FakeMarket = FakeMarket(),
     override val appConfig: FakeAppConfig = FakeAppConfig(),
+    override val versionCode: Int = 1,
     override val configAssets: ConfigAssets = FakeConfigAssets(),
     override val chat: FakeChat = FakeChat(),
     val chatGateway: FakeChatGateway = FakeChatGateway(),
