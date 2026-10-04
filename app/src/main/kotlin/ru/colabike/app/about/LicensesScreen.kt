@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -45,8 +46,13 @@ fun LicensesRoute(onBack: () -> Unit) {
     val loraCovers = stringResource(R.string.licenses_lora_covers)
     val sans = stringResource(R.string.licenses_sans_title)
     val sansCovers = stringResource(R.string.licenses_sans_covers)
+    val maplibre = stringResource(R.string.licenses_maplibre_title)
+    val maplibreCovers = stringResource(R.string.licenses_maplibre_covers)
+    val stream = stringResource(R.string.licenses_stream_title)
+    val streamCovers = stringResource(R.string.licenses_stream_covers)
+    val streamText = stringResource(R.string.licenses_stream_text)
     val entries by
-        produceState(emptyList<LicenseEntry>(), title, covers, lora, sans) {
+        produceState(emptyList<LicenseEntry>(), title, covers, lora, sans, maplibre, stream) {
             value =
                 withContext(Dispatchers.IO) {
                     fun raw(@RawRes id: Int) =
@@ -67,6 +73,8 @@ fun LicensesRoute(onBack: () -> Unit) {
                             covers,
                             raw(ru.colabike.core.designsystem.R.raw.license_material_symbols),
                         ),
+                        LicenseEntry(maplibre, maplibreCovers, raw(R.raw.license_maplibre)),
+                        LicenseEntry(stream, streamCovers, streamText),
                     )
                 }
         }
@@ -81,7 +89,7 @@ fun LicensesScreen(entries: List<LicenseEntry>, onBack: () -> Unit) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
-                Modifier.widthIn(max = 560.dp).fillMaxSize(),
+                Modifier.widthIn(max = 560.dp).fillMaxSize().testTag("licenses:list"),
                 contentPadding =
                     androidx.compose.foundation.layout.PaddingValues(
                         horizontal = Spacing.screen,

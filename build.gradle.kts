@@ -26,10 +26,12 @@ spotless {
 }
 
 // The one command for people, agents and CI (AGENTS.md): formatting, the API
-// contract snapshot, Android Lint, unit and screenshot tests, the debug build.
+// contract snapshot, Android Lint, no Play Services on the classpath, unit and screenshot tests,
+// the debug build.
 tasks.register("verify") {
     group = "verification"
-    description = "Format check, contract checksum, lint, unit and screenshot tests, debug APK."
+    description =
+        "Format check, contract checksum, lint, no Play Services, unit and screenshot tests, debug APK."
     dependsOn(
         "spotlessCheck",
         ":core:model:check",
@@ -39,6 +41,7 @@ tasks.register("verify") {
         ":core:designsystem:lintDebug",
         ":core:designsystem:verifyRoborazziDebug",
         ":app:lintDebug",
+        ":app:checkNoPlayServices",
         ":app:verifyRoborazziDebug",
         ":app:assembleDebug",
     )

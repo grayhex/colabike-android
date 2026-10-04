@@ -73,7 +73,7 @@ internal fun ClientException.toDataError(): DataError {
         failure.status == 404 -> DataError.NotFound()
         failure.status == 429 ->
             DataError.RateLimited(retryAfterSeconds(headers.first(RETRY_AFTER)))
-        else -> DataError.Rejected(failure.status, failure.code, failure.message)
+        else -> DataError.Rejected(failure.status, failure.code, failure.message, failure.requestId)
     }
 }
 

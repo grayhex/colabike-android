@@ -15,6 +15,18 @@ val siteUrl = "https://colabike.ru"
 // background and the app makes no tile request at all (docs/adr/0009-route-map-and-analysis.md).
 val mapStyleUrl = providers.gradleProperty("colabike.mapStyleUrl").orElse("").get().trim()
 
+// The version of the API contract this build was generated from, for support: the version in the
+// snapshot and the start of its checksum (api/openapi.json.sha256 pins the snapshot).
+val contractVersion: String = run {
+    val contract = rootProject.file("api/openapi.json")
+    val version =
+        (groovy.json.JsonSlurper().parse(contract) as Map<*, *>).let {
+            (it["info"] as Map<*, *>)["version"]
+        }
+    val checksum = rootProject.file("api/openapi.json.sha256").readText().trim().take(8)
+    "$version ($checksum)"
+}
+
 check(
     mapStyleUrl.isEmpty() ||
         (mapStyleUrl.startsWith("https://") && '"' !in mapStyleUrl && '\\' !in mapStyleUrl)
@@ -36,6 +48,7 @@ android {
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
         buildConfigField("String", "NATIVE_AUTH_RETURN_URL", "\"$siteUrl/app/auth\"")
         buildConfigField("String", "MAP_STYLE_URL", "\"$mapStyleUrl\"")
+        buildConfigField("String", "CONTRACT_VERSION", "\"$contractVersion\"")
         // The Yandex ID button waits for cola#324 (App Link and NATIVE_AUTH_RETURN_URL on the
         // site): ./gradlew assembleDebug -Pcolabike.yandexSignIn=true to try it earlier.
         buildConfigField(
@@ -133,4 +146,41 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
+}
+
+// The app must run where Google Play Services are absent (RuStore, AOSP images; AGENTS.md): no
+// Play Services, Firebase, Play Billing, Play Integrity or in-app updates may arrive through any
+// library, directly or as a transitive dependency. Checked on what ships (the release runtime
+// classpath) and on what the tests run (debug).
+val checkNoPlayServices by tasks.registering {
+    group = "verification"
+    description = "Fails when a Google Play / Firebase / push-vendor library is on the classpath."
+    val classpaths =
+        listOf("releaseRuntimeClasspath", "debugRuntimeClasspath").map {
+            configurations.named(it)
+        }
+    val banned =
+        listOf(
+            Regex("""com\.google\.android\.gms:.*"""),
+            Regex("""com\.google\.firebase:.*"""),
+            Regex("""com\.android\.billingclient:.*"""),
+            Regex("""com\.google\.android\.play:.*"""),
+            Regex("""com\.google\.android\.datatransport:.*"""),
+            Regex("""io\.getstream:stream-android-push-(firebase|huawei|xiaomi)\b.*"""),
+        )
+    doLast {
+        val found =
+            classpaths
+                .flatMap { configuration ->
+                    configuration.get().incoming.resolutionResult.allComponents.mapNotNull {
+                        val id = it.moduleVersion?.let { m -> "${m.group}:${m.name}:${m.version}" }
+                        id?.takeIf { _ -> banned.any { rule -> rule.matches(id) } }
+                    }
+                }
+                .toSortedSet()
+        check(found.isEmpty()) {
+            "Libraries that need Google Play Services or a push vendor are on the classpath " +
+                "(AGENTS.md forbids them): $found"
+        }
+    }
 }
