@@ -22,6 +22,7 @@ browser = "1.10.0"
 okhttp = "5.5.0"
 coil = "3.6.3"
 maplibre = "13.6.1"
+stream = "7.13.0"
 openapiGenerator = "7.25.0"
 
 spotless = "8.10.3"
@@ -52,6 +53,7 @@ androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecy
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 
+stream-compose = { module = "io.getstream:stream-chat-android-compose", version.ref = "stream" }
 maplibre-android = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }

@@ -17,6 +17,10 @@ import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.PreferencesPendingNavigation
 import ru.colabike.app.links.SiteLinks
+import ru.colabike.app.messages.ChatScreens
+import ru.colabike.app.messages.ChatSession
+import ru.colabike.app.messages.StreamChatGateway
+import ru.colabike.app.messages.StreamChatScreens
 import ru.colabike.app.rides.map.MapLibreRouteMaps
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.settings.AppSettings
@@ -31,6 +35,7 @@ import ru.colabike.core.auth.signOuts
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.ChatRepository
 import ru.colabike.core.model.CommentsRepository
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalRepository
@@ -44,6 +49,7 @@ import ru.colabike.core.network.MediaUrls
 import ru.colabike.core.network.NetworkAccountRepository
 import ru.colabike.core.network.NetworkAccountSessionsRepository
 import ru.colabike.core.network.NetworkBikesRepository
+import ru.colabike.core.network.NetworkChatRepository
 import ru.colabike.core.network.NetworkCommentsRepository
 import ru.colabike.core.network.NetworkFeedRepository
 import ru.colabike.core.network.NetworkJournalRepository
@@ -61,6 +67,15 @@ interface AppDependencies {
     val comments: CommentsRepository
     val rides: RidesRepository
     val notifications: NotificationsRepository
+
+    /** ColaBike's side of the chat: the token, new channels, who one may write to. */
+    val chat: ChatRepository
+
+    /** The person's connection to the chat provider, for as long as the app is open. */
+    val chatSession: ChatSession
+
+    /** The provider's screens: the SDK's in the app, drawings in tests. */
+    val chatScreens: ChatScreens
 
     /** Unsent comment text, in memory for this session only. */
     val drafts: CommentDrafts
@@ -127,6 +142,9 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val rides: RidesRepository = NetworkRidesRepository(api.rides, api.personal, media)
     override val notifications: NotificationsRepository =
         NetworkNotificationsRepository(api.personal, media)
+    override val chat: ChatRepository = NetworkChatRepository(api.chat, api::chatWithKey, media)
+    override val chatSession: ChatSession = ChatSession(chat, StreamChatGateway(context), scope)
+    override val chatScreens: ChatScreens = StreamChatScreens
     override val drafts: CommentDrafts = InMemoryCommentDrafts()
     override val sessions: AccountSessionsRepository =
         NetworkAccountSessionsRepository(api.sessions)
@@ -167,6 +185,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
                 // What the session knew about saved entries is the person's, not the next one's.
                 journalRepository.forget()
                 drafts.clear()
+                // The next person must find nothing of this one's conversations in the SDK.
+                chatSession.end()
                 onSignedOut()
             }
         }

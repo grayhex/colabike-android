@@ -14,6 +14,20 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
 
     <!--
+        The messenger's SDK (Stream Chat) asks for more than a text chat with photos needs: the
+        microphone (voice messages are off), notifications and a boot receiver and a foreground
+        service (there is no push, no background polling and no service: docs/adr/0011). Photos
+        come from the system Photo Picker, which needs no permission at all.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
+
+    <!--
         No cloud backup and no device-to-device transfer of app data: the refresh token is
         encrypted with a Keystore key that never leaves the device, and nothing else is worth
         restoring (the server holds the data). docs/architecture.md, "Tokens".
@@ -50,5 +64,34 @@
                     android:scheme="https" />
             </intent-filter>
         </activity>
+
+        <!-- Components the messenger's SDK brings and the app never starts (docs/adr/0011). -->
+        <!-- MissingClass: these live in the libraries' runtime classpath only; they are removed. -->
+        <provider
+            android:name="io.getstream.android.push.delegate.AndroidPushDelegateProvider"
+            tools:ignore="MissingClass"
+            tools:node="remove" />
+        <receiver
+            android:name="io.getstream.chat.android.client.receivers.NotificationMessageReceiver"
+            tools:node="remove" />
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            tools:ignore="MissingClass"
+            tools:node="remove" />
+        <!-- The Compose tooling comes along with the SDK, and its preview activity is exported. -->
+        <activity
+            android:name="androidx.compose.ui.tooling.PreviewActivity"
+            tools:node="remove" />
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:ignore="MissingClass"
+            tools:node="merge">
+            <!-- It would ask for the notification permission when an activity opens. -->
+            <meta-data
+                android:name="io.getstream.android.push.permissions.PushPermissionsInitializer"
+                tools:node="remove" />
+        </provider>
     </application>
 </manifest>

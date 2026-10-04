@@ -7,13 +7,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
@@ -79,6 +82,14 @@ enum class Screen(val file: String) {
 
     /** The inbox, opened by the bell of the first screen. */
     Notifications("notifications"),
+
+    /**
+     * The Messages section with the SDK's list, a conversation, the form for a new one, a guest.
+     */
+    Messages("messages"),
+    Conversation("conversation"),
+    NewConversation("new_conversation"),
+    MessagesGuest("messages_guest"),
 }
 
 enum class Look(val dark: Boolean, val fontScale: Float, val file: String) {
@@ -142,7 +153,8 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                         )
                     Screen.ProfileGuest,
                     Screen.FeedGuest,
-                    Screen.CommentsGuest ->
+                    Screen.CommentsGuest,
+                    Screen.MessagesGuest ->
                         AppShell(
                             FakeDependencies(
                                 comments = sampleDiscussion(),
@@ -247,6 +259,18 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         }
         Screen.Notifications ->
             onNode(hasContentDescription("Уведомления", substring = true)).performClick()
+        Screen.Messages,
+        Screen.MessagesGuest -> section("Сообщения").performClick()
+        Screen.Conversation -> {
+            section("Сообщения").performClick()
+            // Not a touch: on a wide window the row stays in the picture, and a pressed or
+            // focused row is drawn at a moment of the platform's own clock.
+            onNodeWithTag("chat:open:dm-1").performSemanticsAction(SemanticsActions.OnClick)
+        }
+        Screen.NewConversation -> {
+            section("Сообщения").performClick()
+            onNodeWithContentDescription("Новое сообщение").performClick()
+        }
         Screen.JournalList -> openJournal()
         Screen.Journal -> {
             openJournal()

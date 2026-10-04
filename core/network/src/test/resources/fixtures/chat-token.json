@@ -1,0 +1,11 @@
+{
+  "apiKey": "pk_test_public",
+  "user": {
+    "id": "cb-1",
+    "name": "Тестовый Райдер",
+    "image": "https://colabike.ru/media/u/1.jpg"
+  },
+  "token": "eyJ.fake.token",
+  "expiresAt": "2026-10-04T12:05:00Z",
+  "channelType": "colabike"
+}

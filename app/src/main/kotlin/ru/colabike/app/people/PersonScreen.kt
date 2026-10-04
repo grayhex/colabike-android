@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -19,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -36,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -50,9 +55,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.messages.WriteState
+import ru.colabike.app.messages.WriteViewModel
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
@@ -69,9 +77,12 @@ import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.ChannelCid
+import ru.colabike.core.model.ChatRepository
 import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.Profile
+import ru.colabike.core.model.UserId
 
 /** What a person's page can open. Callbacks, so the screen never touches navigation itself. */
 class PersonActions(
@@ -80,6 +91,8 @@ class PersonActions(
     val onOpenFollowers: (ref: String) -> Unit,
     val onOpenFollowing: (ref: String) -> Unit,
     val onOpenAccount: () -> Unit,
+    /** A dialogue with this person was made or found: open it. */
+    val onOpenConversation: (ChannelCid) -> Unit = {},
 )
 
 @Composable
@@ -89,9 +102,23 @@ fun PersonRoute(
     auth: AuthActions,
     ref: String,
     actions: PersonActions,
+    chat: ChatRepository? = null,
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
     val viewModel = viewModel { PersonViewModel(people, bikes, ref, commentChanges) }
+    val writer = chat?.let { viewModel(key = "write:$ref") { WriteViewModel(it) } }
+    val writing by
+        (writer?.state ?: remember { MutableStateFlow<WriteState>(WriteState.Idle) })
+            .collectAsStateWithLifecycle()
+    val opened by
+        (writer?.opened ?: remember { MutableStateFlow<ChannelCid?>(null) })
+            .collectAsStateWithLifecycle()
+    LaunchedEffect(opened) {
+        opened?.let {
+            writer?.consumed()
+            actions.onOpenConversation(it)
+        }
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val authState by auth.state.collectAsStateWithLifecycle()
     val signIn = LocalSignInRequest.current
@@ -103,6 +130,19 @@ fun PersonRoute(
         onLoadMore = viewModel::loadMoreBikes,
         // A guest is asked to sign in first; the subscription is not made for them afterwards.
         onToggleFollow = if (signedIn) viewModel::toggleFollow else signIn,
+        writing = writing,
+        // Messages are a member's: a guest is asked to sign in first.
+        onWrite =
+            when {
+                writer == null -> null
+                signedIn -> {
+                    {
+                        state.profile?.person?.id?.let { writer.write(UserId(it.value)) }
+                        Unit
+                    }
+                }
+                else -> signIn
+            },
     )
 }
 
@@ -117,6 +157,8 @@ fun PersonScreen(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onToggleFollow: () -> Unit,
+    writing: WriteState = WriteState.Idle,
+    onWrite: (() -> Unit)? = null,
 ) {
     val profile = state.profile
     Scaffold(
@@ -144,7 +186,16 @@ fun PersonScreen(
                         onRetry = onRetry,
                         modifier = Modifier.fillMaxSize(),
                     )
-                else -> PersonContent(state, profile, actions, onLoadMore, onToggleFollow)
+                else ->
+                    PersonContent(
+                        state,
+                        profile,
+                        actions,
+                        onLoadMore,
+                        onToggleFollow,
+                        writing,
+                        onWrite,
+                    )
             }
         }
     }
@@ -157,6 +208,8 @@ private fun PersonContent(
     actions: PersonActions,
     onLoadMore: () -> Unit,
     onToggleFollow: () -> Unit,
+    writing: WriteState,
+    onWrite: (() -> Unit)?,
 ) {
     val grid = rememberLazyGridState()
     val nearEnd by remember {
@@ -175,7 +228,7 @@ private fun PersonContent(
         modifier = Modifier.fillMaxSize().testTag("person:grid"),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Header(state, profile, actions, onToggleFollow)
+            Header(state, profile, actions, onToggleFollow, writing, onWrite)
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
@@ -235,6 +288,8 @@ private fun Header(
     profile: Profile,
     actions: PersonActions,
     onToggleFollow: () -> Unit,
+    writing: WriteState,
+    onWrite: (() -> Unit)?,
 ) {
     val person = profile.person
     val relationship = profile.relationship
@@ -271,7 +326,18 @@ private fun Header(
                     Text(stringResource(R.string.person_my_account))
                 }
             }
-            else -> FollowButton(state, profile, onToggleFollow)
+            else -> {
+                FollowButton(state, profile, onToggleFollow)
+                if (onWrite != null) WriteButton(person.displayName, writing, onWrite)
+            }
+        }
+        (writing as? WriteState.Failed)?.let {
+            Text(
+                it.message.resolve(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
         }
         state.followError?.let {
             Text(
@@ -282,6 +348,30 @@ private fun Header(
             )
         }
         Counts(profile, actions)
+    }
+}
+
+/**
+ * "Write": opens a dialogue with the person; the follow button is the main action, this the second.
+ */
+@Composable
+private fun WriteButton(name: String, writing: WriteState, onWrite: () -> Unit) {
+    val label = stringResource(R.string.chat_write_named, name)
+    OutlinedButton(
+        onClick = onWrite,
+        enabled = writing != WriteState.Opening,
+        modifier =
+            Modifier.widthIn(max = 420.dp).fillMaxWidth().heightIn(min = Spacing.touch).semantics {
+                contentDescription = label
+            },
+    ) {
+        if (writing == WriteState.Opening) {
+            CircularProgressIndicator(Modifier.size(18.dp).padding(end = Spacing.s))
+        } else {
+            Icon(painterResource(ColaIcons.Chat), contentDescription = null)
+            Spacer(Modifier.width(Spacing.s))
+        }
+        Text(stringResource(R.string.chat_write))
     }
 }
 

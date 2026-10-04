@@ -28,13 +28,13 @@ enum class TopLevel(
     /** Rides and plans, one's own (the map: second part of slice 7). */
     Rides(Destination.Rides, R.string.nav_rides, ColaIcons.Route, ColaIcons.Route, true),
 
-    /** Personal chat and the notification centre: slice 8. */
+    /** Personal chat (the provider's SDK in the app's look): slice 8. */
     Messages(
         Destination.Messages,
         R.string.nav_messages,
         ColaIcons.Chat,
         ColaIcons.ChatFilled,
-        false,
+        true,
     ),
     Profile(
         Destination.Profile,

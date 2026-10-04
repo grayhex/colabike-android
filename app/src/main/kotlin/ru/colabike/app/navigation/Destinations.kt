@@ -26,6 +26,12 @@ sealed interface Destination : NavKey {
 
     @Serializable data object Messages : Destination
 
+    /** One conversation; [cid] is the chat provider's `type:id` of the channel. */
+    @Serializable data class Conversation(val cid: String) : Destination
+
+    /** Who to write to: the people one follows or finds, a dialogue or a group. */
+    @Serializable data object NewConversation : Destination
+
     /** The inbox of ColaBike events; opened from the bell of a top-level screen. */
     @Serializable data object Notifications : Destination
 
