@@ -3,6 +3,7 @@ package ru.colabike.app.links
 import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.core.net.toUri
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import ru.colabike.core.auth.CustomTabs
 
 /**
@@ -31,6 +32,26 @@ class SiteLinks(siteUrl: String) {
 
     /** A page by an already encoded path that the parser has taken from an allowlisted address. */
     fun pageAt(encodedPath: String): String = base + encodedPath
+
+    /**
+     * The address of a page by a path the server sent ("/market/…", with an anchor maybe), or null
+     * if that is not a path on this site: it must begin with one slash, hold no control character
+     * or backslash, and join the site's address into an `https` address of the same host and port.
+     * Nothing else ever becomes a link the app opens.
+     */
+    fun pageFromPath(path: String): String? {
+        if (!path.startsWith("/") || path.startsWith("//")) return null
+        if (path.any { it.isISOControl() || it == '\\' || it.isWhitespace() }) return null
+        val joined = (base + path).toHttpUrlOrNull() ?: return null
+        val site = base.toHttpUrlOrNull() ?: return null
+        val sameSite =
+            joined.scheme == "https" &&
+                joined.host.equals(site.host, ignoreCase = true) &&
+                joined.port == site.port &&
+                joined.username.isEmpty() &&
+                joined.password.isEmpty()
+        return if (sameSite) joined.toString() else null
+    }
 }
 
 /**

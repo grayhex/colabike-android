@@ -47,4 +47,5 @@
         <item quantity="many">%d комментариев</item>
         <item quantity="other">%d комментария</item>
     </plurals>
+    <string name="cola_notification_new">Новое</string>
 </resources>

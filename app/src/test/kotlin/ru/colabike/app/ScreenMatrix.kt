@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -26,6 +27,7 @@ import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.model.FeedItem
+import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.Page
 
 /** Every screen of the app, as AGENTS.md requires it in screenshots. */
@@ -74,6 +76,9 @@ enum class Screen(val file: String) {
     /** The same ride further down: the route and the charts of its series; and the route's map. */
     RideCompletedAnalysis("ride_completed_analysis"),
     RideMap("ride_map"),
+
+    /** The inbox, opened by the bell of the first screen. */
+    Notifications("notifications"),
 }
 
 enum class Look(val dark: Boolean, val fontScale: Float, val file: String) {
@@ -150,6 +155,11 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                             FakeDependencies(
                                 bikes = FakeBikes(mapOf(null to Page(bikes(0, 6), "c1"))),
                                 comments = sampleDiscussion(),
+                                notifications =
+                                    FakeNotifications(
+                                        mapOf(null to Page(sampleInbox(), null)),
+                                        NotificationCount(4, capped = false),
+                                    ),
                                 feed =
                                     FakeFeed(
                                         mapOf(
@@ -235,6 +245,8 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                 onNodeWithText("Открыть карту").performScrollTo().performClick()
             }
         }
+        Screen.Notifications ->
+            onNode(hasContentDescription("Уведомления", substring = true)).performClick()
         Screen.JournalList -> openJournal()
         Screen.Journal -> {
             openJournal()

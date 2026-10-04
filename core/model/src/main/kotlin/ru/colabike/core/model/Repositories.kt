@@ -131,3 +131,11 @@ interface RidesRepository {
     /** The signed-in person's plans and answers: at most 20, nearest first, no further pages. */
     suspend fun myUpcoming(): List<UpcomingRide>
 }
+
+interface NotificationsRepository {
+    /** The inbox, newest first, page by page. Reading it is what the site's own inbox does too. */
+    suspend fun page(cursor: String? = null, limit: Int = 24): Page<AppNotification>
+
+    /** The unread count: a separate number from the unread messages of the chat. */
+    suspend fun count(): NotificationCount
+}

@@ -34,6 +34,7 @@ import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.CommentsRepository
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalRepository
+import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.RidesRepository
 import ru.colabike.core.network.ApiConfig
@@ -46,6 +47,7 @@ import ru.colabike.core.network.NetworkBikesRepository
 import ru.colabike.core.network.NetworkCommentsRepository
 import ru.colabike.core.network.NetworkFeedRepository
 import ru.colabike.core.network.NetworkJournalRepository
+import ru.colabike.core.network.NetworkNotificationsRepository
 import ru.colabike.core.network.NetworkPeopleRepository
 import ru.colabike.core.network.NetworkRidesRepository
 
@@ -58,6 +60,7 @@ interface AppDependencies {
     val journal: JournalRepository
     val comments: CommentsRepository
     val rides: RidesRepository
+    val notifications: NotificationsRepository
 
     /** Unsent comment text, in memory for this session only. */
     val drafts: CommentDrafts
@@ -122,6 +125,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val comments: CommentsRepository =
         NetworkCommentsRepository(api.comments, api::commentsWithKey, media)
     override val rides: RidesRepository = NetworkRidesRepository(api.rides, api.personal, media)
+    override val notifications: NotificationsRepository =
+        NetworkNotificationsRepository(api.personal, media)
     override val drafts: CommentDrafts = InMemoryCommentDrafts()
     override val sessions: AccountSessionsRepository =
         NetworkAccountSessionsRepository(api.sessions)

@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.notifications.NotificationsBell
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.BikeCard
@@ -133,6 +134,7 @@ fun BikesScreen(
                             )
                         }
                     }
+                    NotificationsBell()
                 },
             )
         },

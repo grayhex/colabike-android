@@ -44,6 +44,7 @@ import ru.colabike.app.journal.JournalActions
 import ru.colabike.app.journal.JournalListScreen
 import ru.colabike.app.journal.JournalScreen
 import ru.colabike.app.journal.JournalUiState
+import ru.colabike.app.notifications.NotificationsScreen
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListScreen
 import ru.colabike.app.people.PeopleListUiState
@@ -72,6 +73,7 @@ import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.AppNotification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
@@ -132,6 +134,9 @@ enum class ScreenState(val file: String) {
     RideNotFoundGuest("ride_not_found_guest"),
     AnalysisLoading("analysis_loading"),
     AnalysisFailed("analysis_failed"),
+    NotificationsEmpty("notifications_empty"),
+    NotificationsError("notifications_error"),
+    NotificationsMoreError("notifications_more_error"),
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -558,6 +563,18 @@ private fun Content(state: ScreenState) {
                     onRetry = {},
                 )
             }
+        ScreenState.NotificationsEmpty -> InboxWith(PagedState(loading = false))
+        ScreenState.NotificationsError ->
+            InboxWith(PagedState(loading = false, error = UiText.Res(R.string.error_offline)))
+        ScreenState.NotificationsMoreError ->
+            InboxWith(
+                PagedState(
+                    items = sampleInbox().take(3),
+                    nextCursor = "c1",
+                    loading = false,
+                    moreError = UiText.Res(R.string.error_offline),
+                )
+            )
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),
@@ -592,6 +609,18 @@ private fun CommentsWith(state: CommentsUiState) =
         meId = PreviewData.rider.id,
         signedIn = true,
         actions = CommentsActions(),
+    )
+
+@Composable
+private fun InboxWith(state: PagedState<AppNotification>) =
+    NotificationsScreen(
+        state = state,
+        opens = { true },
+        onBack = {},
+        onRefresh = {},
+        onRetry = {},
+        onLoadMore = {},
+        onOpen = {},
     )
 
 @Composable

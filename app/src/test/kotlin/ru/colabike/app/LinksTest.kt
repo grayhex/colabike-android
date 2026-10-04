@@ -141,15 +141,37 @@ class LinkTargetTest {
     }
 
     @Test
-    fun `what has no screen yet is shown by the site on the same address, a profile is not one`() {
+    fun `a journal entry and a ride have screens`() {
         assertThat(AppLink.Journal(uuid).target(site))
-            .isEqualTo(LinkTarget.OnSite("https://colabike.ru/j/$uuid"))
+            .isEqualTo(LinkTarget.InApp(Destination.Journal(uuid)))
         assertThat(AppLink.Ride(uuid).target(site))
-            .isEqualTo(LinkTarget.OnSite("https://colabike.ru/r/$uuid"))
+            .isEqualTo(LinkTarget.InApp(Destination.Ride(uuid)))
+    }
+
+    @Test
+    fun `what has no screen yet is shown by the site on the same address, a profile is not one`() {
         assertThat(AppLink.Market(uuid).target(site))
             .isEqualTo(LinkTarget.OnSite("https://colabike.ru/market/$uuid"))
         assertThat(AppLink.Person("test-rider").target(site))
             .isEqualTo(LinkTarget.InApp(Destination.Person("test-rider")))
+    }
+
+    @Test
+    fun `a path the server sent becomes a page of this site and nothing else`() {
+        assertThat(site.pageFromPath("/market/$uuid")).isEqualTo("https://colabike.ru/market/$uuid")
+        assertThat(site.pageFromPath("/a/with-anchor#comment-$uuid"))
+            .isEqualTo("https://colabike.ru/a/with-anchor#comment-$uuid")
+        listOf(
+                "",
+                "market/1",
+                "//evil.example/x",
+                "https://evil.example/x",
+                "/\\evil.example",
+                "/a b",
+                "/a\nb",
+                "@evil.example",
+            )
+            .forEach { assertThat(site.pageFromPath(it)).isNull() }
     }
 
     @Test
@@ -200,10 +222,20 @@ class LinkHandlerTest {
 
     @Test
     fun `an address without a screen opens on the site`() {
-        handler.handle("https://colabike.ru/j/$uuid")
+        handler.handle("https://colabike.ru/market/$uuid")
 
-        assertThat(site).containsExactly("https://colabike.ru/j/$uuid")
+        assertThat(site).containsExactly("https://colabike.ru/market/$uuid")
         assertThat(pending.destination.value).isNull()
+    }
+
+    @Test
+    fun `a journal entry and a ride wait for the shell like a bike does`() {
+        handler.handle("https://colabike.ru/j/$uuid")
+        assertThat(pending.destination.value).isEqualTo(Destination.Journal(uuid))
+
+        handler.handle("https://colabike.ru/r/$uuid")
+        assertThat(pending.destination.value).isEqualTo(Destination.Ride(uuid))
+        assertThat(site).isEmpty()
     }
 
     @Test

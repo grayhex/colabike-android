@@ -40,6 +40,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.app.AppDependencies
 import ru.colabike.app.R
 import ru.colabike.app.links.LocalLinkOpener
+import ru.colabike.app.notifications.NotificationsBell
 import ru.colabike.app.settings.ThemeMode
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
@@ -105,7 +106,12 @@ fun ProfileScreen(
 ) {
     Scaffold(
         containerColor = Color.Transparent,
-        topBar = { ColaTopBar(title = stringResource(R.string.profile_title)) },
+        topBar = {
+            ColaTopBar(
+                title = stringResource(R.string.profile_title),
+                actions = { NotificationsBell() },
+            )
+        },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (state) {

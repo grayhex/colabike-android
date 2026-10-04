@@ -54,6 +54,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.notifications.NotificationsBell
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
@@ -148,7 +149,12 @@ fun RidesScreen(
 ) {
     Scaffold(
         containerColor = Color.Transparent,
-        topBar = { ColaTopBar(title = stringResource(R.string.rides_title)) },
+        topBar = {
+            ColaTopBar(
+                title = stringResource(R.string.rides_title),
+                actions = { NotificationsBell() },
+            )
+        },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             FlowRow(

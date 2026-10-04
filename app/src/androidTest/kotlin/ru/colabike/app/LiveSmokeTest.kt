@@ -22,9 +22,10 @@ import org.junit.runner.RunWith
 /**
  * The live smoke of #325 on an Android 17 emulator against production: sign in with the dedicated
  * smoke account, the bike list (`/bikes`), a bike (`/bikes/{id}`), the rides (`/rides/upcoming`,
- * `/rides`, and a ride's page if there is one), the profile (`/me`), the devices of the account
- * (`/auth/sessions`), sign out (the device session is revoked, the account does not collect
- * devices). Everything it asks for is read-only.
+ * `/rides`, and a ride's page if there is one), the notifications (`/me/notifications`, its count
+ * on the bell), the profile (`/me`), the devices of the account (`/auth/sessions`), sign out (the
+ * device session is revoked, the account does not collect devices). Everything it asks for is
+ * read-only.
  *
  * Credentials come only as instrumentation arguments from CI secrets (smokeEmail, smokePassword);
  * without them the test is skipped, never faked. CI leaves the class out instead (notClass): AGP's
@@ -90,6 +91,21 @@ class LiveSmokeTest {
                 )
                 .fetchSemanticsNodes()
                 .isNotEmpty()
+        }
+        compose.onNodeWithContentDescription("Назад").performClick()
+
+        // /me/notifications: the bell is in the bar, the inbox opens to a list or to "none".
+        compose.onNodeWithContentDescription("Уведомления", substring = true).performClick()
+        waitFor {
+            hasText("Уведомлений нет") ||
+                compose
+                    .onAllNodes(
+                        SemanticsMatcher("the inbox") {
+                            it.config.getOrNull(SemanticsProperties.TestTag) == "notifications:list"
+                        }
+                    )
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
         }
         compose.onNodeWithContentDescription("Назад").performClick()
 
