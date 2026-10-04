@@ -6,12 +6,12 @@
         "description": "API ColaBike: вход устройств, текущий пользователь, чтение велосипедов, людей, журнала, покатушек и комментариев, настройки приложения.\n\n**Вход.** Два способа. Браузер — HttpOnly cookie `cola_session`, которую выдаёт вход на сайте. Нативный клиент — сессия устройства: `POST /auth/sessions` возвращает пару непрозрачных токенов, токен доступа (`cola_at_…`, 15 минут) передаётся как `Authorization: Bearer`, одноразовый refresh-токен (`cola_rt_…`) обновляется через `POST /auth/sessions/refresh`. Cookie и Bearer в одном запросе — 400 `ambiguous_authentication`; другие схемы Authorization — 401 `unsupported_authentication`. Просроченный токен доступа — 401 `token_expired`, любой другой негодный — 401 `invalid_token`. CORS не включён.\n\n**Ошибки.** Тело ошибки — `{ \"error\": { \"code\", \"message\", \"details?\" } }`; клиент ветвится по `code`. Неизвестный адрес под `/api/v1` отвечает 404, неподдерживаемый метод — 405 с заголовком `Allow`. Каждый ответ несёт `X-Request-ID` для обращения в поддержку.\n\n**Кэш.** Ответы зависят от того, кто спрашивает, и не кэшируются (`Cache-Control: no-store`). Исключения — сам документ и настройки приложения `/app-config`: они одинаковы для всех; настройки свежи минуту, затем проверяются по `ETag` (304 без тела).\n\n**Изображения.** Адреса фото (`url`, `avatarUrl`, `coverUrl`) — пути сайта относительно его адреса. Публичные открываются без входа; приватные (фото закрытого велосипеда, картинки черновика журнала) — владельцу, с тем же `Authorization: Bearer` (или cookie), что и API; чужому и гостю — 404, недействительному токену — 401. Ответы зависят от зрителя (`Vary: Cookie, Authorization`), поддерживают `ETag`/304 и `?width=`.\n\n**Видимость.** Публичный велосипед видят все, приватный — только владелец. Чужой приватный и несуществующий велосипед неотличимы: оба дают 404. Велосипеды заблокированных владельцев никому не видны.\n\n**Что не входит.** Личные ответы владельца о покатушках, участие в них, поиск, рынок и операции записи, а также нативный вход через внешних провайдеров — отдельные срезы.",
         "license": {
             "name": "Пользовательское соглашение ColaBike",
-            "url": "https://colabike.ru/legal/terms"
+            "url": "http://localhost:3000/legal/terms"
         }
     },
     "servers": [
         {
-            "url": "https://colabike.ru/api/v1"
+            "url": "http://localhost:3000/api/v1"
         }
     ],
     "tags": [
@@ -284,6 +284,8 @@
                                 "rides",
                                 "discussions",
                                 "market",
+                                "plans",
+                                "intents",
                                 "reactions",
                                 "site"
                             ]
@@ -842,7 +844,7 @@
                     "Personal"
                 ],
                 "summary": "Настройки уведомлений",
-                "description": "Что человек хочет получать: каналы (почта, push), категории по каналам, напоминание о покатушке. Те же настройки видит и меняет сайт. В списке категорий только те, которые сервер производит и которые канал может передать; `channels.*.available` говорит, работает ли канал на сервере (почта — настроена ли отправка, push — подключена ли доставка), и приложение не показывает переключатель недоступного канала. Версия объекта — заголовок `ETag`. Разрешение системы и регистрация телефона — не здесь.",
+                "description": "Что человек хочет получать: каналы (почта, push), категории по каналам, напоминание о покатушке, часовой пояс и тихие часы, паузу, круг людей, чьи новые планы и намерения приходят, и заглушённое. Те же настройки видит и меняет сайт. В списке категорий только те, которые сервер производит и которые канал может передать; `channels.*.available` говорит, работает ли канал на сервере (почта — настроена ли отправка, push — подключена ли доставка), и приложение не показывает переключатель недоступного канала. Версия объекта — заголовок `ETag`. Разрешение системы и регистрация телефона — не здесь.",
                 "security": [
                     {
                         "cookieSession": [
@@ -921,7 +923,7 @@
                     "Personal"
                 ],
                 "summary": "Изменить настройки уведомлений",
-                "description": "Меняется только указанное, поэтому два устройства, меняющие разные переключатели, не затирают друг друга; повтор того же изменения ничего не меняет. `If-Match` необязателен: с ним изменение применяется только к версии, которую клиент видел (412, если версия уже другая). Включить канал можно, когда он работает: почту — с подтверждённым адресом (403 `email_verification_required`) и настроенной отправкой (503 `service_unavailable`), push — когда доставка подключена (503). Выключить можно всегда; повтор того, что уже есть, и `reminders` (общее для всех каналов) не требуют работающей почты. Категория называет только каналы, которые могут её передавать. Согласие на push здесь не включает разрешение системы на конкретном телефоне. Бюджет тот же, что у формы на сайте.",
+                "description": "Меняется только указанное, поэтому два устройства, меняющие разные переключатели, не затирают друг друга; повтор того же изменения ничего не меняет. `If-Match` необязателен: с ним изменение применяется только к версии, которую клиент видел (412, если версия уже другая). Включить канал можно, когда он работает: почту — с подтверждённым адресом (403 `email_verification_required`) и настроенной отправкой (503 `service_unavailable`), push — когда доставка подключена (503). Выключить можно всегда; повтор того, что уже есть, и `reminders` (общее для всех каналов) не требуют работающей почты. Категория называет только каналы, которые могут её передавать. Тихие часы нужны с часовым поясом IANA и работают по часам человека; пауза не дальше чем на год вперёд (`null` или `resume: true` снимает); круг `selected` и `mutes` меняются списками `add`/`remove`, повтор того, что уже есть, ничего не меняет. Всё это касается письма и push, но не ящика уведомлений. Согласие на push здесь не включает разрешение системы на конкретном телефоне. Бюджет тот же, что у формы на сайте.",
                 "security": [
                     {
                         "cookieSession": [
@@ -12278,7 +12280,7 @@
                 "properties": {
                     "type": {
                         "type": "string",
-                        "description": "bike, ride, journal, article, component, profile, market, account или bike-week; набор открыт."
+                        "description": "bike, ride, journal, article, component, profile, market, account, bike-week или intent; набор открыт."
                     },
                     "id": {
                         "type": "string",
@@ -12522,6 +12524,8 @@
                             "rides",
                             "discussions",
                             "market",
+                            "plans",
+                            "intents",
                             "reactions",
                             "site"
                         ]
@@ -12631,6 +12635,89 @@
                 "additionalProperties": false,
                 "description": "Каналы, кроме уведомлений внутри сайта: они есть всегда."
             },
+            "NotificationQuietHours": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "from": {
+                        "type": "string",
+                        "description": "Начало, ЧЧ:ММ по часам человека."
+                    },
+                    "to": {
+                        "type": "string",
+                        "description": "Конец, ЧЧ:ММ; если раньше начала, окно переходит через полночь."
+                    },
+                    "allowCancellations": {
+                        "type": "boolean",
+                        "description": "Явный выбор человека: отмена подтверждённого выезда, до которого меньше 12 часов, не ждёт конца тихих часов. По умолчанию выключено. Пауза этим не обходится."
+                    }
+                },
+                "required": [
+                    "enabled",
+                    "from",
+                    "to",
+                    "allowCancellations"
+                ],
+                "additionalProperties": false,
+                "description": "Тихие часы: пока окно открыто, внешние каналы ждут его конца. Сообщение, срок которого выходит раньше, не отправляется утром вовсе. Внутри приложения и сайта уведомления появляются всегда."
+            },
+            "NotificationCircle": {
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "friends",
+                            "follows",
+                            "selected",
+                            "off"
+                        ]
+                    },
+                    "members": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Author"
+                        }
+                    }
+                },
+                "required": [
+                    "mode",
+                    "members"
+                ],
+                "additionalProperties": false,
+                "description": "От кого человек узнаёт о новых планах и намерениях: `friends` — взаимные подписки (по умолчанию), `follows` — все, на кого подписан, `selected` — выбранные люди (`members`), `off` — ни от кого. Подписка и выбор не расширяют доступ: уведомление есть, только если человек и так вправе увидеть событие."
+            },
+            "NotificationMute": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "author",
+                            "ride",
+                            "discussion"
+                        ]
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "kind",
+                    "id",
+                    "label"
+                ],
+                "additionalProperties": false,
+                "description": "Заглушённое: автор (всё, что он делает), покатушка (всё о ней) или обсуждение (комментарии под объектом). Метка — название, если человек вправе его знать, иначе null."
+            },
             "NotificationSettings": {
                 "type": "object",
                 "properties": {
@@ -12646,6 +12733,42 @@
                     "reminders": {
                         "type": "boolean",
                         "description": "Напоминание о принятой покатушке за сутки, для всех каналов; по умолчанию включено."
+                    },
+                    "timeZone": {
+                        "description": "Часовой пояс человека (название из базы IANA, например Europe/Moscow), в котором читаются тихие часы; null, пока не указан.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "quietHours": {
+                        "$ref": "#/components/schemas/NotificationQuietHours"
+                    },
+                    "pausedUntil": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Пока пауза идёт, внешние каналы молчат; сказанное за это время потом не досылается. null — паузы нет."
+                    },
+                    "circle": {
+                        "$ref": "#/components/schemas/NotificationCircle"
+                    },
+                    "considering": {
+                        "type": "boolean",
+                        "description": "Сообщать и о намерениях, которые автор пока отметил «думаю»; по умолчанию нет."
+                    },
+                    "mutes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotificationMute"
+                        },
+                        "description": "Сначала самые давние."
                     },
                     "updatedAt": {
                         "anyOf": [
@@ -12664,6 +12787,12 @@
                     "channels",
                     "categories",
                     "reminders",
+                    "timeZone",
+                    "quietHours",
+                    "pausedUntil",
+                    "circle",
+                    "considering",
+                    "mutes",
                     "updatedAt"
                 ],
                 "additionalProperties": false,
@@ -12697,7 +12826,7 @@
                         "additionalProperties": false
                     },
                     "categories": {
-                        "maxItems": 5,
+                        "maxItems": 7,
                         "type": "array",
                         "items": {
                             "type": "object",
@@ -12708,6 +12837,8 @@
                                         "rides",
                                         "discussions",
                                         "market",
+                                        "plans",
+                                        "intents",
                                         "reactions",
                                         "site"
                                     ]
@@ -12727,6 +12858,135 @@
                     },
                     "reminders": {
                         "type": "boolean"
+                    },
+                    "timeZone": {
+                        "type": "string",
+                        "maxLength": 64
+                    },
+                    "quietHours": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            },
+                            "from": {
+                                "type": "string"
+                            },
+                            "to": {
+                                "type": "string"
+                            },
+                            "allowCancellations": {
+                                "type": "boolean"
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "pausedUntil": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "null снимает паузу"
+                    },
+                    "resume": {
+                        "type": "boolean"
+                    },
+                    "circle": {
+                        "type": "object",
+                        "properties": {
+                            "mode": {
+                                "type": "string",
+                                "enum": [
+                                    "friends",
+                                    "follows",
+                                    "selected",
+                                    "off"
+                                ]
+                            },
+                            "add": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            },
+                            "remove": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "considering": {
+                        "type": "boolean"
+                    },
+                    "mutes": {
+                        "type": "object",
+                        "properties": {
+                            "add": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                                "author",
+                                                "ride",
+                                                "discussion"
+                                            ]
+                                        },
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    },
+                                    "required": [
+                                        "kind",
+                                        "id"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            },
+                            "remove": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                                "author",
+                                                "ride",
+                                                "discussion"
+                                            ]
+                                        },
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    },
+                                    "required": [
+                                        "kind",
+                                        "id"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        },
+                        "additionalProperties": false
                     }
                 },
                 "additionalProperties": false,

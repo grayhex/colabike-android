@@ -278,6 +278,8 @@ private fun NotificationCategory.label(): Int =
     when (this) {
         NotificationCategory.Rides -> R.string.notifications_category_rides
         NotificationCategory.Discussions -> R.string.notifications_category_discussions
+        NotificationCategory.Plans -> R.string.notifications_category_plans
+        NotificationCategory.Intents -> R.string.notifications_category_intents
         NotificationCategory.Market -> R.string.notifications_category_market
         NotificationCategory.Reactions -> R.string.notifications_category_reactions
         NotificationCategory.Site -> R.string.notifications_category_site
@@ -397,6 +399,10 @@ private fun AppNotification.text(
             stringResource(R.string.notifications_ride_response) to rideLine(about, formatter)
         kind == "ride_reminder" ->
             stringResource(R.string.notifications_ride_reminder) to rideLine(about, formatter)
+        kind == "plan_published" ->
+            stringResource(R.string.notifications_plan_published) to rideLine(about, formatter)
+        kind == "intent_published" ->
+            stringResource(R.string.notifications_intent_published) to (who ?: about)
         kind == "session_reuse" ->
             stringResource(R.string.notifications_session) to
                 stringResource(R.string.notifications_session_body)

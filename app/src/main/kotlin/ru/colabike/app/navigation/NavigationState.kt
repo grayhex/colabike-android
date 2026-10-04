@@ -160,7 +160,8 @@ class Navigator(
                 // A discussion belongs to the section of its object.
                 is Destination.Comments ->
                     if (destination.kind == "ride") TopLevel.Rides.root else TopLevel.Bikes.root
-                Destination.Devices -> TopLevel.Profile.root
+                Destination.Devices,
+                Destination.NotificationSettings -> TopLevel.Profile.root
                 // The inbox opens where the person is.
                 Destination.Notifications -> state.topLevelRoute
                 else -> return

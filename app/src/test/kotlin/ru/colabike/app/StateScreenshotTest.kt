@@ -20,6 +20,7 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import java.time.Instant
+import java.time.ZoneId
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,6 +65,10 @@ import ru.colabike.app.messages.NewConversationScreen
 import ru.colabike.app.messages.NewConversationUiState
 import ru.colabike.app.notifications.InboxUi
 import ru.colabike.app.notifications.NotificationsScreen
+import ru.colabike.app.notifications.settings.NotificationSettingsActions
+import ru.colabike.app.notifications.settings.NotificationSettingsScreen
+import ru.colabike.app.notifications.settings.NotificationSettingsUiState
+import ru.colabike.app.notifications.settings.SettingsProblem
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListScreen
 import ru.colabike.app.people.PeopleListUiState
@@ -113,6 +118,7 @@ import ru.colabike.core.model.ListingType
 import ru.colabike.core.model.MarketQuery
 import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationFilter
+import ru.colabike.core.model.NotificationSettingsChange
 import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RideRole
@@ -175,6 +181,12 @@ enum class ScreenState(val file: String) {
     /** Narrowed to the unread and nothing is left, and a "mark as read" that the server refused. */
     NotificationsAllRead("notifications_all_read"),
     NotificationsReadFailed("notifications_read_failed"),
+
+    /** The settings while loading, when they cannot be read, paused, and after a refused change. */
+    NotificationSettingsLoading("notification_settings_loading"),
+    NotificationSettingsFailed("notification_settings_failed"),
+    NotificationSettingsPaused("notification_settings_paused"),
+    NotificationSettingsRefused("notification_settings_refused"),
     ComponentsEmpty("components_empty"),
     ComponentsNone("components_none"),
     ComponentsError("components_error"),
@@ -340,6 +352,7 @@ private fun Content(state: ScreenState) {
                 onSignIn = {},
                 onRegister = {},
                 onOpenDevices = {},
+                onOpenNotifications = {},
                 onManageOnWeb = {},
                 onOpenAbout = {},
             )
@@ -657,6 +670,40 @@ private fun Content(state: ScreenState) {
                     watermark = "mark-1",
                     message = UiText.Res(R.string.error_offline),
                 ),
+            )
+        ScreenState.NotificationSettingsLoading ->
+            NotificationSettingsScreen(
+                NotificationSettingsUiState.Loading,
+                NotificationSettingsActions(),
+            )
+        ScreenState.NotificationSettingsFailed ->
+            NotificationSettingsScreen(
+                NotificationSettingsUiState.Failed(UiText.Res(R.string.error_offline)),
+                NotificationSettingsActions(),
+            )
+        ScreenState.NotificationSettingsPaused ->
+            NotificationSettingsScreen(
+                NotificationSettingsUiState.Loaded(
+                    settings = busyNotificationSettings,
+                    device = readyPhone,
+                    phoneZone = ZoneId.of("Europe/Moscow"),
+                    notice = UiText.Res(R.string.notif_settings_saved),
+                ),
+                NotificationSettingsActions(),
+            )
+        ScreenState.NotificationSettingsRefused ->
+            NotificationSettingsScreen(
+                NotificationSettingsUiState.Loaded(
+                    settings = defaultNotificationSettings,
+                    device = deniedPhone,
+                    phoneZone = ZoneId.of("Europe/Moscow"),
+                    problem =
+                        SettingsProblem(
+                            UiText.Res(R.string.error_server_plain),
+                            NotificationSettingsChange(emailEnabled = true),
+                        ),
+                ),
+                NotificationSettingsActions(),
             )
         ScreenState.NotificationsMoreError ->
             InboxWith(

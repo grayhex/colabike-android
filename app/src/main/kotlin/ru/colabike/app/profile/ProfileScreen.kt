@@ -64,6 +64,7 @@ import ru.colabike.core.designsystem.theme.Spacing
 fun ProfileRoute(
     dependencies: AppDependencies,
     onOpenDevices: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
@@ -83,6 +84,7 @@ fun ProfileRoute(
         onSignIn = signIn,
         onRegister = { opener.open(dependencies.links.register) },
         onOpenDevices = onOpenDevices,
+        onOpenNotifications = onOpenNotifications,
         onOpenPublicProfile = onOpenPublicProfile,
         onOpenSaved = onOpenSaved,
         onOpenSavedMarket = onOpenSavedMarket,
@@ -101,6 +103,7 @@ fun ProfileScreen(
     onSignIn: () -> Unit,
     onRegister: () -> Unit,
     onOpenDevices: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onManageOnWeb: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenPublicProfile: (id: String) -> Unit = {},
@@ -156,6 +159,7 @@ fun ProfileScreen(
                                         onOpenSaved = onOpenSaved,
                                         onOpenSavedMarket = onOpenSavedMarket,
                                         onOpenDevices = onOpenDevices,
+                                        onOpenNotifications = onOpenNotifications,
                                         onManageOnWeb = onManageOnWeb,
                                     )
                                 else -> Unit
@@ -238,6 +242,7 @@ private fun MemberSections(
     onOpenSaved: () -> Unit,
     onOpenSavedMarket: (() -> Unit)?,
     onOpenDevices: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onManageOnWeb: () -> Unit,
 ) {
     val account = state.account
@@ -315,6 +320,12 @@ private fun MemberSections(
                 onClick = onOpenSavedMarket,
             )
         }
+        ColaListItem(
+            title = stringResource(R.string.profile_notifications),
+            supporting = stringResource(R.string.profile_notifications_hint),
+            icon = ColaIcons.Notifications,
+            onClick = onOpenNotifications,
+        )
         ColaListItem(
             title = stringResource(R.string.profile_devices),
             supporting = stringResource(R.string.profile_devices_hint),
