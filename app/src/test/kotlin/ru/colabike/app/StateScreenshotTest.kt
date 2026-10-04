@@ -62,6 +62,7 @@ import ru.colabike.app.messages.ChatStatusScreen
 import ru.colabike.app.messages.GuestMessages
 import ru.colabike.app.messages.NewConversationScreen
 import ru.colabike.app.messages.NewConversationUiState
+import ru.colabike.app.notifications.InboxUi
 import ru.colabike.app.notifications.NotificationsScreen
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListScreen
@@ -110,6 +111,8 @@ import ru.colabike.core.model.ListingSort
 import ru.colabike.core.model.ListingStatus
 import ru.colabike.core.model.ListingType
 import ru.colabike.core.model.MarketQuery
+import ru.colabike.core.model.NotificationCategory
+import ru.colabike.core.model.NotificationFilter
 import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RideRole
@@ -168,6 +171,10 @@ enum class ScreenState(val file: String) {
     NotificationsEmpty("notifications_empty"),
     NotificationsError("notifications_error"),
     NotificationsMoreError("notifications_more_error"),
+
+    /** Narrowed to the unread and nothing is left, and a "mark as read" that the server refused. */
+    NotificationsAllRead("notifications_all_read"),
+    NotificationsReadFailed("notifications_read_failed"),
     ComponentsEmpty("components_empty"),
     ComponentsNone("components_none"),
     ComponentsError("components_error"),
@@ -637,6 +644,20 @@ private fun Content(state: ScreenState) {
         ScreenState.NotificationsEmpty -> InboxWith(PagedState(loading = false))
         ScreenState.NotificationsError ->
             InboxWith(PagedState(loading = false, error = UiText.Res(R.string.error_offline)))
+        ScreenState.NotificationsAllRead ->
+            InboxWith(
+                PagedState(loading = false),
+                InboxUi(filter = NotificationFilter(unreadOnly = true)),
+            )
+        ScreenState.NotificationsReadFailed ->
+            InboxWith(
+                PagedState(items = sampleInbox().take(3), loading = false),
+                InboxUi(
+                    filter = NotificationFilter(category = NotificationCategory.Discussions),
+                    watermark = "mark-1",
+                    message = UiText.Res(R.string.error_offline),
+                ),
+            )
         ScreenState.NotificationsMoreError ->
             InboxWith(
                 PagedState(
@@ -999,14 +1020,20 @@ private fun NewConversationWith(state: NewConversationUiState) =
     )
 
 @Composable
-private fun InboxWith(state: PagedState<AppNotification>) =
+private fun InboxWith(state: PagedState<AppNotification>, ui: InboxUi = InboxUi()) =
     NotificationsScreen(
         state = state,
+        ui = ui,
         opens = { true },
         onBack = {},
         onRefresh = {},
         onRetry = {},
         onLoadMore = {},
+        onToggleUnread = {},
+        onCategory = {},
+        onReadAll = {},
+        onMarkRead = {},
+        onDismissMessage = {},
         onOpen = {},
     )
 

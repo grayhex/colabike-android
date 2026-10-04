@@ -133,9 +133,38 @@ interface RidesRepository {
 }
 
 interface NotificationsRepository {
-    /** The inbox, newest first, page by page. Reading it is what the site's own inbox does too. */
-    suspend fun page(cursor: String? = null, limit: Int = 24): Page<AppNotification>
+    /**
+     * The inbox, newest first, page by page, narrowed by [filter]. Reading it marks nothing: a
+     * notification is read only when the person opens it or says so.
+     */
+    suspend fun page(
+        cursor: String? = null,
+        limit: Int = 24,
+        filter: NotificationFilter = NotificationFilter(),
+    ): NotificationPage
 
     /** The unread count: a separate number from the unread messages of the chat. */
     suspend fun count(): NotificationCount
+
+    /**
+     * Marks one notification read. Repeating it is fine (it marks none); not yours is not found.
+     */
+    suspend fun markRead(id: String): NotificationReadResult
+
+    /** Marks up to 100 notifications read; ones that are not the person's are not counted. */
+    suspend fun markRead(ids: List<String>): NotificationReadResult
+
+    /**
+     * Marks read everything visible up to [watermark] (one [category] if given). A server call
+     * marks at most [READ_ALL_LIMIT]; the repository asks again while that many were marked.
+     */
+    suspend fun markAllRead(
+        watermark: String,
+        category: NotificationCategory? = null,
+    ): NotificationReadResult
+
+    companion object {
+        /** The most the server marks in one "read all" request. */
+        const val READ_ALL_LIMIT = 10_000
+    }
 }

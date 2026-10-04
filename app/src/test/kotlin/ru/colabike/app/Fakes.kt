@@ -92,7 +92,11 @@ import ru.colabike.core.model.ListingState
 import ru.colabike.core.model.ListingStatus
 import ru.colabike.core.model.MarketQuery
 import ru.colabike.core.model.MarketRepository
+import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationCount
+import ru.colabike.core.model.NotificationFilter
+import ru.colabike.core.model.NotificationPage
+import ru.colabike.core.model.NotificationReadResult
 import ru.colabike.core.model.NotificationTarget
 import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.OnboardingConfig
@@ -853,10 +857,19 @@ class FakeRides(
 class FakeNotifications(
     var pages: Map<String?, Page<AppNotification>> = mapOf(null to Page(notifications(0, 3), null)),
     var unread: NotificationCount = NotificationCount(unread = 2, capped = false),
+    var watermark: String? = "mark-1",
 ) : NotificationsRepository {
     val pageCalls = mutableListOf<String?>()
+    val filters = mutableListOf<NotificationFilter>()
     var countCalls = 0
     var nextError: DataError? = null
+
+    /** Every mark asked for, in order: ("one", ids), ("all", watermark + category). */
+    val marks = mutableListOf<Pair<String, List<String>>>()
+
+    /** What the server says is left after a mark. */
+    var unreadAfterMark: NotificationCount? = null
+    private val read = mutableSetOf<String>()
 
     private fun fail() {
         nextError?.let {
@@ -865,16 +878,60 @@ class FakeNotifications(
         }
     }
 
-    override suspend fun page(cursor: String?, limit: Int): Page<AppNotification> {
+    override suspend fun page(
+        cursor: String?,
+        limit: Int,
+        filter: NotificationFilter,
+    ): NotificationPage {
         pageCalls += cursor
+        filters += filter
         fail()
-        return pages[cursor] ?: Page(emptyList(), null)
+        val page = pages[cursor] ?: Page(emptyList(), null)
+        val items =
+            page.items
+                .map { if (it.id in read) it.copy(read = true) else it }
+                .filter { filter.category == null || it.category == filter.category }
+                .filter { !filter.unreadOnly || !it.read }
+        return NotificationPage(items, page.nextCursor, watermark)
     }
 
     override suspend fun count(): NotificationCount {
         countCalls++
         fail()
         return unread
+    }
+
+    private fun afterMark(marked: Int): NotificationReadResult {
+        val left =
+            unreadAfterMark ?: unread.copy(unread = (unread.unread - marked).coerceAtLeast(0))
+        unread = left
+        return NotificationReadResult(marked, left)
+    }
+
+    override suspend fun markRead(id: String): NotificationReadResult {
+        marks += "one" to listOf(id)
+        fail()
+        return afterMark(if (read.add(id)) 1 else 0)
+    }
+
+    override suspend fun markRead(ids: List<String>): NotificationReadResult {
+        marks += "selection" to ids
+        fail()
+        return afterMark(ids.count { read.add(it) })
+    }
+
+    override suspend fun markAllRead(
+        watermark: String,
+        category: NotificationCategory?,
+    ): NotificationReadResult {
+        marks += "all" to listOfNotNull(watermark, category?.key)
+        fail()
+        val ids =
+            pages.values
+                .flatMap { it.items }
+                .filter { !it.read && (category == null || it.category == category) }
+                .map { it.id }
+        return afterMark(ids.count { read.add(it) })
     }
 }
 
@@ -885,10 +942,12 @@ fun notification(
     read: Boolean = false,
     path: String = "/b/6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
     actor: Person? = PreviewData.rider,
+    category: NotificationCategory = categoryOf(kind),
 ) =
     AppNotification(
         id = "n$n",
         kind = kind,
+        category = category,
         createdAt = Instant.parse("2026-10-03T18:30:00Z"),
         read = read,
         actor = actor,
@@ -900,6 +959,24 @@ fun notification(
                 path = path,
             ),
     )
+
+/** The category the server files a kind under. */
+fun categoryOf(kind: String): NotificationCategory =
+    when {
+        kind.startsWith("ride_") &&
+            kind != "ride_like" &&
+            !kind.endsWith("_comment") &&
+            !kind.endsWith("_reply") -> NotificationCategory.Rides
+        kind == "comment" ||
+            kind == "reply" ||
+            kind.endsWith("_comment") ||
+            kind.endsWith("_reply") -> NotificationCategory.Discussions
+        kind == "follow" || kind == "like" || kind.endsWith("_like") ->
+            NotificationCategory.Reactions
+        kind == "market_expiring" -> NotificationCategory.Market
+        kind == "session_reuse" || kind == "bike_week" -> NotificationCategory.Site
+        else -> NotificationCategory.Other
+    }
 
 /** One of each look the inbox has: a person's, the site's own, a listing, and a kind to come. */
 fun sampleInbox(): List<AppNotification> =

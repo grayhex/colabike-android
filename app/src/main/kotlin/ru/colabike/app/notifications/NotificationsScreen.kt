@@ -1,14 +1,18 @@
 package ru.colabike.app.notifications
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +35,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -46,6 +51,7 @@ import ru.colabike.app.links.SiteLinks
 import ru.colabike.app.navigation.Destination
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.resolve
+import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
@@ -55,6 +61,9 @@ import ru.colabike.core.designsystem.component.NotificationRow
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.AppNotification
 import ru.colabike.core.model.ListingState
+import ru.colabike.core.model.NotificationCategory
+import ru.colabike.core.model.NotificationCount
+import ru.colabike.core.model.NotificationFilter
 import ru.colabike.core.model.NotificationsRepository
 
 @Composable
@@ -63,13 +72,16 @@ fun NotificationsRoute(
     site: SiteLinks,
     onBack: () -> Unit,
     onOpen: (Destination) -> Unit,
+    onCount: (NotificationCount) -> Unit = {},
 ) {
-    val viewModel = viewModel { NotificationsViewModel(repository) }
+    val viewModel = viewModel { NotificationsViewModel(repository, onCount) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val links = LocalLinkOpener.current
     val routes = remember(state.items, site) { state.items.associate { it.id to it.route(site) } }
     NotificationsScreen(
         state = state,
+        ui = ui,
         opens = {
             routes[it.id].let { route -> route != null && route != NotificationRoute.Nowhere }
         },
@@ -77,7 +89,14 @@ fun NotificationsRoute(
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
+        onToggleUnread = viewModel::toggleUnreadOnly,
+        onCategory = viewModel::selectCategory,
+        onReadAll = viewModel::readAll,
+        onMarkRead = { viewModel.markRead(it, asked = true) },
+        onDismissMessage = viewModel::dismissMessage,
         onOpen = { notification ->
+            // Opening is what reads it; the server's answer, not this tap, makes it read here.
+            viewModel.markRead(notification)
             when (val route = routes[notification.id]) {
                 is NotificationRoute.InApp -> onOpen(route.destination)
                 is NotificationRoute.OnSite -> links.open(route.url)
@@ -89,51 +108,181 @@ fun NotificationsRoute(
 }
 
 /**
- * The inbox of ColaBike events: who did what to which object. The server's unread state is shown as
- * it is; the screen does not mark anything as read, because API v1 has no such operation, and says
- * so once instead of pretending.
+ * The inbox of ColaBike events: who did what to which object, narrowed by "unread" and by a
+ * category. What is read is what the server confirmed: opening a notification, its button and "read
+ * all" each ask the server, and a notification shows as read once it has answered.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
     state: PagedState<AppNotification>,
+    ui: InboxUi,
     opens: (AppNotification) -> Boolean,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
+    onToggleUnread: () -> Unit,
+    onCategory: (NotificationCategory?) -> Unit,
+    onReadAll: () -> Unit,
+    onMarkRead: (AppNotification) -> Unit,
+    onDismissMessage: () -> Unit,
     onOpen: (AppNotification) -> Unit,
 ) {
+    val canReadAll =
+        ui.watermark != null &&
+            (state.items.any { !it.read } || state.nextCursor != null) &&
+            state.error == null
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            ColaTopBar(title = stringResource(R.string.notifications_title), onBack = onBack)
+            ColaTopBar(
+                title = stringResource(R.string.notifications_title),
+                onBack = onBack,
+            )
         },
     ) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
-            when {
-                state.loading -> LoadingState(Modifier.fillMaxSize())
-                state.error != null ->
-                    ErrorState(
-                        state.error.resolve(),
-                        onRetry = onRetry,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                state.isEmpty ->
-                    EmptyState(
-                        title = stringResource(R.string.notifications_empty_title),
-                        message = stringResource(R.string.notifications_empty),
-                        icon = ColaIcons.Notifications,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                else ->
-                    PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = onRefresh) {
-                        Inbox(state, opens, onRefresh, onRetry, onLoadMore, onOpen)
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            Filters(ui.filter, onToggleUnread, onCategory)
+            if (canReadAll) {
+                val label = stringResource(R.string.notifications_read_all)
+                val spoken =
+                    ui.filter.category?.let {
+                        stringResource(
+                            R.string.notifications_read_all_in,
+                            stringResource(it.label()),
+                        )
+                    } ?: label
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.s),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = onReadAll,
+                        enabled = !ui.readingAll,
+                        modifier =
+                            Modifier.heightIn(min = Spacing.touch)
+                                .testTag("notifications:read_all")
+                                .semantics { contentDescription = spoken },
+                    ) {
+                        Text(label)
                     }
+                }
+            }
+            ui.message?.let { message ->
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.screen).semantics {
+                        liveRegion = LiveRegionMode.Polite
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        message.resolve(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismissMessage) {
+                        Text(stringResource(R.string.notifications_dismiss))
+                    }
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when {
+                    state.loading -> LoadingState(Modifier.fillMaxSize())
+                    state.error != null ->
+                        ErrorState(
+                            state.error.resolve(),
+                            onRetry = onRetry,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    state.isEmpty ->
+                        if (ui.filter.isNarrowed) {
+                            EmptyState(
+                                title =
+                                    stringResource(
+                                        if (ui.filter.unreadOnly) R.string.notifications_all_read
+                                        else R.string.notifications_empty_filtered_title
+                                    ),
+                                message = stringResource(R.string.notifications_empty_filtered),
+                                icon = ColaIcons.Notifications,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            EmptyState(
+                                title = stringResource(R.string.notifications_empty_title),
+                                message = stringResource(R.string.notifications_empty),
+                                icon = ColaIcons.Notifications,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    else ->
+                        PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = onRefresh) {
+                            Inbox(
+                                state,
+                                opens,
+                                onRefresh,
+                                onRetry,
+                                onLoadMore,
+                                onOpen,
+                                onMarkRead,
+                            )
+                        }
+                }
             }
         }
     }
 }
+
+/** "Unread", then one category at a time (or all): the two narrow the inbox together. */
+@Composable
+private fun Filters(
+    filter: NotificationFilter,
+    onToggleUnread: () -> Unit,
+    onCategory: (NotificationCategory?) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().testTag("notifications:filters"),
+        contentPadding = PaddingValues(horizontal = Spacing.screen, vertical = Spacing.s),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        item {
+            ColaFilterChip(
+                selected = filter.unreadOnly,
+                onClick = onToggleUnread,
+                label = stringResource(R.string.notifications_filter_unread),
+                modifier = Modifier.testTag("notifications:filter:unread"),
+            )
+        }
+        item {
+            ColaFilterChip(
+                selected = filter.category == null,
+                onClick = { onCategory(null) },
+                label = stringResource(R.string.notifications_filter_all),
+                modifier = Modifier.testTag("notifications:filter:all"),
+            )
+        }
+        items(NotificationCategory.Filterable) { category ->
+            ColaFilterChip(
+                selected = filter.category == category,
+                onClick = { onCategory(category) },
+                label = stringResource(category.label()),
+                modifier = Modifier.testTag("notifications:filter:${category.key}"),
+            )
+        }
+    }
+}
+
+@StringRes
+private fun NotificationCategory.label(): Int =
+    when (this) {
+        NotificationCategory.Rides -> R.string.notifications_category_rides
+        NotificationCategory.Discussions -> R.string.notifications_category_discussions
+        NotificationCategory.Market -> R.string.notifications_category_market
+        NotificationCategory.Reactions -> R.string.notifications_category_reactions
+        NotificationCategory.Site -> R.string.notifications_category_site
+        NotificationCategory.Other -> R.string.notifications_category_other
+    }
 
 @Composable
 private fun Inbox(
@@ -143,6 +292,7 @@ private fun Inbox(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onOpen: (AppNotification) -> Unit,
+    onMarkRead: (AppNotification) -> Unit,
 ) {
     val list = rememberLazyListState()
     val nearEnd by remember {
@@ -167,14 +317,6 @@ private fun Inbox(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         state.refreshError?.let { error -> item { RetryRow(error.resolve(), onRefresh) } }
-        item {
-            Text(
-                stringResource(R.string.notifications_not_read_here),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.widthIn(max = ContentWidth).fillMaxWidth(),
-            )
-        }
         items(state.items, key = { it.id }) { notification ->
             val (title, body) = notification.text(locale, formatter)
             NotificationRow(
@@ -184,6 +326,7 @@ private fun Inbox(
                 unread = !notification.read,
                 actor = notification.actor,
                 onClick = if (opens(notification)) ({ onOpen(notification) }) else null,
+                onMarkRead = { onMarkRead(notification) },
                 modifier =
                     Modifier.widthIn(max = ContentWidth).testTag("notification:${notification.id}"),
             )
@@ -244,6 +387,16 @@ private fun AppNotification.text(
                 listOfNotNull(target.name.takeIf { it.isNotBlank() }, state, until)
                     .joinToString(". ")
         }
+        kind == "ride_invite" ->
+            stringResource(R.string.notifications_ride_invite) to rideLine(about, formatter)
+        kind == "ride_changed" ->
+            stringResource(R.string.notifications_ride_changed) to rideLine(about, formatter)
+        kind == "ride_cancelled" ->
+            stringResource(R.string.notifications_ride_cancelled) to rideLine(about, formatter)
+        kind == "ride_response" ->
+            stringResource(R.string.notifications_ride_response) to rideLine(about, formatter)
+        kind == "ride_reminder" ->
+            stringResource(R.string.notifications_ride_reminder) to rideLine(about, formatter)
         kind == "session_reuse" ->
             stringResource(R.string.notifications_session) to
                 stringResource(R.string.notifications_session_body)
@@ -251,6 +404,11 @@ private fun AppNotification.text(
         else -> stringResource(R.string.notifications_generic) to about
     }
 }
+
+/** The ride and, when the notification names a date, that date: "Who · Ride. Sat, 10:00". */
+private fun AppNotification.rideLine(about: String, formatter: DateTimeFormatter): String =
+    listOfNotNull(about.takeIf { it.isNotBlank() }, target.occurrenceAt?.let(formatter::format))
+        .joinToString(". ")
 
 @Composable
 private fun RetryRow(message: String, onRetry: () -> Unit) {

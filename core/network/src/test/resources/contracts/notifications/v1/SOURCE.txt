@@ -1,0 +1,3 @@
+Shared notification examples of the backend (grayhex/cola), docs/contracts/notifications/v1.
+Pinned to commit 5acbf6a (pull request #344, issue #341, slice N1.1). Do not edit by hand:
+refresh by copying the four files from the backend at a newer commit and review the diff.

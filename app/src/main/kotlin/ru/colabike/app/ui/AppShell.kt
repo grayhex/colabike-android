@@ -793,6 +793,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         navigator.open(destination)
                                                     }
                                                 },
+                                                onCount = badgeModel::update,
                                             )
                                         }
                                         entry<Destination.Devices> {
