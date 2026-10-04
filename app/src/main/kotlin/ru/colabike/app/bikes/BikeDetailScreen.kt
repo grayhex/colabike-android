@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
@@ -44,6 +45,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.links.LocalLinkOpener
@@ -67,6 +70,7 @@ import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CommentCountChange
 
 @Composable
 fun BikeDetailRoute(
@@ -78,8 +82,10 @@ fun BikeDetailRoute(
     onBack: () -> Unit,
     onOpenAuthor: (ref: String) -> Unit = {},
     onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
-    val viewModel = viewModel { BikeDetailViewModel(repository, id) }
+    val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val authState by auth.state.collectAsStateWithLifecycle()
     val signIn = LocalSignInRequest.current
@@ -99,6 +105,7 @@ fun BikeDetailRoute(
         onOpenLink = opener::open,
         onOpenAuthor = onOpenAuthor,
         onOpenJournal = onOpenJournal,
+        onOpenComments = onOpenComments,
     )
 }
 
@@ -119,6 +126,7 @@ fun BikeDetailScreen(
     onOpenLink: (String) -> Unit = {},
     onOpenAuthor: (ref: String) -> Unit = {},
     onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
     Scaffold(
@@ -176,6 +184,7 @@ fun BikeDetailScreen(
                         onOpenLink,
                         onOpenAuthor,
                         onOpenJournal,
+                        onOpenComments,
                     )
             }
         }
@@ -194,6 +203,7 @@ private fun BikeContent(
     onOpenLink: (String) -> Unit,
     onOpenAuthor: (ref: String) -> Unit,
     onOpenJournal: (id: BikeId, name: String) -> Unit,
+    onOpenComments: (id: BikeId, name: String) -> Unit,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -316,6 +326,20 @@ private fun BikeContent(
                     ) {
                         ComponentsCard(components, locale, onOpenLink)
                     }
+                }
+                // Only a public bike has a discussion (the API answers 404 for the rest).
+                if (summary.isPublic) {
+                    ColaListItem(
+                        title = stringResource(R.string.comments_open),
+                        supporting =
+                            pluralStringResource(
+                                ru.colabike.core.designsystem.R.plurals.cola_comments,
+                                summary.comments,
+                                summary.comments,
+                            ),
+                        icon = ColaIcons.Comment,
+                        onClick = { onOpenComments(summary.id, summary.name) },
+                    )
                 }
                 ColaListItem(
                     title = stringResource(R.string.bike_journal),

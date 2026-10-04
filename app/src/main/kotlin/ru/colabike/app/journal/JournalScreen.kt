@@ -42,6 +42,8 @@ import java.text.NumberFormat
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.bikes.BikeGallery
@@ -62,6 +64,7 @@ import ru.colabike.core.designsystem.component.UserRow
 import ru.colabike.core.designsystem.component.journalKindLabel
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalStatus
@@ -71,6 +74,7 @@ class JournalActions(
     val onBack: () -> Unit,
     val onOpenBike: (BikeId) -> Unit,
     val onOpenAuthor: (ref: String) -> Unit,
+    val onOpenComments: (id: JournalId, title: String) -> Unit = { _, _ -> },
 )
 
 @Composable
@@ -79,8 +83,9 @@ fun JournalRoute(
     auth: AuthActions,
     id: JournalId,
     actions: JournalActions,
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
-    val viewModel = viewModel { JournalViewModel(repository, id) }
+    val viewModel = viewModel { JournalViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val authState by auth.state.collectAsStateWithLifecycle()
     val signIn = LocalSignInRequest.current
@@ -248,6 +253,15 @@ private fun Entry(
                 }
             }
             Counts(summary.likes, summary.comments)
+            // Only a published public entry has a discussion (the API answers 404 for the rest).
+            if (state.canSave) {
+                ColaListItem(
+                    title = stringResource(R.string.comments_open),
+                    supporting = stringResource(R.string.comments_open_hint),
+                    icon = ColaIcons.Comment,
+                    onClick = { actions.onOpenComments(summary.id, summary.title) },
+                )
+            }
             if (state.canSave) SaveButton(state, onToggleSaved)
             state.saveError?.let {
                 Text(

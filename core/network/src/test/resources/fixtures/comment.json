@@ -1,0 +1,15 @@
+{
+  "id": "bbbbbbb2-0000-4000-8000-000000000002",
+  "parentId": "aaaaaaa1-0000-4000-8000-000000000001",
+  "author": {
+    "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+    "username": "test-rider",
+    "name": "Тестовый Райдер",
+    "avatarUrl": "/api/avatars/8d9e0f1a"
+  },
+  "body": "Спасибо!",
+  "createdAt": "2026-09-20T10:00:00Z",
+  "editedAt": null,
+  "deleted": false,
+  "replyCount": 0
+}

@@ -2,11 +2,15 @@ package ru.colabike.app.journal
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.Pager
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.CommentCountChange
+import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
 
@@ -26,6 +30,7 @@ sealed interface JournalSource {
 class JournalListViewModel(
     private val repository: JournalRepository,
     private val source: JournalSource,
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) : ViewModel() {
     private val pager =
         Pager<JournalSummary, String>(viewModelScope, { it.id.value }) { cursor ->
@@ -39,6 +44,16 @@ class JournalListViewModel(
 
     init {
         pager.load()
+        viewModelScope.launch {
+            commentChanges.collect { change ->
+                if (change.target.kind != CommentKind.Journal) return@collect
+                pager.edit {
+                    if (it.id.value == change.target.id)
+                        it.copy(comments = (it.comments + change.delta).coerceAtLeast(0))
+                    else it
+                }
+            }
+        }
         if (source == JournalSource.Saved) {
             viewModelScope.launch {
                 repository.savedChanges.collect { change ->

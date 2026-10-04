@@ -64,6 +64,7 @@ import ru.colabike.core.designsystem.component.SkeletonGroup
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.FeedRepository
@@ -84,10 +85,11 @@ fun FeedRoute(
     auth: AuthActions,
     actions: FeedActions,
     scrollToTop: Flow<Unit> = emptyFlow(),
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
     val authState by auth.state.collectAsStateWithLifecycle()
     if (authState is AuthState.SignedIn) {
-        val viewModel = viewModel { FeedViewModel(feed, bikes) }
+        val viewModel = viewModel { FeedViewModel(feed, bikes, commentChanges) }
         val state by viewModel.state.collectAsStateWithLifecycle()
         FeedScreen(
             state = state,

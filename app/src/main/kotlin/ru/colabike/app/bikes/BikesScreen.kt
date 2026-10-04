@@ -67,6 +67,7 @@ import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CommentCountChange
 
 @Composable
 fun BikesRoute(
@@ -75,8 +76,9 @@ fun BikesRoute(
     onOpen: (BikeId) -> Unit,
     onSearch: () -> Unit = {},
     scrollToTop: Flow<Unit> = emptyFlow(),
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
-    val viewModel = viewModel { BikesViewModel(repository) }
+    val viewModel = viewModel { BikesViewModel(repository, commentChanges = commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val authState by auth.state.collectAsStateWithLifecycle()
     BikesScreen(

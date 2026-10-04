@@ -3,13 +3,17 @@ package ru.colabike.app.journal
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
+import ru.colabike.core.model.CommentCountChange
+import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.JournalEntry
 import ru.colabike.core.model.JournalId
@@ -38,13 +42,36 @@ sealed interface JournalUiState {
     data class Failed(val message: UiText, val notFound: Boolean = false) : JournalUiState
 }
 
-class JournalViewModel(private val repository: JournalRepository, private val id: JournalId) :
-    ViewModel() {
+class JournalViewModel(
+    private val repository: JournalRepository,
+    private val id: JournalId,
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
+) : ViewModel() {
     private val mutableState = MutableStateFlow<JournalUiState>(JournalUiState.Loading)
     val state: StateFlow<JournalUiState> = mutableState.asStateFlow()
 
     init {
         load()
+        // A comment written or removed in the discussion changes the count here.
+        viewModelScope.launch {
+            commentChanges.collect { change ->
+                if (change.target.kind == CommentKind.Journal && change.target.id == id.value) {
+                    update { loaded ->
+                        val summary = loaded.entry.summary
+                        loaded.copy(
+                            entry =
+                                loaded.entry.copy(
+                                    summary =
+                                        summary.copy(
+                                            comments =
+                                                (summary.comments + change.delta).coerceAtLeast(0)
+                                        )
+                                )
+                        )
+                    }
+                }
+            }
+        }
         // Saved or un-saved elsewhere (a list), shown here without loading the entry again.
         viewModelScope.launch {
             repository.savedChanges.collect { change ->

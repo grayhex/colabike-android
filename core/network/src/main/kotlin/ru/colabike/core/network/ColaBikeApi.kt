@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import okhttp3.OkHttpClient
 import ru.colabike.api.apis.AccountApi
 import ru.colabike.api.apis.BikesApi
+import ru.colabike.api.apis.CommentsApi
 import ru.colabike.api.apis.JournalApi
 import ru.colabike.api.apis.PersonalApi
 import ru.colabike.api.apis.SearchApi
@@ -15,7 +16,7 @@ import ru.colabike.api.infrastructure.Serializer
  * The generated API v1 classes over one [OkHttpClient]. Generated code is never edited: what it
  * needs at runtime is configured here, once, before its JSON instance exists.
  */
-class ColaBikeApi(config: ApiConfig, client: OkHttpClient) {
+class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClient) {
     init {
         configureGeneratedClient()
     }
@@ -27,8 +28,26 @@ class ColaBikeApi(config: ApiConfig, client: OkHttpClient) {
     val search = SearchApi(config.apiBaseUrl, client)
     val journal = JournalApi(config.apiBaseUrl, client)
     val personal = PersonalApi(config.apiBaseUrl, client)
+    val comments = CommentsApi(config.apiBaseUrl, client)
+
+    /**
+     * Comments with an `Idempotency-Key` on every request made through it. The contract describes
+     * the header but does not declare it as a parameter, so the generated methods cannot send it; a
+     * client derived for one key does (same pool, same dispatcher, same interceptors).
+     */
+    fun commentsWithKey(key: String): CommentsApi =
+        CommentsApi(
+            config.apiBaseUrl,
+            client
+                .newBuilder()
+                .addInterceptor { chain ->
+                    chain.proceed(chain.request().newBuilder().header(IDEMPOTENCY_KEY, key).build())
+                }
+                .build(),
+        )
 
     private companion object {
+        const val IDEMPOTENCY_KEY = "Idempotency-Key"
         val configured = AtomicBoolean(false)
 
         // Strict request schemas reject `null` in place of an absent optional field, and the

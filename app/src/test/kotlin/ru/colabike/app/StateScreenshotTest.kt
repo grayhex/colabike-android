@@ -27,6 +27,11 @@ import ru.colabike.app.bikes.BikeDetailScreen
 import ru.colabike.app.bikes.BikeDetailUiState
 import ru.colabike.app.bikes.BikesScreen
 import ru.colabike.app.bikes.BikesUiState
+import ru.colabike.app.comments.CommentNode
+import ru.colabike.app.comments.CommentsActions
+import ru.colabike.app.comments.CommentsScreen
+import ru.colabike.app.comments.CommentsUiState
+import ru.colabike.app.comments.Composer
 import ru.colabike.app.devices.DevicesScreen
 import ru.colabike.app.devices.DevicesUiState
 import ru.colabike.app.feed.FeedActions
@@ -96,6 +101,13 @@ enum class ScreenState(val file: String) {
     JournalDraft("journal_draft"),
     JournalNotFoundGuest("journal_not_found_guest"),
     JournalSaved("journal_saved"),
+    CommentsReplying("comments_replying"),
+    CommentsEditing("comments_editing"),
+    CommentsSendError("comments_send_error"),
+    CommentsTooLong("comments_too_long"),
+    CommentsEmpty("comments_empty"),
+    CommentsBranch("comments_branch"),
+    CommentsMoreError("comments_more_error"),
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -387,6 +399,57 @@ private fun Content(state: ScreenState) {
             )
         ScreenState.JournalSaved ->
             JournalWith(JournalUiState.Loaded(journalEntry(0), saved = true))
+        ScreenState.CommentsReplying ->
+            CommentsWith(
+                discussion(
+                    Composer(
+                        text = "@neighbour Спасибо, учту!",
+                        replyTo = discussionNodes[0].replies[0],
+                    )
+                )
+            )
+        ScreenState.CommentsEditing ->
+            CommentsWith(
+                discussion(
+                    Composer(
+                        text = "Мой ответ, исправленный",
+                        editing = discussionNodes[0].replies[1],
+                    )
+                )
+            )
+        ScreenState.CommentsSendError ->
+            CommentsWith(
+                discussion(
+                    Composer(
+                        text = "Этот текст не пропал",
+                        error = UiText.Res(R.string.error_offline),
+                        key = "k",
+                    )
+                )
+            )
+        ScreenState.CommentsTooLong -> CommentsWith(discussion(Composer(text = "я".repeat(1_040))))
+        ScreenState.CommentsEmpty ->
+            CommentsWith(CommentsUiState(page = PagedState(loading = false)))
+        ScreenState.CommentsBranch ->
+            CommentsWith(
+                discussion(
+                    Composer(),
+                    nodes = listOf(discussionNodes[0]),
+                    focus = discussionNodes[0].replies[1].id,
+                )
+            )
+        ScreenState.CommentsMoreError ->
+            CommentsWith(
+                CommentsUiState(
+                    page =
+                        PagedState(
+                            items = discussionNodes,
+                            nextCursor = "c1",
+                            loading = false,
+                            moreError = UiText.Res(R.string.error_offline),
+                        )
+                )
+            )
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),
@@ -396,6 +459,32 @@ private fun Content(state: ScreenState) {
             )
     }
 }
+
+private val discussionNodes: List<CommentNode> =
+    sampleDiscussion().threads.map {
+        CommentNode(it.root, it.replies, repliesComplete = it.root.replyCount <= it.replies.size)
+    }
+
+private fun discussion(
+    composer: Composer,
+    nodes: List<CommentNode> = discussionNodes,
+    focus: String? = null,
+) =
+    CommentsUiState(
+        page = PagedState(items = nodes, loading = false),
+        focus = focus,
+        composer = composer,
+    )
+
+@Composable
+private fun CommentsWith(state: CommentsUiState) =
+    CommentsScreen(
+        state = state,
+        title = "Городской Трэвел",
+        meId = PreviewData.rider.id,
+        signedIn = true,
+        actions = CommentsActions(),
+    )
 
 @Composable
 private fun FeedWith(state: FeedUiState) =

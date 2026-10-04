@@ -5,9 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.colabike.app.ui.UiText
@@ -16,6 +18,8 @@ import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CommentCountChange
+import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.DataError
 
 @Immutable
@@ -49,6 +53,7 @@ data class BikesUiState(
 class BikesViewModel(
     private val repository: BikesRepository,
     private val debounceMs: Long = DEBOUNCE_MS,
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(BikesUiState())
     val state: StateFlow<BikesUiState> = mutableState.asStateFlow()
@@ -57,6 +62,24 @@ class BikesViewModel(
 
     init {
         load(refresh = false)
+        // A comment written or removed on the bike's page changes its count here.
+        viewModelScope.launch {
+            commentChanges.collect { change ->
+                if (change.target.kind != CommentKind.Bike) return@collect
+                mutableState.update { current ->
+                    current.copy(
+                        bikes =
+                            current.bikes.map {
+                                if (it.id.value == change.target.id)
+                                    it.copy(
+                                        comments = (it.comments + change.delta).coerceAtLeast(0)
+                                    )
+                                else it
+                            }
+                    )
+                }
+            }
+        }
         // A like given on the bike's page shows here without loading the list again.
         viewModelScope.launch {
             repository.likeChanges.collect { change ->

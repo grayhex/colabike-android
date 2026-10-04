@@ -163,6 +163,7 @@
     <string name="error_rate_limited_soon">Слишком много запросов. Попробуйте чуть позже.</string>
     <string name="error_server">Сервер не ответил. Код для поддержки: %1$s</string>
     <string name="error_server_plain">Сервер не ответил. Попробуйте позже.</string>
+    <string name="error_email_verification">Подтвердите почту на сайте: без этого комментировать нельзя.</string>
     <string name="error_unexpected">Что-то пошло не так. Повторите.</string>
 
     <string name="feed_title">Лента</string>
@@ -198,4 +199,33 @@
     <string name="bike_journal_hint">Записи о сборке, обслуживании и поездках</string>
     <string name="profile_saved">Сохранённое</string>
     <string name="profile_saved_hint">Записи журнала, которые вы сохранили</string>
+
+    <string name="comments_title">Комментарии</string>
+    <string name="comments_empty_title">Комментариев пока нет</string>
+    <string name="comments_empty">Напишите первым.</string>
+    <string name="comments_empty_guest">Войдите, чтобы написать первым.</string>
+    <string name="comments_hint">Написать комментарий</string>
+    <string name="comments_counter">%1$d / %2$d</string>
+    <string name="comments_send">Отправить</string>
+    <string name="comments_save">Сохранить правку</string>
+    <string name="comments_reply">Ответить</string>
+    <string name="comments_edit">Изменить</string>
+    <string name="comments_delete">Удалить</string>
+    <string name="comments_cancel">Отмена</string>
+    <string name="comments_deleted">Комментарий удалён</string>
+    <string name="comments_edited">изменено</string>
+    <string name="comments_replying_to">Ответ для %1$s</string>
+    <string name="comments_editing">Правка комментария</string>
+    <string name="comments_cancel_reply">Отменить ответ</string>
+    <string name="comments_cancel_edit">Отменить правку</string>
+    <string name="comments_more_replies">Показать ещё ответы (%1$d)</string>
+    <string name="comments_more_replies_unknown">Показать ещё ответы</string>
+    <string name="comments_branch">Показана одна ветка обсуждения</string>
+    <string name="comments_show_all">Показать все</string>
+    <string name="comments_focused">выбранный комментарий</string>
+    <string name="comments_sign_in_hint">Войдите, чтобы писать комментарии</string>
+    <string name="comments_delete_title">Удалить комментарий?</string>
+    <string name="comments_delete_message">Это нельзя отменить. Если у комментария есть ответы, останется пометка «Комментарий удалён».</string>
+    <string name="comments_open">Комментарии</string>
+    <string name="comments_open_hint">Обсуждение и ответы</string>
 </resources>

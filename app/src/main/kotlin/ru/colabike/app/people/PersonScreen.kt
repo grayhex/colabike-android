@@ -49,6 +49,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.ui.LocalSignInRequest
@@ -67,6 +69,7 @@ import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.Profile
 
@@ -86,8 +89,9 @@ fun PersonRoute(
     auth: AuthActions,
     ref: String,
     actions: PersonActions,
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
-    val viewModel = viewModel { PersonViewModel(people, bikes, ref) }
+    val viewModel = viewModel { PersonViewModel(people, bikes, ref, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val authState by auth.state.collectAsStateWithLifecycle()
     val signIn = LocalSignInRequest.current

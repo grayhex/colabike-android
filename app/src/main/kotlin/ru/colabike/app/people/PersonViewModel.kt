@@ -3,15 +3,19 @@ package ru.colabike.app.people
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CommentCountChange
+import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.FollowState
 import ru.colabike.core.model.PeopleRepository
@@ -47,6 +51,7 @@ class PersonViewModel(
     private val people: PeopleRepository,
     private val bikesRepository: BikesRepository,
     private val ref: String,
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(PersonUiState())
     val state: StateFlow<PersonUiState> = mutableState.asStateFlow()
@@ -59,6 +64,24 @@ class PersonViewModel(
                 mutableState.update { current ->
                     if (current.profile?.person?.id == change.id) current.withFollow(change.state)
                     else current
+                }
+            }
+        }
+        // A comment written or removed on a bike's page changes its count on the card here.
+        viewModelScope.launch {
+            commentChanges.collect { change ->
+                if (change.target.kind != CommentKind.Bike) return@collect
+                mutableState.update { current ->
+                    current.copy(
+                        bikes =
+                            current.bikes.map {
+                                if (it.id.value == change.target.id)
+                                    it.copy(
+                                        comments = (it.comments + change.delta).coerceAtLeast(0)
+                                    )
+                                else it
+                            }
+                    )
                 }
             }
         }

@@ -140,6 +140,11 @@ class Pager<T, K : Any>(
         mutable.update { it.copy(items = it.items.map(transform)) }
     }
 
+    /** Replaces the items with what [transform] makes of them (an item added, moved or changed). */
+    fun update(transform: (List<T>) -> List<T>) {
+        mutable.update { it.copy(items = transform(it.items)) }
+    }
+
     /** Drops the items for which [predicate] holds (an entry that is no longer saved). */
     fun removeWhere(predicate: (T) -> Boolean) {
         mutable.update { it.copy(items = it.items.filterNot(predicate)) }

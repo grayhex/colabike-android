@@ -12,6 +12,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.AuthController
+import ru.colabike.app.comments.CommentDrafts
+import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.PreferencesPendingNavigation
 import ru.colabike.app.links.SiteLinks
@@ -27,6 +29,7 @@ import ru.colabike.core.auth.signOuts
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CommentsRepository
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.PeopleRepository
@@ -37,6 +40,7 @@ import ru.colabike.core.network.MediaUrls
 import ru.colabike.core.network.NetworkAccountRepository
 import ru.colabike.core.network.NetworkAccountSessionsRepository
 import ru.colabike.core.network.NetworkBikesRepository
+import ru.colabike.core.network.NetworkCommentsRepository
 import ru.colabike.core.network.NetworkFeedRepository
 import ru.colabike.core.network.NetworkJournalRepository
 import ru.colabike.core.network.NetworkPeopleRepository
@@ -48,6 +52,10 @@ interface AppDependencies {
     val people: PeopleRepository
     val feed: FeedRepository
     val journal: JournalRepository
+    val comments: CommentsRepository
+
+    /** Unsent comment text, in memory for this session only. */
+    val drafts: CommentDrafts
     val sessions: AccountSessionsRepository
     val auth: AuthActions
     val settings: AppSettings
@@ -103,6 +111,9 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val feed: FeedRepository = NetworkFeedRepository(api.personal, media)
     private val journalRepository = NetworkJournalRepository(api.journal, api.personal, media)
     override val journal: JournalRepository = journalRepository
+    override val comments: CommentsRepository =
+        NetworkCommentsRepository(api.comments, api::commentsWithKey, media)
+    override val drafts: CommentDrafts = InMemoryCommentDrafts()
     override val sessions: AccountSessionsRepository =
         NetworkAccountSessionsRepository(api.sessions)
     override val settings: AppSettings =
@@ -140,6 +151,7 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
             session.state.signOuts().collect {
                 // What the session knew about saved entries is the person's, not the next one's.
                 journalRepository.forget()
+                drafts.clear()
                 onSignedOut()
             }
         }
