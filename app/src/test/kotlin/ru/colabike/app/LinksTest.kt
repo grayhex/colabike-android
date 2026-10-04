@@ -315,6 +315,69 @@ class PendingNavigationTest {
     }
 
     @Test
+    fun `every place a link or a notification leads to is kept, and survives a restart`() {
+        val places =
+            listOf(
+                Destination.Ride(uuid),
+                Destination.Journal(uuid),
+                Destination.Listing(uuid),
+                Destination.Component(uuid),
+                Destination.Comments("bike", uuid, "", uuid),
+                Destination.Comments("ride", uuid, "", null),
+                Destination.Comments("component", uuid, "", uuid),
+                Destination.Devices,
+                Destination.Notifications,
+            )
+        places.forEach { place ->
+            pending().clear()
+            pending().offer(place)
+
+            assertThat(pending().destination.value).isEqualTo(place)
+        }
+    }
+
+    @Test
+    fun `a discussion is kept without the name of its object`() {
+        pending().offer(Destination.Comments("bike", uuid, "Городской Трэвел", uuid))
+
+        assertThat(pending().destination.value)
+            .isEqualTo(Destination.Comments("bike", uuid, "", uuid))
+    }
+
+    @Test
+    fun `a place that is not an id, or a kind that is not one, is not kept`() {
+        listOf(
+                Destination.Ride("../me"),
+                Destination.Journal("x"),
+                Destination.Listing("1 OR 1=1"),
+                Destination.Comments("galaxy", uuid, "", null),
+                Destination.Comments("bike", uuid, "", "../x"),
+                Destination.Comments("bike", "nope", "", null),
+                Destination.Messages,
+            )
+            .forEach { place ->
+                pending().clear()
+                pending().offer(place)
+
+                assertThat(pending().destination.value).isNull()
+            }
+    }
+
+    @Test
+    fun `a stored value that was tampered with is dropped`() {
+        listOf("ride:../x", "comments:bike:$uuid", "comments:galaxy:$uuid:", "devices-x", "x:y")
+            .forEach { value ->
+                preferences
+                    .edit()
+                    .putString("pending_destination", value)
+                    .putLong("pending_at", now.toEpochMilli())
+                    .commit()
+
+                assertThat(pending().destination.value).isNull()
+            }
+    }
+
+    @Test
     fun `a person is kept as the link named them`() {
         pending().offer(Destination.Person("test-rider"))
         assertThat(pending().destination.value).isEqualTo(Destination.Person("test-rider"))

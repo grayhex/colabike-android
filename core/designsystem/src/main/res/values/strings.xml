@@ -55,4 +55,5 @@
     </plurals>
     <string name="cola_component_archived">Архивная модель</string>
     <string name="cola_notification_new">Новое</string>
+    <string name="cola_notification_mark_read">Отметить прочитанным</string>
 </resources>

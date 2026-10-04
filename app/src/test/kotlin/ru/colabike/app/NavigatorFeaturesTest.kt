@@ -55,6 +55,40 @@ class NavigatorFeaturesTest {
     }
 
     @Test
+    fun `a discussion opens in the section of its object, the devices in Profile, the inbox where the person is`() {
+        navigator.go(Destination.Comments("bike", "b1", "", "c1"))
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+        assertThat(state.currentStack.last())
+            .isEqualTo(Destination.Comments("bike", "b1", "", "c1"))
+
+        navigator.go(Destination.Comments("ride", "r1", "", "c2"))
+        assertThat(state.topLevelRoute).isEqualTo(rides)
+        assertThat(state.currentStack.last())
+            .isEqualTo(Destination.Comments("ride", "r1", "", "c2"))
+
+        navigator.go(Destination.Devices)
+        assertThat(state.topLevelRoute).isEqualTo(profile)
+        assertThat(state.currentStack).containsExactly(profile, Destination.Devices).inOrder()
+
+        navigator.select(messages)
+        navigator.go(Destination.Notifications)
+        assertThat(state.topLevelRoute).isEqualTo(messages)
+        assertThat(state.currentStack)
+            .containsExactly(messages, Destination.Notifications)
+            .inOrder()
+    }
+
+    @Test
+    fun `a discussion under a ride is not opened when rides are off`() {
+        features = featuresOff(Feature.Rides)
+
+        navigator.go(Destination.Comments("ride", "r1", "", "c2"))
+
+        assertThat(unavailable).isEqualTo(1)
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+    }
+
+    @Test
     fun `a ride opens in Rides, a conversation in Messages`() {
         navigator.go(Destination.Ride("r1"))
         assertThat(state.topLevelRoute).isEqualTo(rides)

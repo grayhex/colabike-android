@@ -34,17 +34,33 @@ internal fun commentAnchor(path: String): String? {
 }
 
 /**
+ * The comment a notification is about: the typed field of the target, and only for an older server
+ * (or a notification from before the field) the anchor of the path. Lower-cased; null when the
+ * notification is not about a comment.
+ */
+private fun AppNotification.commentToFocus(): String? {
+    target.commentId
+        ?.lowercase()
+        ?.takeIf { UUID.matches(it) }
+        ?.let {
+            return it
+        }
+    return if (kind.isAboutAComment()) commentAnchor(target.path) else null
+}
+
+/**
  * Where [this] notification goes. The object comes from the typed [AppNotification.target] (its
- * type and id), never from parsing the path; the path is used only for the comment's anchor and as
- * the address on the site for an object the app has no screen for. A comment's notification opens
- * the discussion on that comment (the server returns the branch and the chain to it), anything else
- * the object itself. A deleted or closed object opens to the usual "not found" and shows nothing of
- * what it held.
+ * type and id), never from parsing the path; the comment to focus on is the target's `commentId`.
+ * The path is used for what the app has no screen for, opened on the site, and as the anchor of a
+ * comment only when the server gave no `commentId`. A comment's notification opens the discussion
+ * on that comment (the server returns the branch and the chain to it), anything else the object
+ * itself. A deleted or closed object opens to the usual "not found" and shows nothing of what it
+ * held. A ride's date (`occurrenceAt`) is not a screen of its own yet: the ride opens.
  */
 fun AppNotification.route(site: SiteLinks): NotificationRoute {
     val id = target.id.lowercase()
     if (!UUID.matches(id)) return NotificationRoute.Nowhere
-    val comment = if (kind.isAboutAComment()) commentAnchor(target.path) else null
+    val comment = commentToFocus()
     val destination: Destination? =
         when (target.type) {
             "bike",

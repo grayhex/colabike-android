@@ -247,7 +247,7 @@
                     "Personal"
                 ],
                 "summary": "Мои уведомления",
-                "description": "Новые сверху, курсор по `(время, id)`. Видимость вычисляется при чтении, как на сайте: уведомление о том, что получатель уже не вправе видеть (приватное, скрытое, заблокированное, отменённый лайк, удалённый комментарий), не показывается. Чтение уведомлений, как и на сайте, создаёт напоминание о конце срока объявления (раз за срок). Пометка «прочитано» — отдельная операция записи.",
+                "description": "Новые сверху, курсор по `(время, id)`; `unread=1` и `category` сужают список, курсор работает и с ними. Видимость вычисляется при чтении, как на сайте: уведомление о том, что получатель уже не вправе видеть (приватное, скрытое, заблокированное, отменённый лайк, удалённый комментарий), не показывается. Чтение уведомлений, как и на сайте, создаёт напоминание о конце срока объявления (раз за срок). Сам список ничего не помечает прочитанным: это отдельные операции, а `watermark` ответа нужен для «Прочитать все».",
                 "security": [
                     {
                         "cookieSession": [
@@ -261,6 +261,34 @@
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "unread",
+                        "in": "query",
+                        "required": false,
+                        "description": "`1` — только непрочитанные.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "1"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "required": false,
+                        "description": "Одна категория: rides — покатушки и приглашения, discussions — комментарии и ответы, market — объявления, reactions — подписки и лайки, site — от ColaBike.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "rides",
+                                "discussions",
+                                "market",
+                                "reactions",
+                                "site"
+                            ]
+                        }
+                    },
                     {
                         "$ref": "#/components/parameters/Limit"
                     },
@@ -327,7 +355,7 @@
                     "Personal"
                 ],
                 "summary": "Число непрочитанных",
-                "description": "Считается до 100: при `capped` непрочитанных не меньше 100.",
+                "description": "Считается до 100: при `capped` непрочитанных не меньше 100. `watermark` — отметка для «Прочитать все», если список не загружался.",
                 "security": [
                     {
                         "cookieSession": [
@@ -391,6 +419,689 @@
                     },
                     "500": {
                         "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/notifications/{id}/read": {
+            "put": {
+                "operationId": "markNotificationRead",
+                "tags": [
+                    "Personal"
+                ],
+                "summary": "Пометить уведомление прочитанным",
+                "description": "Идемпотентно: повтор тоже 200, `marked` в нём 0. Прочитанным делает только само приложение, когда человек открыл уведомление или нажал «прочитано»: показ в шторке, смахивание и загрузка списка ничего не помечают. Чужое, ещё не доставленное (напоминание, срок которого не пришёл) и несуществующее уведомление неотличимы: 404. Бюджет тот же, что у кнопок сайта.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/NotificationId"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Итог пометки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationReadResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Одновременно cookie сессии и заголовок Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Уведомление не найдено.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/notifications/read": {
+            "post": {
+                "operationId": "markNotificationsRead",
+                "tags": [
+                    "Personal"
+                ],
+                "summary": "Пометить несколько уведомлений прочитанными",
+                "description": "До 100 идентификаторов, как на экране. Идемпотентно. Чужие и ещё не доставленные не считаются и не вызывают ошибки: `marked` — сколько помечено сейчас.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotificationReadRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Итог пометки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationReadResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/notifications/read-all": {
+            "post": {
+                "operationId": "markAllNotificationsRead",
+                "tags": [
+                    "Personal"
+                ],
+                "summary": "Прочитать все до отметки",
+                "description": "Помечает прочитанными всё видимое сейчас до `watermark` из списка или счётчика (с `category` — только эту категорию). Уведомление, пришедшее после того, как список был показан, лежит выше отметки и остаётся непрочитанным. Скрытое сейчас (например, о приватном объекте) не помечается: оно не было показано. За один запрос — до 10 000; если `unread` в ответе не нулевой, запрос повторяют. Идемпотентно. `watermark`, который сервер не выдавал этому аккаунту (чужой, выдуманный, курсор страницы или отметка уже удалённого уведомления), — 400, и ничего не помечается: обновите список или счётчик и возьмите новую отметку.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotificationReadAllRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Итог пометки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationReadResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/notification-settings": {
+            "get": {
+                "operationId": "getNotificationSettings",
+                "tags": [
+                    "Personal"
+                ],
+                "summary": "Настройки уведомлений",
+                "description": "Что человек хочет получать: каналы (почта, push), категории по каналам, напоминание о покатушке. Те же настройки видит и меняет сайт. В списке категорий только те, которые сервер производит и которые канал может передать; `channels.*.available` говорит, работает ли канал на сервере (почта — настроена ли отправка, push — подключена ли доставка), и приложение не показывает переключатель недоступного канала. Версия объекта — заголовок `ETag`. Разрешение системы и регистрация телефона — не здесь.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Настройки уведомлений.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия настроек: для `If-Match` следующего изменения.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationSettings"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный параметр либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "updateNotificationSettings",
+                "tags": [
+                    "Personal"
+                ],
+                "summary": "Изменить настройки уведомлений",
+                "description": "Меняется только указанное, поэтому два устройства, меняющие разные переключатели, не затирают друг друга; повтор того же изменения ничего не меняет. `If-Match` необязателен: с ним изменение применяется только к версии, которую клиент видел (412, если версия уже другая). Включить канал можно, когда он работает: почту — с подтверждённым адресом (403 `email_verification_required`) и настроенной отправкой (503 `service_unavailable`), push — когда доставка подключена (503). Выключить можно всегда; повтор того, что уже есть, и `reminders` (общее для всех каналов) не требуют работающей почты. Категория называет только каналы, которые могут её передавать. Согласие на push здесь не включает разрешение системы на конкретном телефоне. Бюджет тот же, что у формы на сайте.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "`ETag` настроек, которые клиент видел: при другой версии — 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotificationSettingsPatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Настройки после изменения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Новая версия настроек.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationSettings"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не разобрано или не подходит, неверный `Idempotency-Key` либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`), почта не подтверждена (`email_verification_required`) или чужой комментарий (`forbidden`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "412": {
+                        "description": "`If-Match` не совпал с текущей версией: прочитайте настройки снова.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    },
+                    "503": {
+                        "description": "Канал не работает на сервере (отправка почты не настроена, push не подключён).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -11580,6 +12291,41 @@
                         "type": "string",
                         "description": "Путь на сайте относительно его адреса."
                     },
+                    "commentId": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Комментарий или ответ, о котором уведомление, иначе null. Приложение берёт его отсюда, а не из `path`."
+                    },
+                    "occurrenceAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Дата покатушки (occurrence), о которой уведомление: у приглашения, изменения, отмены, ответа участника и напоминания. У остальных и у старых приглашений, созданных до учёта дат, null: тогда ориентируйтесь на `type`, `id` и `path`."
+                    },
+                    "agreementRevision": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Версия договорённостей покатушки, к которой относится уведомление, иначе null."
+                    },
                     "expiresAt": {
                         "description": "Только у `market_expiring`: конец срока объявления.",
                         "type": "string",
@@ -11600,7 +12346,10 @@
                     "type",
                     "id",
                     "name",
-                    "path"
+                    "path",
+                    "commentId",
+                    "occurrenceAt",
+                    "agreementRevision"
                 ],
                 "additionalProperties": false,
                 "description": "О чём уведомление: объект, его название и путь на сайте (с якорем комментария, если уведомление о нём). Название и путь вычисляются при чтении, поэтому следуют переименованиям и продлению."
@@ -11615,6 +12364,10 @@
                     "type": {
                         "type": "string",
                         "description": "follow, like, comment, reply, ride_like, ride_comment, ride_reply, journal_like, journal_comment, journal_reply, article_*, component_reply, market_expiring, session_reuse, bike_week и другие; набор открыт, неизвестный тип клиент показывает общим видом."
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Категория настроек и фильтра: rides, discussions, market, reactions, site; набор открыт, неизвестную клиент относит к «прочим»."
                     },
                     "createdAt": {
                         "type": "string",
@@ -11649,6 +12402,7 @@
                 "required": [
                     "id",
                     "type",
+                    "category",
                     "createdAt",
                     "readAt",
                     "actor",
@@ -11672,11 +12426,19 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "watermark": {
+                        "description": "Отметка сервера для «Прочитать все»: самое новое уведомление, которое человек мог видеть на момент ответа. Непрозрачный текст: его не разбирают и не составляют. Отметка действует только для аккаунта, которому выдана. null, если видимых уведомлений нет.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
                     "items",
-                    "nextCursor"
+                    "nextCursor",
+                    "watermark"
                 ],
                 "additionalProperties": false,
                 "description": "Страница уведомлений, новые сверху."
@@ -11689,14 +12451,286 @@
                     },
                     "capped": {
                         "type": "boolean"
+                    },
+                    "watermark": {
+                        "description": "Отметка сервера для «Прочитать все»: самое новое уведомление, которое человек мог видеть на момент ответа. Непрозрачный текст: его не разбирают и не составляют. Отметка действует только для аккаунта, которому выдана. null, если видимых уведомлений нет.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
                     "unread",
+                    "capped",
+                    "watermark"
+                ],
+                "additionalProperties": false,
+                "description": "Число непрочитанных: считается до 100; при `capped` их не меньше 100. `watermark` — отметка для «Прочитать все» без загрузки списка."
+            },
+            "NotificationReadResult": {
+                "type": "object",
+                "properties": {
+                    "marked": {
+                        "type": "integer"
+                    },
+                    "unread": {
+                        "type": "integer"
+                    },
+                    "capped": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "marked",
+                    "unread",
                     "capped"
                 ],
                 "additionalProperties": false,
-                "description": "Число непрочитанных: считается до 100; при `capped` их не меньше 100."
+                "description": "Итог пометки «прочитано»: сколько уведомлений помечено сейчас (повтор даёт 0) и сколько непрочитанных осталось, считая как `NotificationCount`."
+            },
+            "NotificationReadRequest": {
+                "type": "object",
+                "properties": {
+                    "ids": {
+                        "minItems": 1,
+                        "maxItems": 100,
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "required": [
+                    "ids"
+                ],
+                "additionalProperties": false,
+                "description": "Какие уведомления пометить прочитанными: их идентификаторы, не больше 100. Чужие и ещё не доставленные не считаются."
+            },
+            "NotificationReadAllRequest": {
+                "type": "object",
+                "properties": {
+                    "watermark": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "rides",
+                            "discussions",
+                            "market",
+                            "reactions",
+                            "site"
+                        ]
+                    }
+                },
+                "required": [
+                    "watermark"
+                ],
+                "additionalProperties": false,
+                "description": "«Прочитать все» до отметки `watermark` из списка или счётчика: уведомления, пришедшие позже, остаются непрочитанными. С `category` — только эта категория."
+            },
+            "NotificationChannelFlag": {
+                "type": "object",
+                "properties": {
+                    "supported": {
+                        "type": "boolean"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "supported",
+                    "enabled"
+                ],
+                "additionalProperties": false,
+                "description": "Переключатель канала в категории: может ли канал её передавать и включён ли он."
+            },
+            "NotificationCategorySetting": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "rides, discussions, market; набор открыт: неизвестную категорию клиент пропускает."
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "$ref": "#/components/schemas/NotificationChannelFlag"
+                    },
+                    "push": {
+                        "$ref": "#/components/schemas/NotificationChannelFlag"
+                    }
+                },
+                "required": [
+                    "key",
+                    "label",
+                    "email",
+                    "push"
+                ],
+                "additionalProperties": false,
+                "description": "Категория уведомлений и то, как она ходит по каналам. В списке только категории, которые сервер производит и которыми канал может поделиться; отсутствующую клиент не показывает."
+            },
+            "NotificationEmailChannel": {
+                "type": "object",
+                "properties": {
+                    "available": {
+                        "type": "boolean"
+                    },
+                    "verified": {
+                        "type": "boolean"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "available",
+                    "verified",
+                    "enabled"
+                ],
+                "additionalProperties": false,
+                "description": "Почта: настроена ли отправка на сервере, подтверждён ли адрес и дано ли согласие на письма."
+            },
+            "NotificationPushChannel": {
+                "type": "object",
+                "properties": {
+                    "available": {
+                        "type": "boolean"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "available",
+                    "enabled"
+                ],
+                "additionalProperties": false,
+                "description": "Push: подключена ли доставка на сервере и дано ли согласие аккаунта. Разрешение системы и регистрация конкретного телефона — не здесь: включить их сервер не может."
+            },
+            "NotificationChannels": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "$ref": "#/components/schemas/NotificationEmailChannel"
+                    },
+                    "push": {
+                        "$ref": "#/components/schemas/NotificationPushChannel"
+                    }
+                },
+                "required": [
+                    "email",
+                    "push"
+                ],
+                "additionalProperties": false,
+                "description": "Каналы, кроме уведомлений внутри сайта: они есть всегда."
+            },
+            "NotificationSettings": {
+                "type": "object",
+                "properties": {
+                    "channels": {
+                        "$ref": "#/components/schemas/NotificationChannels"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotificationCategorySetting"
+                        }
+                    },
+                    "reminders": {
+                        "type": "boolean",
+                        "description": "Напоминание о принятой покатушке за сутки, для всех каналов; по умолчанию включено."
+                    },
+                    "updatedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Когда настройки менялись последний раз; null — ещё не менялись."
+                    }
+                },
+                "required": [
+                    "channels",
+                    "categories",
+                    "reminders",
+                    "updatedAt"
+                ],
+                "additionalProperties": false,
+                "description": "Настройки уведомлений аккаунта: одни и те же для сайта и приложения. Версию объекта говорит заголовок `ETag`; `PATCH` принимает `If-Match`."
+            },
+            "NotificationSettingsPatch": {
+                "type": "object",
+                "properties": {
+                    "channels": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "object",
+                                "properties": {
+                                    "enabled": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            "push": {
+                                "type": "object",
+                                "properties": {
+                                    "enabled": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "additionalProperties": false
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "categories": {
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "enum": [
+                                        "rides",
+                                        "discussions",
+                                        "market",
+                                        "reactions",
+                                        "site"
+                                    ]
+                                },
+                                "email": {
+                                    "type": "boolean"
+                                },
+                                "push": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "key"
+                            ],
+                            "additionalProperties": false
+                        }
+                    },
+                    "reminders": {
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Изменение настроек: меняется только указанное. Включение канала требует, чтобы он работал (почта — подтверждённый адрес и настроенную отправку; push — подключённую доставку); выключение возможно всегда."
             },
             "FeedItem": {
                 "type": "object",
@@ -12435,6 +13469,16 @@
                 "in": "path",
                 "required": true,
                 "description": "Публичный идентификатор сессии из списка сессий.",
+                "schema": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "NotificationId": {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "description": "Идентификатор уведомления из списка.",
                 "schema": {
                     "type": "string",
                     "format": "uuid"

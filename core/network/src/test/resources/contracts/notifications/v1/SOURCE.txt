@@ -1,0 +1,4 @@
+Shared notification examples of the backend (grayhex/cola), docs/contracts/notifications/v1.
+Pinned to commit 316d604 (merge of pull request #344, issue #341, slice N1.1); the four files are
+unchanged since 5acbf6a. Do not edit by hand: refresh by copying the four files from the backend at
+a newer commit and review the diff.
