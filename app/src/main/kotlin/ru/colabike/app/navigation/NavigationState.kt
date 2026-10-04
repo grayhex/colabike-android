@@ -141,9 +141,10 @@ class Navigator(
      * Goes where a link points: the section that owns the destination, then the destination on its
      * stack (a bike replaces the bike already shown). Back from it works as for any opened screen.
      * The objects of a ride belong to the Rides section, a conversation to Messages; every other
-     * object (a bike, a person, a journal entry, a listing, a catalog model) opens over Bikes. A
-     * destination with no place in the shell, or whose function the server has switched off, goes
-     * nowhere.
+     * object (a bike, a person, a journal entry, a listing, a catalog model) opens over Bikes; a
+     * discussion opens in the section of its object, the devices in Profile, the inbox where the
+     * person is. A destination with no place in the shell, or whose function the server has
+     * switched off, goes nowhere.
      */
     fun go(destination: Destination) {
         val section =
@@ -156,6 +157,12 @@ class Navigator(
                 is Destination.Journal,
                 is Destination.Listing,
                 is Destination.Component -> TopLevel.Bikes.root
+                // A discussion belongs to the section of its object.
+                is Destination.Comments ->
+                    if (destination.kind == "ride") TopLevel.Rides.root else TopLevel.Bikes.root
+                Destination.Devices -> TopLevel.Profile.root
+                // The inbox opens where the person is.
+                Destination.Notifications -> state.topLevelRoute
                 else -> return
             }
         if (!allowed(destination)) return

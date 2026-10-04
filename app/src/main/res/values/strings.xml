@@ -522,4 +522,17 @@
     <string name="update_required_body">Эта версия ColaBike больше не поддерживается. Обновите приложение, чтобы продолжить.</string>
     <string name="update_check_again">Проверить снова</string>
     <string name="update_check_failed">Не удалось проверить. Проверьте соединение и попробуйте снова.</string>
+    <string name="push_channel_rides">Мои поездки и приглашения</string>
+    <string name="push_channel_rides_desc">Приглашения, изменения, отмены и напоминания о ваших покатушках.</string>
+    <string name="push_channel_plans">Планы друзей</string>
+    <string name="push_channel_plans_desc">Новые планы людей, на которых вы подписаны.</string>
+    <string name="push_channel_nearby">Рядом</string>
+    <string name="push_channel_nearby_desc">Покатушки в выбранном вами районе.</string>
+    <string name="push_channel_chat">Сообщения</string>
+    <string name="push_channel_chat_desc">Новые сообщения в личных диалогах и группах.</string>
+    <string name="push_channel_discussions">Комментарии и ответы</string>
+    <string name="push_channel_discussions_desc">Комментарии к вашим велосипедам и записям и ответы вам.</string>
+    <string name="push_channel_general">Другое</string>
+    <string name="push_channel_general_desc">События ColaBike, для которых нет отдельного раздела.</string>
+    <string name="push_public_text">Новое уведомление</string>
 </resources>

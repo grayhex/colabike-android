@@ -38,11 +38,11 @@ class ManifestPermissionsTest {
     }
 
     @Test
-    fun `the messenger asks for no microphone, no notifications and no background work`() {
+    fun `the app asks for notifications for its own push, and the messenger for nothing else`() {
+        assertThat(requested()).contains("android.permission.POST_NOTIFICATIONS")
         assertThat(requested())
             .containsNoneOf(
                 "android.permission.RECORD_AUDIO",
-                "android.permission.POST_NOTIFICATIONS",
                 "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
                 "android.permission.READ_MEDIA_IMAGES",
                 "android.permission.READ_MEDIA_VIDEO",
@@ -51,6 +51,28 @@ class ManifestPermissionsTest {
                 "android.permission.RECEIVE_BOOT_COMPLETED",
                 "android.permission.FOREGROUND_SERVICE",
             )
+    }
+
+    @Test
+    fun `where a tap on a notification lands is not exported, and the exported activity is one`() {
+        val info =
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_ACTIVITIES,
+            )
+        val byName = info.activities.orEmpty().associateBy { it.name }
+
+        assertThat(byName.getValue("ru.colabike.app.push.NotificationTapActivity").exported)
+            .isFalse()
+        // Of the app's own activities only the main one is exported (the test manifest of the
+        // Compose tooling adds an activity of its own, which is not in a release).
+        assertThat(
+                info.activities
+                    .orEmpty()
+                    .filter { it.exported && it.name.startsWith("ru.colabike.app.") }
+                    .map { it.name }
+            )
+            .containsExactly("ru.colabike.app.MainActivity")
     }
 
     @Test

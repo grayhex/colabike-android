@@ -87,6 +87,13 @@ android {
     // nobody here can read. The messenger's SDK has no Russian, so values-ru carries it.
     androidResources { localeFilters += listOf("ru") }
 
+    // The backend's shared notification examples are pinned once, in core:network; the push tests
+    // of the app read the same files (docs/adr/0010).
+    sourceSets
+        .getByName("test")
+        .resources
+        .srcDir(rootProject.file("core/network/src/test/resources/contracts"))
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {

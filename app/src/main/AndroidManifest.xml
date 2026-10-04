@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
         The map library's own manifest asks for the location and for the Wi-Fi state. A route is
@@ -15,15 +16,15 @@
 
     <!--
         The messenger's SDK (Stream Chat) asks for more than a text chat with photos needs: the
-        microphone (voice messages are off), notifications and a boot receiver and a foreground
-        service (there is no push, no background polling and no service: docs/adr/0011). Photos
-        come from the system Photo Picker, which needs no permission at all.
+        microphone (voice messages are off) and a boot receiver and a foreground service (no
+        background polling and no service: docs/adr/0011). Photos come from the system Photo
+        Picker, which needs no permission at all. The notification permission is the app's own
+        and is asked for only when the person agrees to push (docs/adr/0015).
     -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
     <uses-permission
         android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
         tools:node="remove" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
@@ -64,6 +65,18 @@
                     android:scheme="https" />
             </intent-filter>
         </activity>
+
+        <!--
+            Where a tap on the app's own notification lands. Not exported: only the notification's
+            PendingIntent can start it, so no other app can feed the app a destination through it.
+        -->
+        <activity
+            android:name=".push.NotificationTapActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
 
         <!-- Components the messenger's SDK brings and the app never starts (docs/adr/0011). -->
         <!-- MissingClass: these live in the libraries' runtime classpath only; they are removed. -->

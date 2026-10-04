@@ -5,8 +5,16 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import ru.colabike.app.push.PushChannel
 
 class ColaBikeApplication : Application(), SingletonImageLoader.Factory {
+    override fun onCreate() {
+        super.onCreate()
+        // The channels are permanent and exist before the first push, so that the person can set
+        // each of them in the system's settings. Creating them again changes none of their choices.
+        PushChannel.ensure(this)
+    }
+
     val graph: AppGraph by lazy {
         AppGraph(this) {
             // Pictures of the previous account (private media, cola#324) leave with it.

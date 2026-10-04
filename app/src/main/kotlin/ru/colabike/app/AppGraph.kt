@@ -23,6 +23,14 @@ import ru.colabike.app.messages.ChatScreens
 import ru.colabike.app.messages.ChatSession
 import ru.colabike.app.messages.StreamChatGateway
 import ru.colabike.app.messages.StreamChatScreens
+import ru.colabike.app.push.DeliveryLedger
+import ru.colabike.app.push.NoPushBinding
+import ru.colabike.app.push.NoPushProvider
+import ru.colabike.app.push.PreferencesLedgerStore
+import ru.colabike.app.push.PushHandler
+import ru.colabike.app.push.PushOpener
+import ru.colabike.app.push.PushProvider
+import ru.colabike.app.push.PushRenderer
 import ru.colabike.app.rides.map.MapLibreRouteMaps
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.settings.AppSettings
@@ -230,6 +238,23 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
             scope = scope,
         )
 
+    // Push: the pieces that do not need a provider. The transport (its SDK) will call the handler;
+    // until a provider is configured nothing arrives, and with no binding nothing would be shown.
+    val pushProvider: PushProvider = NoPushProvider
+    val pushHandler =
+        PushHandler(
+            binding = NoPushBinding,
+            ledger =
+                DeliveryLedger(
+                    PreferencesLedgerStore(
+                        context.getSharedPreferences("push-ledger", Context.MODE_PRIVATE)
+                    )
+                ),
+            surface = PushRenderer(context),
+            clock = clock,
+        )
+    val pushOpener = PushOpener(pending, notifications, auth, scope)
+
     init {
         scope.launch { session.restore() }
         // Reads what the device kept and asks the server afterwards; nothing waits for the network.
@@ -241,8 +266,10 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
                 // What the session knew about saved entries is the person's, not the next one's.
                 journalRepository.forget()
                 drafts.clear()
-                // The next person must find nothing of this one's conversations in the SDK.
+                // The next person must find nothing of this one's conversations in the SDK, and
+                // nothing of their notifications in the tray.
                 chatSession.end()
+                pushHandler.onSignedOut()
                 onSignedOut()
             }
         }
