@@ -31,7 +31,10 @@ import ru.colabike.app.ui.UiText
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
+import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.FeedItem
+import ru.colabike.core.model.ListingBikeLink
+import ru.colabike.core.model.ListingCatalogLink
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.Page
 
@@ -90,6 +93,13 @@ enum class Screen(val file: String) {
     Component("component"),
     ComponentCredits("component_credits"),
 
+    /** The market list, with its filters open, a listing's page, its contact, the saved ones. */
+    Market("market"),
+    MarketFilters("market_filters"),
+    Listing("listing"),
+    ListingContact("listing_contact"),
+    SavedMarket("saved_market"),
+
     /**
      * The Messages section with the SDK's list, a conversation, the form for a new one, a guest.
      */
@@ -123,6 +133,22 @@ private fun ComposeContentTestRule.openAuthor() {
     onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
     onNodeWithText("Тестовый Райдер").performScrollTo().performClick()
 }
+
+/** The listings of the market in the pictures: the first is tied to the catalog and a bike. */
+private val marketListings =
+    (1..4).associate {
+        "l$it" to
+            listingModel(
+                it,
+                saved = it == 1,
+                componentModel =
+                    if (it == 1) ListingCatalogLink("c1", "Кассета 1", "/components/c1", false)
+                    else null,
+                linkedBike =
+                    if (it == 1) ListingBikeLink(BikeId("b1"), "Городской Трэвел", "/b/b1")
+                    else null,
+            )
+    }
 
 @OptIn(ExperimentalCoilApi::class)
 private val photos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
@@ -173,6 +199,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                         AppShell(
                             FakeDependencies(
                                 bikes = FakeBikes(mapOf(null to Page(bikes(0, 6), "c1"))),
+                                market = FakeMarket(listings = marketListings),
                                 comments = sampleDiscussion(),
                                 notifications =
                                     FakeNotifications(
@@ -274,6 +301,23 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             if (screen == Screen.ComponentCredits) {
                 onNodeWithTag("component:page").performScrollToNode(hasText("Фотографии"))
             }
+        }
+        Screen.Market -> onNodeWithContentDescription("Объявления").performClick()
+        Screen.MarketFilters -> {
+            onNodeWithContentDescription("Объявления").performClick()
+            onNodeWithTag("market:filters").performClick()
+        }
+        Screen.Listing,
+        Screen.ListingContact -> {
+            onNodeWithContentDescription("Объявления").performClick()
+            onNodeWithTag("listing:l1").performClick()
+            if (screen == Screen.ListingContact) {
+                onNodeWithTag("listing:contact_show").performScrollTo().performClick()
+            }
+        }
+        Screen.SavedMarket -> {
+            section("Профиль").performClick()
+            onNodeWithText("Сохранённые объявления").performScrollTo().performClick()
         }
         Screen.Messages,
         Screen.MessagesGuest -> section("Сообщения").performClick()

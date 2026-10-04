@@ -188,7 +188,8 @@ class AccountFlowTest {
     private fun openDevices(dependencies: FakeDependencies) {
         start(dependencies)
         section("Профиль").performClick()
-        compose.onNodeWithText("Устройства и входы").performClick()
+        // Below the saved entries and listings: the row may be under the fold of a phone.
+        compose.onNodeWithText("Устройства и входы").performScrollTo().performClick()
         compose.waitForIdle()
     }
 

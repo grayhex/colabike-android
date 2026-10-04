@@ -1,0 +1,36 @@
+{
+  "id": "a0000000-0000-4000-8000-000000000006",
+  "title": "Мой черновик",
+  "description": "Описание: Мой черновик",
+  "category": "components",
+  "listingType": "sale",
+  "condition": "used",
+  "price": null,
+  "currency": "RUB",
+  "location": "Москва",
+  "hasContact": true,
+  "status": "draft",
+  "expired": false,
+  "createdAt": "2026-09-20T10:00:00.000Z",
+  "publishedAt": null,
+  "path": "/market/мой-черновик-a0000000",
+  "photos": [
+    {
+      "id": "b0000000-0000-4000-8000-000000000600",
+      "url": "/api/market/media/b060?width=640"
+    }
+  ],
+  "author": {
+    "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+    "username": "test-rider",
+    "name": "Тестовый Райдер",
+    "avatarUrl": null
+  },
+  "isOwner": true,
+  "componentModel": null,
+  "bikeModel": null,
+  "linkedBike": null,
+  "contact": "+7 900 000-00-00",
+  "expiresAt": "2026-12-01T10:00:00.000Z",
+  "saved": false
+}

@@ -149,9 +149,9 @@ class LinkTargetTest {
     }
 
     @Test
-    fun `what has no screen yet is shown by the site on the same address, a profile is not one`() {
+    fun `a listing and a profile have screens`() {
         assertThat(AppLink.Market(uuid).target(site))
-            .isEqualTo(LinkTarget.OnSite("https://colabike.ru/market/$uuid"))
+            .isEqualTo(LinkTarget.InApp(Destination.Listing(uuid)))
         assertThat(AppLink.Person("test-rider").target(site))
             .isEqualTo(LinkTarget.InApp(Destination.Person("test-rider")))
     }

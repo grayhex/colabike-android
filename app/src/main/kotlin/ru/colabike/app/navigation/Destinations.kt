@@ -20,6 +20,15 @@ sealed interface Destination : NavKey {
     /** One model of the catalog; [id] is its UUID (a merged model shows its canonical one). */
     @Serializable data class Component(val id: String) : Destination
 
+    /** The market list; [seller] is a `username` when the list is one person's listings. */
+    @Serializable data class Market(val seller: String? = null) : Destination
+
+    /** A market listing; [id] is its UUID. */
+    @Serializable data class Listing(val id: String) : Destination
+
+    /** The listings the signed-in person saved, opened from the profile. */
+    @Serializable data object SavedMarket : Destination
+
     @Serializable data class Bike(val id: String) : Destination
 
     @Serializable data object Rides : Destination

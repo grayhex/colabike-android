@@ -57,6 +57,10 @@ fun AppNotification.route(site: SiteLinks): NotificationRoute {
                         "ride" -> Destination.Ride(id)
                         else -> Destination.Journal(id)
                     }
+            "market" -> Destination.Listing(id)
+            "component" ->
+                if (comment != null) Destination.Comments("component", id, target.name, comment)
+                else Destination.Component(id)
             "profile" -> Destination.Person(id)
             // The one account notification the app answers itself: a sign-in used again.
             "account" -> if (kind == "session_reuse") Destination.Devices else null

@@ -1,0 +1,34 @@
+{
+  "id": "a0000000-0000-4000-8000-000000000005",
+  "title": "Шлем Giro",
+  "description": "Описание: Шлем Giro",
+  "category": "accessories",
+  "listingType": "sale",
+  "condition": "used",
+  "price": 2000.0,
+  "currency": "RUB",
+  "location": "Москва",
+  "hasContact": true,
+  "status": "active",
+  "expired": true,
+  "createdAt": "2026-09-20T10:00:00.000Z",
+  "publishedAt": "2026-09-21T10:00:00.000Z",
+  "path": "/market/шлем-giro-a0000000",
+  "photos": [
+    {
+      "id": "b0000000-0000-4000-8000-000000000500",
+      "url": "/api/market/media/b050?width=640"
+    }
+  ],
+  "author": {
+    "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+    "username": "test-rider",
+    "name": "Тестовый Райдер",
+    "avatarUrl": null
+  },
+  "isOwner": false,
+  "componentModel": null,
+  "bikeModel": null,
+  "linkedBike": null,
+  "saved": false
+}
