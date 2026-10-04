@@ -10,6 +10,8 @@ import ru.colabike.api.models.BikePage as BikePageDto
 import ru.colabike.api.models.BikePhoto as BikePhotoDto
 import ru.colabike.api.models.BikeRef as BikeRefDto
 import ru.colabike.api.models.BikeSummary as BikeSummaryDto
+import ru.colabike.api.models.Comment as CommentDto
+import ru.colabike.api.models.CommentPage as CommentPageDto
 import ru.colabike.api.models.FeedItem as FeedItemDto
 import ru.colabike.api.models.FeedPage as FeedPageDto
 import ru.colabike.api.models.FollowResult as FollowResultDto
@@ -21,6 +23,7 @@ import ru.colabike.api.models.MarketListing as MarketListingDto
 import ru.colabike.api.models.Me as MeDto
 import ru.colabike.api.models.Profile as ProfileDto
 import ru.colabike.api.models.Relationship as RelationshipDto
+import ru.colabike.api.models.ReplyPage as ReplyPageDto
 import ru.colabike.api.models.RideSummary as RideSummaryDto
 import ru.colabike.api.models.UserPage as UserPageDto
 import ru.colabike.api.models.UserSummary as UserSummaryDto
@@ -32,6 +35,9 @@ import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSummary
+import ru.colabike.core.model.Comment
+import ru.colabike.core.model.CommentThread
+import ru.colabike.core.model.CommentThreads
 import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.FollowState
 import ru.colabike.core.model.JournalEntry
@@ -351,3 +357,31 @@ internal fun MarketListingDto.toBrief(media: MediaUrls): ListingBrief =
             },
         author = author.toModel(media),
     )
+
+// --- comments ------------------------------------------------------------------------------
+
+internal fun CommentDto.toModel(media: MediaUrls): Comment =
+    Comment(
+        id = id.toString(),
+        parentId = parentId?.toString(),
+        // A tombstone has neither author nor text, whatever else the body might carry.
+        author = if (deleted) null else author?.toModel(media),
+        body = if (deleted) null else body,
+        createdAt = createdAt.toInstant(),
+        editedAt = editedAt?.toInstant(),
+        deleted = deleted,
+        replyCount = replyCount,
+    )
+
+internal fun CommentPageDto.toModel(media: MediaUrls): CommentThreads =
+    CommentThreads(
+        items =
+            items.map {
+                CommentThread(it.comment.toModel(media), it.replies.map { r -> r.toModel(media) })
+            },
+        nextCursor = nextCursor,
+        focusPath = focusPath.map { it.toModel(media) },
+    )
+
+internal fun ReplyPageDto.toModel(media: MediaUrls): Page<Comment> =
+    Page(items.map { it.toModel(media) }, nextCursor)

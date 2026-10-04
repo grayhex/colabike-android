@@ -40,6 +40,7 @@ import ru.colabike.app.about.AboutRoute
 import ru.colabike.app.about.LicensesRoute
 import ru.colabike.app.bikes.BikeDetailRoute
 import ru.colabike.app.bikes.BikesRoute
+import ru.colabike.app.comments.CommentsRoute
 import ru.colabike.app.devices.DevicesRoute
 import ru.colabike.app.feed.FeedActions
 import ru.colabike.app.feed.FeedRoute
@@ -65,6 +66,8 @@ import ru.colabike.core.designsystem.component.ColaNavigationRail
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.CommentKind
+import ru.colabike.core.model.CommentTarget
 import ru.colabike.core.model.JournalId
 
 /**
@@ -102,6 +105,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
         )
     val bottomBar =
         !windowSize.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    // The box to write in sits at the bottom edge, where the floating bar would cover it: while a
+    // discussion is open on a phone the bar steps aside (the rail on wider windows is at the side).
+    val barHidden = bottomBar && state.currentStack.lastOrNull() is Destination.Comments
 
     val items = sections.map { ColaNavItem(stringResource(it.label), it.icon, it.selectedIcon) }
     val selectedIndex = sections.indexOfFirst { it.root == state.topLevelRoute }.coerceAtLeast(0)
@@ -110,10 +116,16 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
     ColaCanvas(modifier.fillMaxSize()) {
         NavigationSuiteScaffoldLayout(
             layoutType =
-                if (bottomBar) NavigationSuiteType.NavigationBar
-                else NavigationSuiteType.NavigationRail,
+                when {
+                    barHidden -> NavigationSuiteType.None
+                    bottomBar -> NavigationSuiteType.NavigationBar
+                    else -> NavigationSuiteType.NavigationRail
+                },
             navigationSuite = {
-                if (bottomBar) {
+                if (barHidden) {
+                    // The layout type says "none", and so must the content, or the bar is drawn
+                    // anyway at the corner.
+                } else if (bottomBar) {
                     ColaNavigationBar(items, selectedIndex, onSelect)
                 } else {
                     ColaNavigationRail(
@@ -129,12 +141,27 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
             // the
             // page fades out instead of ending in a hard edge.
             Box(
-                Modifier.consumeWindowInsets(
-                        if (bottomBar)
-                            NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
-                        else NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+                Modifier.then(
+                        when {
+                            barHidden -> Modifier
+                            bottomBar ->
+                                Modifier.consumeWindowInsets(
+                                    NavigationBarDefaults.windowInsets.only(
+                                        WindowInsetsSides.Bottom
+                                    )
+                                )
+                            else ->
+                                Modifier.consumeWindowInsets(
+                                    NavigationRailDefaults.windowInsets.only(
+                                        WindowInsetsSides.Start
+                                    )
+                                )
+                        }
                     )
-                    .then(if (bottomBar) Modifier.fadeBottomEdge(FadeHeight) else Modifier)
+                    .then(
+                        if (bottomBar && !barHidden) Modifier.fadeBottomEdge(FadeHeight)
+                        else Modifier
+                    )
             ) {
                 NavDisplay(
                     entries =
@@ -142,6 +169,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                             entryProvider {
                                 entry<Destination.Feed> {
                                     FeedRoute(
+                                        commentChanges = dependencies.comments.countChanges,
                                         feed = dependencies.feed,
                                         bikes = dependencies.bikes,
                                         auth = dependencies.auth,
@@ -178,11 +206,36 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onOpenAuthor = { ref ->
                                                     navigator.open(Destination.Person(ref))
                                                 },
+                                                onOpenComments = { id, title ->
+                                                    navigator.open(
+                                                        Destination.Comments(
+                                                            "journal",
+                                                            id.value,
+                                                            title,
+                                                        )
+                                                    )
+                                                },
                                             ),
+                                        commentChanges = dependencies.comments.countChanges,
+                                    )
+                                }
+                                entry<Destination.Comments> { key ->
+                                    CommentsRoute(
+                                        repository = dependencies.comments,
+                                        drafts = dependencies.drafts,
+                                        auth = dependencies.auth,
+                                        target = CommentTarget(commentKind(key.kind), key.id),
+                                        title = key.title,
+                                        focus = key.focus,
+                                        onBack = { navigator.back() },
+                                        onOpenAuthor = { ref ->
+                                            navigator.open(Destination.Person(ref))
+                                        },
                                     )
                                 }
                                 entry<Destination.BikeJournal> { key ->
                                     JournalListRoute(
+                                        commentChanges = dependencies.comments.countChanges,
                                         repository = dependencies.journal,
                                         source = JournalSource.OfBike(BikeId(key.bikeId)),
                                         title = stringResource(R.string.journal_of_bike),
@@ -195,6 +248,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                 }
                                 entry<Destination.SavedJournal> {
                                     JournalListRoute(
+                                        commentChanges = dependencies.comments.countChanges,
                                         repository = dependencies.journal,
                                         source = JournalSource.Saved,
                                         title = stringResource(R.string.journal_saved_title),
@@ -214,6 +268,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                     BikesRoute(
                                         dependencies.bikes,
                                         dependencies.auth,
+                                        commentChanges = dependencies.comments.countChanges,
                                         onOpen = { id -> navigator.openBike(id.value) },
                                         onSearch = { navigator.open(Destination.Search()) },
                                         scrollToTop =
@@ -246,10 +301,17 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         onOpenJournal = { id, name ->
                                             navigator.open(Destination.BikeJournal(id.value, name))
                                         },
+                                        onOpenComments = { id, name ->
+                                            navigator.open(
+                                                Destination.Comments("bike", id.value, name)
+                                            )
+                                        },
+                                        commentChanges = dependencies.comments.countChanges,
                                     )
                                 }
                                 entry<Destination.Person> { key ->
                                     PersonRoute(
+                                        commentChanges = dependencies.comments.countChanges,
                                         people = dependencies.people,
                                         bikes = dependencies.bikes,
                                         auth = dependencies.auth,
@@ -366,3 +428,7 @@ private fun DetailPlaceholder() {
         )
     }
 }
+
+/** The kind a navigation key names; the keys come from this app, so an unknown one is a bike. */
+private fun commentKind(key: String): CommentKind =
+    CommentKind.entries.firstOrNull { it.name.equals(key, ignoreCase = true) } ?: CommentKind.Bike

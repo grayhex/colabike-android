@@ -62,6 +62,10 @@ enum class Screen(val file: String) {
     /** A bike's journal, and an entry: text with structure, components, the save. */
     JournalList("journal_list"),
     Journal("journal"),
+
+    /** The discussion under a bike: a member with the box to write in, and a guest. */
+    Comments("comments"),
+    CommentsGuest("comments_guest"),
 }
 
 enum class Look(val dark: Boolean, val fontScale: Float, val file: String) {
@@ -117,9 +121,11 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                             onBrowseAsGuest = {},
                         )
                     Screen.ProfileGuest,
-                    Screen.FeedGuest ->
+                    Screen.FeedGuest,
+                    Screen.CommentsGuest ->
                         AppShell(
                             FakeDependencies(
+                                comments = sampleDiscussion(),
                                 auth = FakeAuth(initial = AuthState.SignedOut),
                                 settings = FakeSettings(guest = true),
                             )
@@ -128,6 +134,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                         AppShell(
                             FakeDependencies(
                                 bikes = FakeBikes(mapOf(null to Page(bikes(0, 6), "c1"))),
+                                comments = sampleDiscussion(),
                                 feed =
                                     FakeFeed(
                                         mapOf(
@@ -189,6 +196,11 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.SearchStart -> onNodeWithContentDescription("Поиск").performClick()
         Screen.Feed,
         Screen.FeedGuest -> onNode(hasText("Лента") and hasClickAction()).performClick()
+        Screen.Comments,
+        Screen.CommentsGuest -> {
+            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            onNodeWithText("Комментарии").performScrollTo().performClick()
+        }
         Screen.JournalList -> openJournal()
         Screen.Journal -> {
             openJournal()

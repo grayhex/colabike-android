@@ -34,6 +34,19 @@ sealed interface Destination : NavKey {
     /** The journal of one bike. */
     @Serializable data class BikeJournal(val bikeId: String, val bikeName: String) : Destination
 
+    /**
+     * The discussion under a bike or a journal entry. [kind] is `bike` or `journal` (rides and
+     * component models use the same screen later), [title] names the object in the top bar, and
+     * [focus] is a comment to open the discussion at (a link, a notification).
+     */
+    @Serializable
+    data class Comments(
+        val kind: String,
+        val id: String,
+        val title: String,
+        val focus: String? = null,
+    ) : Destination
+
     /** The entries the signed-in person saved, opened from the profile. */
     @Serializable data object SavedJournal : Destination
 

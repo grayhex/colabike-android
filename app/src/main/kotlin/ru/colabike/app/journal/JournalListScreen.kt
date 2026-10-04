@@ -35,6 +35,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.resolve
@@ -45,6 +47,7 @@ import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.JournalCard
 import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
@@ -57,8 +60,12 @@ fun JournalListRoute(
     subtitle: String?,
     onBack: () -> Unit,
     onOpen: (JournalId) -> Unit,
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
-    val viewModel = viewModel(key = source.toString()) { JournalListViewModel(repository, source) }
+    val viewModel =
+        viewModel(key = source.toString()) {
+            JournalListViewModel(repository, source, commentChanges)
+        }
     val state by viewModel.state.collectAsStateWithLifecycle()
     JournalListScreen(
         title = title,

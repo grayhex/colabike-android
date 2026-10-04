@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.YandexFailure
+import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.SiteLinks
 import ru.colabike.app.navigation.Destination
@@ -29,6 +30,12 @@ import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.Comment
+import ru.colabike.core.model.CommentCountChange
+import ru.colabike.core.model.CommentTarget
+import ru.colabike.core.model.CommentThread
+import ru.colabike.core.model.CommentThreads
+import ru.colabike.core.model.CommentsRepository
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.FeedItem
@@ -402,6 +409,191 @@ class FakeJournal(
     }
 }
 
+/** A person who is not the signed-in one (`test-rider`, id `u1`). */
+val neighbour = Person(UserId("u2"), "neighbour", "Сосед", null)
+
+fun commentOf(
+    id: String,
+    body: String? = "Комментарий $id",
+    author: Person? = neighbour,
+    parentId: String? = null,
+    replyCount: Int = 0,
+    deleted: Boolean = false,
+    editedAt: Instant? = null,
+) =
+    Comment(
+        id = id,
+        parentId = parentId,
+        author = if (deleted) null else author,
+        body = if (deleted) null else body,
+        createdAt = Instant.parse("2026-09-20T10:00:00Z"),
+        editedAt = editedAt,
+        deleted = deleted,
+        replyCount = replyCount,
+    )
+
+/** The discussion of any object in memory, with the idempotency the server promises. */
+class FakeComments(
+    var threads: List<CommentThread> = emptyList(),
+    /** The rest of the replies of a root, by root id (what `/replies` gives). */
+    var moreReplies: Map<String, List<Comment>> = emptyMap(),
+    var nextPage: Map<String?, CommentThreads> = emptyMap(),
+    private val me: Person = PreviewData.rider,
+) : CommentsRepository {
+    data class Posted(
+        val target: CommentTarget,
+        val body: String,
+        val parentId: String?,
+        val key: String,
+    )
+
+    val threadCalls = mutableListOf<Triple<CommentTarget, String?, String?>>()
+    val replyCalls = mutableListOf<Pair<String, String?>>()
+    val posted = mutableListOf<Posted>()
+    val edits = mutableListOf<Pair<String, String>>()
+    val deletes = mutableListOf<String>()
+    var nextError: DataError? = null
+    var postError: DataError? = null
+    var editError: DataError? = null
+    var deleteError: DataError? = null
+
+    /** The next post is made on the server and the answer is lost on the way. */
+    var loseNextAnswer = false
+    private val created = mutableMapOf<String, Comment>()
+    private val changes = MutableSharedFlow<CommentCountChange>(extraBufferCapacity = 16)
+    override val countChanges: SharedFlow<CommentCountChange> = changes
+
+    private fun fail() {
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+
+    override suspend fun threads(
+        target: CommentTarget,
+        cursor: String?,
+        limit: Int,
+        focus: String?,
+    ): CommentThreads {
+        threadCalls += Triple(target, cursor, focus)
+        fail()
+        if (focus != null) {
+            val thread =
+                threads.firstOrNull { t ->
+                    t.root.id == focus || t.replies.any { it.id == focus }
+                }
+                    ?: created[focus]?.let { CommentThread(it, emptyList()) }
+                    ?: throw DataError.NotFound()
+            return CommentThreads(
+                listOf(thread),
+                null,
+                listOf(thread.root) + thread.replies.filter { it.id == focus },
+            )
+        }
+        return nextPage[cursor]
+            ?: CommentThreads(if (cursor == null) threads else emptyList(), null, emptyList())
+    }
+
+    override suspend fun replies(
+        target: CommentTarget,
+        commentId: String,
+        cursor: String?,
+        limit: Int,
+    ): Page<Comment> {
+        replyCalls += commentId to cursor
+        fail()
+        return Page(moreReplies[commentId].orEmpty(), null)
+    }
+
+    override suspend fun post(
+        target: CommentTarget,
+        body: String,
+        parentId: String?,
+        key: String,
+    ): Comment {
+        posted += Posted(target, body, parentId, key)
+        // The same key again is the same comment, not a second one.
+        created[key]?.let {
+            return it
+        }
+        postError?.let {
+            postError = null
+            throw it
+        }
+        val comment =
+            commentOf("new-${created.size + 1}", body.trim(), me, parentId).also {
+                created[key] = it
+            }
+        changes.tryEmit(CommentCountChange(target, +1))
+        if (loseNextAnswer) {
+            loseNextAnswer = false
+            throw DataError.Offline(java.io.IOException("answer lost"))
+        }
+        return comment
+    }
+
+    override suspend fun edit(target: CommentTarget, commentId: String, body: String): Comment {
+        edits += commentId to body
+        editError?.let {
+            editError = null
+            throw it
+        }
+        val old =
+            (threads.map { it.root } + threads.flatMap { it.replies }).firstOrNull {
+                it.id == commentId
+            } ?: created.values.firstOrNull { it.id == commentId }
+        return (old ?: commentOf(commentId, author = me)).copy(
+            body = body.trim(),
+            author = me,
+            editedAt = Instant.parse("2026-09-21T10:00:00Z"),
+        )
+    }
+
+    override suspend fun delete(target: CommentTarget, commentId: String) {
+        deletes += commentId
+        deleteError?.let {
+            deleteError = null
+            throw it
+        }
+        changes.tryEmit(CommentCountChange(target, -1))
+    }
+}
+
+/** Roots with replies, a tombstone with an answer under it, own comments; the rest of `r1`. */
+fun sampleDiscussion(): FakeComments {
+    val me = PreviewData.rider
+    return FakeComments(
+        threads =
+            listOf(
+                CommentThread(
+                    commentOf("r1", body = "Красивая рама", replyCount = 3),
+                    listOf(
+                        commentOf("x1", body = "Согласен", parentId = "r1"),
+                        commentOf("x2", body = "Мой ответ", parentId = "r1", author = me),
+                    ),
+                ),
+                CommentThread(
+                    commentOf("r2", body = "Мой вопрос о раме", author = me),
+                    emptyList(),
+                ),
+                CommentThread(
+                    commentOf("t1", deleted = true, replyCount = 1),
+                    listOf(commentOf("y1", body = "Ответ под удалённым", parentId = "t1")),
+                ),
+            ),
+        moreReplies =
+            mapOf(
+                "r1" to
+                    listOf(
+                        commentOf("x1", body = "Согласен", parentId = "r1"),
+                        commentOf("x2", body = "Мой ответ", parentId = "r1", author = me),
+                        commentOf("x3", body = "Третий ответ", parentId = "r1"),
+                    )
+            ),
+    )
+}
+
 class FakeAccount(var result: () -> Account = { account }) : AccountRepository {
     /** How many times the account was asked for: a guest asks nothing. */
     var calls = 0
@@ -491,6 +683,8 @@ class FakeDependencies(
     override val people: FakePeople = FakePeople(),
     override val feed: FakeFeed = FakeFeed(),
     override val journal: FakeJournal = FakeJournal(),
+    override val comments: FakeComments = FakeComments(),
+    override val drafts: InMemoryCommentDrafts = InMemoryCommentDrafts(),
     override val sessions: FakeSessions = FakeSessions(),
     override val auth: FakeAuth = FakeAuth(),
     override val settings: FakeSettings = FakeSettings(),

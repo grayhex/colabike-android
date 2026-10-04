@@ -3,9 +3,11 @@ package ru.colabike.app.bikes
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.colabike.app.ui.UiText
@@ -13,6 +15,8 @@ import ru.colabike.app.ui.toUiText
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CommentCountChange
+import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.LikeState
 
@@ -32,13 +36,36 @@ sealed interface BikeDetailUiState {
     data class Failed(val message: UiText, val notFound: Boolean = false) : BikeDetailUiState
 }
 
-class BikeDetailViewModel(private val repository: BikesRepository, private val id: BikeId) :
-    ViewModel() {
+class BikeDetailViewModel(
+    private val repository: BikesRepository,
+    private val id: BikeId,
+    commentChanges: Flow<CommentCountChange> = emptyFlow(),
+) : ViewModel() {
     private val mutableState = MutableStateFlow<BikeDetailUiState>(BikeDetailUiState.Loading)
     val state: StateFlow<BikeDetailUiState> = mutableState.asStateFlow()
 
     init {
         load()
+        // A comment written or removed in the discussion changes the count here.
+        viewModelScope.launch {
+            commentChanges.collect { change ->
+                if (change.target.kind == CommentKind.Bike && change.target.id == id.value) {
+                    update { loaded ->
+                        val summary = loaded.bike.summary
+                        loaded.copy(
+                            bike =
+                                loaded.bike.copy(
+                                    summary =
+                                        summary.copy(
+                                            comments =
+                                                (summary.comments + change.delta).coerceAtLeast(0)
+                                        )
+                                )
+                        )
+                    }
+                }
+            }
+        }
         // A like given elsewhere (the list) shows here without loading the page again.
         viewModelScope.launch {
             repository.likeChanges.collect { change ->

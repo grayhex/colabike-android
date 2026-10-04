@@ -51,4 +51,5 @@ object ColaIcons {
     @DrawableRes val Bookmark = R.drawable.cola_ic_bookmark
     @DrawableRes val BookmarkFilled = R.drawable.cola_ic_bookmark_filled
     @DrawableRes val Journal = R.drawable.cola_ic_journal
+    @DrawableRes val Send = R.drawable.cola_ic_send
 }

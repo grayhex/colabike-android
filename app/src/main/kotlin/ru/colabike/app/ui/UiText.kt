@@ -42,6 +42,8 @@ fun DataError.toUiText(): UiText =
         is DataError.Rejected ->
             when {
                 code == "invalid_credentials" -> UiText.Res(R.string.login_wrong_credentials)
+                code == "email_verification_required" ->
+                    UiText.Res(R.string.error_email_verification)
                 userMessage.isNotBlank() -> UiText.Plain(userMessage)
                 else -> UiText.Res(R.string.error_unexpected)
             }

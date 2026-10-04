@@ -1,0 +1,86 @@
+{
+  "items": [
+    {
+      "comment": {
+        "id": "aaaaaaa1-0000-4000-8000-000000000001",
+        "parentId": null,
+        "author": {
+          "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+          "username": "test-rider",
+          "name": "Тестовый Райдер",
+          "avatarUrl": "/api/avatars/8d9e0f1a"
+        },
+        "body": "Отличный велосипед!",
+        "createdAt": "2026-09-20T10:00:00Z",
+        "editedAt": null,
+        "deleted": false,
+        "replyCount": 2
+      },
+      "replies": [
+        {
+          "id": "bbbbbbb1-0000-4000-8000-000000000001",
+          "parentId": "aaaaaaa1-0000-4000-8000-000000000001",
+          "author": {
+            "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+            "username": "second-rider",
+            "name": "Второй",
+            "avatarUrl": null
+          },
+          "body": "Согласен",
+          "createdAt": "2026-09-20T11:00:00Z",
+          "editedAt": null,
+          "deleted": false,
+          "replyCount": 0
+        },
+        {
+          "id": "bbbbbbb2-0000-4000-8000-000000000002",
+          "parentId": "aaaaaaa1-0000-4000-8000-000000000001",
+          "author": {
+            "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+            "username": "test-rider",
+            "name": "Тестовый Райдер",
+            "avatarUrl": "/api/avatars/8d9e0f1a"
+          },
+          "body": "Спасибо!",
+          "createdAt": "2026-09-20T11:30:00Z",
+          "editedAt": "2026-09-20T12:00:00Z",
+          "deleted": false,
+          "replyCount": 0
+        }
+      ]
+    }
+  ],
+  "nextCursor": null,
+  "focusPath": [
+    {
+      "id": "aaaaaaa1-0000-4000-8000-000000000001",
+      "parentId": null,
+      "author": {
+        "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": "/api/avatars/8d9e0f1a"
+      },
+      "body": "Отличный велосипед!",
+      "createdAt": "2026-09-20T10:00:00Z",
+      "editedAt": null,
+      "deleted": false,
+      "replyCount": 2
+    },
+    {
+      "id": "bbbbbbb2-0000-4000-8000-000000000002",
+      "parentId": "aaaaaaa1-0000-4000-8000-000000000001",
+      "author": {
+        "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": "/api/avatars/8d9e0f1a"
+      },
+      "body": "Спасибо!",
+      "createdAt": "2026-09-20T10:00:00Z",
+      "editedAt": "2026-09-20T12:00:00Z",
+      "deleted": false,
+      "replyCount": 0
+    }
+  ]
+}
