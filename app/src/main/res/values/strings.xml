@@ -398,6 +398,7 @@
     <string name="notifications_read_all">Прочитать все</string>
     <string name="notifications_read_all_in">Прочитать все уведомления: %1$s</string>
     <string name="notifications_dismiss">Скрыть</string>
+    <string name="notifications_read_all_stale">Список устарел и обновлён. Нажмите «Прочитать все» ещё раз.</string>
     <string name="notifications_all_read">Непрочитанных нет</string>
     <string name="notifications_empty_filtered_title">Ничего не найдено</string>
     <string name="notifications_empty_filtered">По этим условиям уведомлений нет.</string>

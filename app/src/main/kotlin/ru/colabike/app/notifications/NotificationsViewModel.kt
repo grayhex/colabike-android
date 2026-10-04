@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ru.colabike.app.R
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.Pager
 import ru.colabike.app.ui.UiText
@@ -121,7 +122,16 @@ class NotificationsViewModel(
                 onCount(result.unread)
                 pager.refresh()
             } catch (e: DataError) {
-                mutableUi.update { it.copy(message = e.toUiText()) }
+                if (e is DataError.Rejected && e.status == 400) {
+                    // The server no longer knows the mark (the notification it pointed at is gone,
+                    // or it is another account's): take a fresh one with the list, and say so.
+                    pager.refresh()
+                    mutableUi.update {
+                        it.copy(message = UiText.Res(R.string.notifications_read_all_stale))
+                    }
+                } else {
+                    mutableUi.update { it.copy(message = e.toUiText()) }
+                }
             } finally {
                 mutableUi.update { it.copy(readingAll = false) }
             }

@@ -13,6 +13,7 @@ import ru.colabike.app.notifications.NotificationRoute
 import ru.colabike.app.notifications.NotificationsViewModel
 import ru.colabike.app.notifications.badge
 import ru.colabike.app.notifications.route
+import ru.colabike.app.ui.UiText
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationCount
@@ -355,6 +356,26 @@ class NotificationsViewModelTest {
 
             assertThat(vm.ui.value.watermark).isEqualTo("first")
         }
+
+    @Test
+    fun `a mark the server no longer knows takes a fresh list and asks to press again`() = runTest {
+        val repository = mixed()
+        repository.watermark = "mark-old"
+        val vm = NotificationsViewModel(repository)
+        repository.watermark = "mark-new"
+        repository.nextError = DataError.Rejected(400, "invalid_request", "Отметка не распознана")
+
+        vm.readAll()
+
+        // The list was asked for again, so there is a new mark; the person is told, once.
+        assertThat(vm.ui.value.watermark).isEqualTo("mark-new")
+        assertThat(vm.ui.value.message).isEqualTo(UiText.Res(R.string.notifications_read_all_stale))
+        assertThat(vm.ui.value.readingAll).isFalse()
+        assertThat(repository.pageCalls).hasSize(2)
+
+        vm.readAll()
+        assertThat(repository.marks.last()).isEqualTo("all" to listOf("mark-new"))
+    }
 
     @Test
     fun `a failed read all says so and changes nothing`() = runTest {
