@@ -450,11 +450,8 @@
     <string name="listing_draft">Это ваш черновик: на рынке его нет, видите его только вы.</string>
     <string name="listing_description">Описание</string>
     <string name="listing_related">Связано с каталогом</string>
-    <string name="listing_component_model">Модель компонента</string>
     <string name="listing_component_model_hint">Страница в каталоге компонентов</string>
-    <string name="listing_bike_model">Модель велосипеда</string>
     <string name="listing_bike_model_hint">Страница модели на сайте</string>
-    <string name="listing_linked_bike">Велосипед продавца</string>
     <string name="listing_linked_bike_hint">Открыть страницу велосипеда</string>
     <string name="listing_seller">Продавец</string>
     <string name="listing_others">Другие объявления продавца</string>
