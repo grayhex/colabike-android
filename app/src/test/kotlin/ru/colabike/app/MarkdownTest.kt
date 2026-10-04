@@ -158,7 +158,10 @@ class MarkdownTest {
         val nested = "**".repeat(500) + "x" + "**".repeat(500)
         Markdown.parse(nested)
 
-        assertThat((System.nanoTime() - started) / 1_000_000).isLessThan(5_000)
+        // About a second on a quiet machine. A quadratic parser needs minutes for these inputs, so
+        // the bound is far above what a busy CI machine adds (it failed at 5 s while four test
+        // JVMs shared the CPU) and still far below what super-linear growth costs.
+        assertThat((System.nanoTime() - started) / 1_000_000).isLessThan(30_000)
         assertThat(Markdown.parse("я".repeat(Markdown.MAX_LENGTH + 10_000)).size).isEqualTo(1)
         val text =
             Markdown.plain(
