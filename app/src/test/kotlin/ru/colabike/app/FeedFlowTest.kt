@@ -1,5 +1,6 @@
 package ru.colabike.app
 
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
@@ -61,7 +62,9 @@ class FeedFlowTest {
         compose.waitForIdle()
     }
 
-    private fun section(name: String) = compose.onNode(hasText(name) and hasClickAction())
+    private fun section(name: String) = compose.section(name)
+
+    private fun filter(name: String) = compose.onNode(hasText(name) and hasClickAction() and !isTab)
 
     private fun openFeed() {
         section("Лента").performClick()
@@ -71,7 +74,7 @@ class FeedFlowTest {
     // --- the feed ---------------------------------------------------------------------------
 
     @Test
-    fun `the feed shows every kind of publication, and a ride or a listing only tells`() {
+    fun `the feed shows every kind of publication, a ride opens and a listing only tells`() {
         start(dependencies())
 
         openFeed()
@@ -83,7 +86,7 @@ class FeedFlowTest {
             .performScrollToNode(hasContentDescription("Вечерняя по набережной", substring = true))
         compose
             .onNodeWithContentDescription("Вечерняя по набережной", substring = true)
-            .assertHasNoClickAction()
+            .assertHasClickAction()
         compose
             .onNodeWithTag("feed:grid")
             .performScrollToNode(hasContentDescription("Втулка Shimano Deore", substring = true))
@@ -98,15 +101,15 @@ class FeedFlowTest {
         start(dependencies)
         openFeed()
 
-        section("Записи").performClick()
+        filter("Записи").performClick()
         compose.waitForIdle()
         assertThat(dependencies.feed.calls.last()).isEqualTo(FeedFilter.Journal to null)
 
-        section("Покатушки").performClick()
+        filter("Покатушки").performClick()
         compose.waitForIdle()
         assertThat(dependencies.feed.calls.last()).isEqualTo(FeedFilter.Rides to null)
 
-        section("Всё").performClick()
+        filter("Всё").performClick()
         compose.waitForIdle()
         assertThat(dependencies.feed.calls.last()).isEqualTo(FeedFilter.All to null)
     }
@@ -146,7 +149,7 @@ class FeedFlowTest {
         start(dependencies(feed = feed))
         openFeed()
 
-        section("Покатушки").performClick()
+        filter("Покатушки").performClick()
         compose.waitForIdle()
 
         compose.onNodeWithText("Покатушек пока нет").assertIsDisplayed()

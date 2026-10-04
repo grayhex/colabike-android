@@ -83,6 +83,7 @@ fun BikeDetailRoute(
     onOpenAuthor: (ref: String) -> Unit = {},
     onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
@@ -106,6 +107,7 @@ fun BikeDetailRoute(
         onOpenAuthor = onOpenAuthor,
         onOpenJournal = onOpenJournal,
         onOpenComments = onOpenComments,
+        onOpenRides = onOpenRides,
     )
 }
 
@@ -127,6 +129,7 @@ fun BikeDetailScreen(
     onOpenAuthor: (ref: String) -> Unit = {},
     onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
     Scaffold(
@@ -185,6 +188,7 @@ fun BikeDetailScreen(
                         onOpenAuthor,
                         onOpenJournal,
                         onOpenComments,
+                        onOpenRides,
                     )
             }
         }
@@ -204,6 +208,7 @@ private fun BikeContent(
     onOpenAuthor: (ref: String) -> Unit,
     onOpenJournal: (id: BikeId, name: String) -> Unit,
     onOpenComments: (id: BikeId, name: String) -> Unit,
+    onOpenRides: (id: BikeId, name: String) -> Unit,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -339,6 +344,15 @@ private fun BikeContent(
                             ),
                         icon = ColaIcons.Comment,
                         onClick = { onOpenComments(summary.id, summary.name) },
+                    )
+                }
+                // Only a public bike has rides to show (the API answers 404 for the rest).
+                if (summary.isPublic) {
+                    ColaListItem(
+                        title = stringResource(R.string.bike_rides),
+                        supporting = stringResource(R.string.bike_rides_hint),
+                        icon = ColaIcons.Route,
+                        onClick = { onOpenRides(summary.id, summary.name) },
                     )
                 }
                 ColaListItem(

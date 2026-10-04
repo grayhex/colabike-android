@@ -48,16 +48,26 @@ import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
 import ru.colabike.core.model.LikeChange
 import ru.colabike.core.model.LikeState
+import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.PersonSummary
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
+import ru.colabike.core.model.Range
 import ru.colabike.core.model.Relationship
+import ru.colabike.core.model.RideDetail
+import ru.colabike.core.model.RideId
+import ru.colabike.core.model.RidePassport
+import ru.colabike.core.model.RideRole
+import ru.colabike.core.model.RideStatus
+import ru.colabike.core.model.RideSummary
+import ru.colabike.core.model.RidesRepository
 import ru.colabike.core.model.SavedChange
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
+import ru.colabike.core.model.UpcomingRide
 import ru.colabike.core.model.UserId
 
 val account =
@@ -594,6 +604,138 @@ fun sampleDiscussion(): FakeComments {
     )
 }
 
+/** A ride the way a list shows it; `n` makes the id and the title. */
+fun rideSummary(
+    n: Int,
+    status: RideStatus = RideStatus.Completed,
+    time: Instant? = Instant.parse("2026-09-20T16:00:00Z"),
+) =
+    PreviewData.ride.copy(
+        id = RideId("ride-$n"),
+        title = "Покатушка $n",
+        status = status,
+        time = time,
+    )
+
+fun rides(from: Int, count: Int): List<RideSummary> =
+    (from until from + count).map { rideSummary(it) }
+
+fun plan(n: Int, role: RideRole = RideRole.Accepted, changed: Boolean = false) =
+    UpcomingRide(
+        ride =
+            PreviewData.plannedRide.copy(
+                id = RideId("plan-$n"),
+                title = "План $n",
+                time = Instant.parse("2026-10-11T07:00:00Z"),
+            ),
+        role = role,
+        occurrenceCancelled = false,
+        changedAfterAnswer = changed,
+        meetingPoint = null,
+        meetingHidden = false,
+    )
+
+fun rideDetail(n: Int, planned: Boolean = false) =
+    RideDetail(
+        summary =
+            if (planned) PreviewData.plannedRide.copy(id = RideId("plan-$n"), title = "План $n")
+            else rideSummary(n),
+        description = "Спокойно, без гонки.",
+        features = listOf("Кофе-пауза"),
+        meetingPoint = if (planned) null else null,
+        meetingHidden = planned,
+        expectedEndAt = if (planned) Instant.parse("2026-10-11T11:00:00Z") else null,
+        recruitmentClosed = false,
+        passport =
+            if (planned)
+                RidePassport(
+                    areaLabel = "Измайловский парк",
+                    pace = "calm",
+                    distanceKm = Range(25.0, 40.0),
+                    durationMinutes = Range(120.0, 180.0),
+                    groupSize = Range(3.0, 12.0),
+                    beginnerFriendly = true,
+                )
+            else null,
+        extraMetrics = if (planned) emptyMap() else mapOf("avgHeartRate" to 142.0),
+        hasPublicRoute = !planned,
+    )
+
+/** Rides in memory: public lists by cursor, the viewer's own, and the details by id. */
+class FakeRides(
+    var upcomingPages: Map<String?, Page<RideSummary>> =
+        mapOf(null to Page(listOf(PreviewData.plannedRide), null)),
+    var completedPages: Map<String?, Page<RideSummary>> = mapOf(null to Page(rides(0, 3), null)),
+    var bikePages: Map<String?, Page<RideSummary>> = mapOf(null to Page(rides(10, 2), null)),
+    var minePages: Map<String?, Page<OwnRide>> = mapOf(null to Page(emptyList(), null)),
+    var myPlans: List<UpcomingRide> = emptyList(),
+    var details: Map<String, RideDetail> =
+        (0..11).associate { "ride-$it" to rideDetail(it) } +
+            (0..9).associate { "plan-$it" to rideDetail(it, planned = true) } +
+            ("r2" to rideDetail(2, planned = true).copy(summary = PreviewData.plannedRide)) +
+            ("r1" to rideDetail(1).copy(summary = PreviewData.ride)),
+) : RidesRepository {
+    val upcomingCalls = mutableListOf<Pair<String?, String?>>()
+    val completedCalls = mutableListOf<Pair<String?, String?>>()
+    val bikeCalls = mutableListOf<Triple<BikeId, String?, String?>>()
+    val mineCalls = mutableListOf<String?>()
+    var myUpcomingCalls = 0
+    var rideCalls = 0
+    var nextError: DataError? = null
+    var answer: (suspend (String?, String?) -> Page<RideSummary>)? = null
+
+    private fun fail() {
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+
+    override suspend fun completed(query: String?, cursor: String?, limit: Int): Page<RideSummary> {
+        completedCalls += query to cursor
+        fail()
+        answer?.let {
+            return it(query, cursor)
+        }
+        return completedPages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun upcoming(query: String?, cursor: String?, limit: Int): Page<RideSummary> {
+        upcomingCalls += query to cursor
+        fail()
+        return upcomingPages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun ofBike(
+        bike: BikeId,
+        query: String?,
+        cursor: String?,
+        limit: Int,
+    ): Page<RideSummary> {
+        bikeCalls += Triple(bike, query, cursor)
+        fail()
+        return bikePages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun ride(id: RideId): RideDetail {
+        rideCalls++
+        fail()
+        return details[id.value] ?: throw DataError.NotFound()
+    }
+
+    override suspend fun mine(cursor: String?, limit: Int): Page<OwnRide> {
+        mineCalls += cursor
+        fail()
+        return minePages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun myUpcoming(): List<UpcomingRide> {
+        myUpcomingCalls++
+        fail()
+        return myPlans
+    }
+}
+
 class FakeAccount(var result: () -> Account = { account }) : AccountRepository {
     /** How many times the account was asked for: a guest asks nothing. */
     var calls = 0
@@ -684,6 +826,7 @@ class FakeDependencies(
     override val feed: FakeFeed = FakeFeed(),
     override val journal: FakeJournal = FakeJournal(),
     override val comments: FakeComments = FakeComments(),
+    override val rides: FakeRides = FakeRides(),
     override val drafts: InMemoryCommentDrafts = InMemoryCommentDrafts(),
     override val sessions: FakeSessions = FakeSessions(),
     override val auth: FakeAuth = FakeAuth(),

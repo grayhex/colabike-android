@@ -41,6 +41,7 @@ import ru.colabike.core.designsystem.component.StatTile
 import ru.colabike.core.designsystem.component.UserRow
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.JournalStatus
+import ru.colabike.core.model.RideStatus
 
 /** Shared components in both themes and at 200 % text (DESIGN.md, "Definition of done"). */
 @RunWith(RobolectricTestRunner::class)
@@ -83,6 +84,31 @@ class ComponentScreenshotTest {
                 UserRow(PreviewData.rider, onClick = {})
             }
         }
+
+    private fun rideVariants(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                RideCard(
+                    PreviewData.plannedRide,
+                    onClick = {},
+                    badges = listOf("Организатор"),
+                    note = "Изменено после вашего ответа",
+                )
+                RideCard(PreviewData.ride, badges = listOf("Частная"))
+                RideCard(
+                    PreviewData.ride.copy(status = RideStatus.Cancelled),
+                    badges = listOf("Частная"),
+                )
+            }
+        }
+
+    @Test fun rideVariantsLight() = rideVariants(dark = false, name = "ride_variants_light")
+
+    @Test fun rideVariantsDark() = rideVariants(dark = true, name = "ride_variants_dark")
+
+    @Test
+    fun rideVariantsLargeText() =
+        rideVariants(dark = false, fontScale = 2f, name = "ride_variants_font_200")
 
     private fun feedCards(dark: Boolean, fontScale: Float = 1f, name: String) =
         compose.snapshot(name, dark, fontScale) {

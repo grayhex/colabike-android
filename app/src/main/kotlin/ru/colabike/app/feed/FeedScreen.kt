@@ -69,11 +69,13 @@ import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.RideId
 
 /** Where the feed leads. Callbacks, so the screen never touches navigation itself. */
 class FeedActions(
     val onOpenBike: (BikeId) -> Unit,
     val onOpenJournal: (JournalId) -> Unit,
+    val onOpenRide: (RideId) -> Unit,
     val onFindPeople: () -> Unit,
     val onBrowseBikes: () -> Unit,
 )
@@ -255,8 +257,13 @@ private fun FeedGrid(
                         onClick = { actions.onOpenJournal(item.entry.id) },
                         modifier = Modifier.testTag("journal:${item.entry.id.value}"),
                     )
-                // Rides and listings have no page of their own yet: they are told, not opened.
-                is FeedItem.Ride -> RideCard(item.ride)
+                is FeedItem.Ride ->
+                    RideCard(
+                        item.ride,
+                        onClick = { actions.onOpenRide(item.ride.id) },
+                        modifier = Modifier.testTag("ride:${item.ride.id.value}"),
+                    )
+                // A listing has no page of its own yet: it is told, not opened.
                 is FeedItem.Listing -> ListingCard(item.listing)
             }
         }

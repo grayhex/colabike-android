@@ -49,6 +49,13 @@ import ru.colabike.app.people.PersonScreen
 import ru.colabike.app.people.PersonUiState
 import ru.colabike.app.profile.ProfileScreen
 import ru.colabike.app.profile.ProfileUiState
+import ru.colabike.app.rides.RideActions
+import ru.colabike.app.rides.RideRow
+import ru.colabike.app.rides.RideScreen
+import ru.colabike.app.rides.RideSegment
+import ru.colabike.app.rides.RideUiState
+import ru.colabike.app.rides.RidesScreen
+import ru.colabike.app.rides.RidesUiState
 import ru.colabike.app.search.Results
 import ru.colabike.app.search.SearchScreen
 import ru.colabike.app.search.SearchTab
@@ -65,7 +72,10 @@ import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.JournalStatus
 import ru.colabike.core.model.JournalSummary
+import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Relationship
+import ru.colabike.core.model.RideRole
+import ru.colabike.core.model.RideStatus
 
 /** The states a screen has besides its content (DESIGN.md): loading, empty, error, an odd bike. */
 enum class ScreenState(val file: String) {
@@ -108,6 +118,12 @@ enum class ScreenState(val file: String) {
     CommentsEmpty("comments_empty"),
     CommentsBranch("comments_branch"),
     CommentsMoreError("comments_more_error"),
+    RidesEmpty("rides_empty"),
+    RidesError("rides_error"),
+    RidesMoreError("rides_more_error"),
+    RidesMine("rides_mine"),
+    RidesMyPlans("rides_my_plans"),
+    RideNotFoundGuest("ride_not_found_guest"),
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -450,6 +466,79 @@ private fun Content(state: ScreenState) {
                         )
                 )
             )
+        ScreenState.RidesEmpty -> RidesWith(RidesUiState(page = PagedState(loading = false)))
+        ScreenState.RidesError ->
+            RidesWith(
+                RidesUiState(
+                    page = PagedState(loading = false, error = UiText.Res(R.string.error_offline))
+                )
+            )
+        ScreenState.RidesMoreError ->
+            RidesWith(
+                RidesUiState(
+                    segment = RideSegment.Completed,
+                    page =
+                        PagedState(
+                            items = rides(1, 3).map { RideRow.Public(it) },
+                            nextCursor = "c1",
+                            loading = false,
+                            moreError = UiText.Res(R.string.error_offline),
+                        ),
+                )
+            )
+        ScreenState.RidesMine ->
+            RidesWith(
+                RidesUiState(
+                    segment = RideSegment.Mine,
+                    page =
+                        PagedState(
+                            items =
+                                listOf(
+                                    RideRow.Own(OwnRide(rideSummary(1), true, 200, 540)),
+                                    RideRow.Own(
+                                        OwnRide(
+                                            rideSummary(2).copy(title = "Тренировка"),
+                                            false,
+                                            null,
+                                            300,
+                                        )
+                                    ),
+                                    RideRow.Own(
+                                        OwnRide(
+                                            rideSummary(3, RideStatus.Cancelled),
+                                            true,
+                                            null,
+                                            0,
+                                        )
+                                    ),
+                                ),
+                            loading = false,
+                        ),
+                )
+            )
+        ScreenState.RidesMyPlans ->
+            RidesWith(
+                RidesUiState(
+                    segment = RideSegment.MyPlans,
+                    page =
+                        PagedState(
+                            items =
+                                listOf(
+                                    RideRow.Plan(plan(1, RideRole.Organizer)),
+                                    RideRow.Plan(plan(2, RideRole.Accepted, changed = true)),
+                                    RideRow.Plan(plan(3, RideRole.Maybe)),
+                                ),
+                            loading = false,
+                        ),
+                )
+            )
+        ScreenState.RideNotFoundGuest ->
+            RideScreen(
+                state = RideUiState.Failed(UiText.Res(R.string.error_not_found), notFound = true),
+                actions = RideActions({}, {}, {}, { _, _ -> }),
+                onRetry = {},
+                onSignIn = {},
+            )
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),
@@ -487,10 +576,22 @@ private fun CommentsWith(state: CommentsUiState) =
     )
 
 @Composable
+private fun RidesWith(state: RidesUiState) =
+    RidesScreen(
+        state = state,
+        personal = true,
+        onSegment = {},
+        onRefresh = {},
+        onRetry = {},
+        onLoadMore = {},
+        onOpen = {},
+    )
+
+@Composable
 private fun FeedWith(state: FeedUiState) =
     FeedScreen(
         state = state,
-        actions = FeedActions({}, {}, {}, {}),
+        actions = FeedActions({}, {}, {}, {}, {}),
         onFilter = {},
         onRefresh = {},
         onRetry = {},

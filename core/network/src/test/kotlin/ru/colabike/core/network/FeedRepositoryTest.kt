@@ -42,7 +42,7 @@ class FeedRepositoryTest {
         assertThat(rideSummary.status).isEqualTo(RideStatus.Completed)
         assertThat(rideSummary.time)
             .isEqualTo(Instant.parse("2026-09-20T16:00:00Z").minusSeconds(0))
-        assertThat(rideSummary.distanceMeters).isEqualTo(32_450)
+        assertThat(rideSummary.metrics.distanceM).isEqualTo(32_450)
         val brief = (listing as FeedItem.Listing).listing
         assertThat(brief.price).isEqualTo(2500.0)
         assertThat(brief.cover?.url).isEqualTo(site.config.siteUrl + "/api/market-photos/f4a5b6c7")

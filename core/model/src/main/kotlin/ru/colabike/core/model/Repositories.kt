@@ -86,3 +86,41 @@ interface JournalRepository {
     /** Emitted after every change that went through. */
     val savedChanges: SharedFlow<SavedChange>
 }
+
+/**
+ * Rides and plans. The three public lists are kept apart on purpose (each is paged by its own
+ * order); the personal upcoming list has no cursor. Implementations throw [DataError].
+ */
+interface RidesRepository {
+    /**
+     * Completed public rides, newest first; [query] looks in titles, descriptions, authors, bikes.
+     */
+    suspend fun completed(
+        query: String? = null,
+        cursor: String? = null,
+        limit: Int = 24,
+    ): Page<RideSummary>
+
+    /** Public plans still ahead, nearest first; a weekly series is one card on its next date. */
+    suspend fun upcoming(
+        query: String? = null,
+        cursor: String? = null,
+        limit: Int = 24,
+    ): Page<RideSummary>
+
+    /** Completed public rides of one bike. */
+    suspend fun ofBike(
+        bike: BikeId,
+        query: String? = null,
+        cursor: String? = null,
+        limit: Int = 24,
+    ): Page<RideSummary>
+
+    suspend fun ride(id: RideId): RideDetail
+
+    /** The signed-in person's rides in any state, newest first. */
+    suspend fun mine(cursor: String? = null, limit: Int = 24): Page<OwnRide>
+
+    /** The signed-in person's plans and answers: at most 20, nearest first, no further pages. */
+    suspend fun myUpcoming(): List<UpcomingRide>
+}

@@ -107,17 +107,17 @@ class NavigatorTest {
 
     @Test
     fun `a section that is not part of the app cannot be selected`() {
-        navigator.select(Destination.Rides)
+        navigator.select(Destination.Messages)
 
         assertThat(state.topLevelRoute).isEqualTo(bikes)
     }
 
     @Test
     fun `only sections with a screen are shown, and the app starts on one of them`() {
-        // Enabling Rides or Messages is part of the slice that builds it: update this list
+        // Enabling Messages is part of the slice that builds it: update this list
         // together with the flag in TopLevel.
         assertThat(TopLevel.shown)
-            .containsExactly(TopLevel.Feed, TopLevel.Bikes, TopLevel.Profile)
+            .containsExactly(TopLevel.Feed, TopLevel.Bikes, TopLevel.Rides, TopLevel.Profile)
             .inOrder()
         assertThat(TopLevel.shown).contains(TopLevel.start)
     }

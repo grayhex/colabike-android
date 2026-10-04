@@ -2,14 +2,13 @@ package ru.colabike.core.designsystem.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
@@ -21,36 +20,70 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextOverflow
 import ru.colabike.core.designsystem.R
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.RideRecurrence
 import ru.colabike.core.model.RideStatus
 import ru.colabike.core.model.RideSummary
 
 /**
- * A ride in a list: title and status, then when, how far, how long and on which bike. Without
- * [onClick] the card only tells (a ride the app has no page for yet), and says no "open".
+ * A ride or a plan in a list: title and what it is, then when, how far, how long, on which bike and
+ * (for a plan) how many answered. [badges] are extra short facts the list adds (a role, a private
+ * ride), [note] a line under the facts (a plan that changed). Without [onClick] the card only tells
+ * (a ride that has no page, such as one's private ride) and says no "open".
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RideCard(ride: RideSummary, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+fun RideCard(
+    ride: RideSummary,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    badges: List<String> = emptyList(),
+    note: String? = null,
+) {
     val locale = LocalConfiguration.current.locales[0]
     val status =
         when (ride.status) {
             RideStatus.Planned -> stringResource(R.string.cola_ride_planned)
             RideStatus.Completed -> stringResource(R.string.cola_ride_completed)
+            RideStatus.Cancelled -> stringResource(R.string.cola_ride_cancelled)
             RideStatus.Unknown -> null
         }
-    val day = ride.time?.let { date(it, locale) }
+    val weekly =
+        if (ride.recurrence == RideRecurrence.Weekly) stringResource(R.string.cola_ride_weekly)
+        else null
+    // A plan is about the hour it begins; a ride that happened, about its day.
+    val day =
+        ride.time?.let {
+            if (ride.status == RideStatus.Planned) dateTime(it, locale) else date(it, locale)
+        } ?: stringResource(R.string.cola_ride_no_date)
     val distance =
-        ride.distanceMeters?.let {
+        ride.metrics.distanceM?.let {
             stringResource(R.string.cola_distance_km, kilometers(it, locale))
         }
     val duration =
-        ride.movingTimeSeconds?.let {
+        ride.metrics.movingTimeS?.let {
             val hours = it / 3600
             val minutes = it % 3600 / 60
             if (hours > 0) stringResource(R.string.cola_duration_hours_minutes, hours, minutes)
             else stringResource(R.string.cola_duration_minutes, minutes)
         }
+    val participants =
+        ride.participants?.let {
+            stringResource(R.string.cola_ride_participants, it.going, it.maybe)
+        }
     val description =
-        listOfNotNull(ride.title, status, day, distance, duration, ride.bikeName).joinToString(", ")
+        listOfNotNull(
+                ride.title,
+                status,
+                weekly,
+                *badges.toTypedArray(),
+                day,
+                distance,
+                duration,
+                ride.bike?.name,
+                participants,
+                note,
+            )
+            .joinToString(", ")
     val openLabel = stringResource(R.string.cola_open)
     ColaCard(
         onClick = onClick,
@@ -71,27 +104,36 @@ fun RideCard(ride: RideSummary, modifier: Modifier = Modifier, onClick: (() -> U
             Modifier.padding(Spacing.l),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
-                Text(
-                    ride.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (status != null) PillBadge(status)
+                status?.let { PillBadge(it) }
+                weekly?.let { PillBadge(it, icon = ColaIcons.Calendar) }
+                badges.forEach { PillBadge(it) }
             }
+            Text(
+                ride.title,
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.m),
                 verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
-                day?.let { Fact(ColaIcons.Calendar, it) }
+                Fact(ColaIcons.Calendar, day)
                 distance?.let { Fact(ColaIcons.Route, it) }
                 duration?.let { Fact(ColaIcons.Timer, it) }
-                ride.bikeName?.let { Fact(ColaIcons.Bike, it) }
+                ride.bike?.let { Fact(ColaIcons.Bike, it.name) }
+                participants?.let { Fact(ColaIcons.Person, it) }
+            }
+            note?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

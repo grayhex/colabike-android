@@ -7,8 +7,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -66,6 +64,11 @@ enum class Screen(val file: String) {
     /** The discussion under a bike: a member with the box to write in, and a guest. */
     Comments("comments"),
     CommentsGuest("comments_guest"),
+
+    /** The Rides section as it opens (plans ahead), a plan's page, and a completed ride's page. */
+    Rides("rides"),
+    RidePlan("ride_plan"),
+    RideCompleted("ride_completed"),
 }
 
 enum class Look(val dark: Boolean, val fontScale: Float, val file: String) {
@@ -175,17 +178,17 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithText("Shimano Deore 10-speed").performScrollTo()
         }
         Screen.Profile,
-        Screen.ProfileGuest -> onNodeWithText("Профиль").performClick()
+        Screen.ProfileGuest -> section("Профиль").performClick()
         Screen.ProfileMore -> {
-            onNodeWithText("Профиль").performClick()
+            section("Профиль").performClick()
             onNodeWithText("О приложении").performScrollTo()
         }
         Screen.Devices -> {
-            onNodeWithText("Профиль").performClick()
+            section("Профиль").performClick()
             onNodeWithText("Устройства и входы").performScrollTo().performClick()
         }
         Screen.About -> {
-            onNodeWithText("Профиль").performClick()
+            section("Профиль").performClick()
             onNodeWithText("О приложении").performScrollTo().performClick()
         }
         Screen.Person -> openAuthor()
@@ -195,11 +198,22 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         }
         Screen.SearchStart -> onNodeWithContentDescription("Поиск").performClick()
         Screen.Feed,
-        Screen.FeedGuest -> onNode(hasText("Лента") and hasClickAction()).performClick()
+        Screen.FeedGuest -> section("Лента").performClick()
         Screen.Comments,
         Screen.CommentsGuest -> {
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
             onNodeWithText("Комментарии").performScrollTo().performClick()
+        }
+        Screen.Rides -> section("Покатушки").performClick()
+        Screen.RidePlan -> {
+            section("Покатушки").performClick()
+            onNodeWithContentDescription("Воскресный выезд за город", substring = true)
+                .performClick()
+        }
+        Screen.RideCompleted -> {
+            section("Покатушки").performClick()
+            onNodeWithText("Состоявшиеся").performClick()
+            onNodeWithContentDescription("Покатушка 0", substring = true).performClick()
         }
         Screen.JournalList -> openJournal()
         Screen.Journal -> {

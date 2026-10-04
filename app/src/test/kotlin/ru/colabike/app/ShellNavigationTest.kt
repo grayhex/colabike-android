@@ -10,7 +10,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -49,7 +48,7 @@ class ShellNavigationTest {
         compose.waitForIdle()
     }
 
-    private fun section(name: String) = compose.onNode(hasText(name) and hasClickAction())
+    private fun section(name: String) = compose.section(name)
 
     private fun bike(number: Int) =
         compose.onNodeWithContentDescription("Велосипед $number", substring = true)
@@ -134,8 +133,6 @@ class ShellNavigationTest {
             )
             .assertIsDisplayed()
     }
-
-    private val isTab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
 }
 
 /**
