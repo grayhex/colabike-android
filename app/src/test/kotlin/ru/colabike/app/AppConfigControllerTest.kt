@@ -223,4 +223,89 @@ class AppConfigControllerTest {
 
         assertThat(repository.refreshes).isEqualTo(0)
     }
+
+    @Test
+    fun `a request on its way is shown, and gone once it is answered`() = runTest {
+        val gate = CompletableDeferred<AppConfigRefresh>()
+        val repository = Repository()
+        repository.answers += { gate.await() }
+        val controller = controller(repository)
+
+        controller.start()
+        runCurrent()
+        assertThat(controller.state.value.refreshing).isTrue()
+
+        gate.complete(AppConfigRefresh.NotModified(now))
+        settle()
+
+        assertThat(controller.state.value.refreshing).isFalse()
+        assertThat(controller.state.value.refreshFailed).isFalse()
+    }
+
+    @Test
+    fun `a failed request is told apart from none, and the next one clears it`() = runTest {
+        val repository = Repository()
+        repository.answers += { AppConfigRefresh.Failed(DataError.Offline(IOException("x"))) }
+        repository.answers += { AppConfigRefresh.NotModified(now) }
+        val controller = controller(repository)
+        controller.start()
+        settle()
+
+        assertThat(controller.state.value.refreshing).isFalse()
+        assertThat(controller.state.value.refreshFailed).isTrue()
+
+        controller.refreshNow()
+        settle()
+
+        assertThat(controller.state.value.refreshFailed).isFalse()
+    }
+
+    @Test
+    fun `checking again asks at once, however recent the last attempt was`() = runTest {
+        val repository = Repository()
+        repository.answers += { AppConfigRefresh.NotModified(now) }
+        repository.answers += { AppConfigRefresh.Updated(StoredAppConfig(config(2), now)) }
+        val controller = controller(repository)
+        controller.start()
+        settle()
+
+        controller.refreshIfStale()
+        settle()
+        assertThat(repository.refreshes).isEqualTo(1)
+
+        controller.refreshNow()
+        settle()
+
+        assertThat(repository.refreshes).isEqualTo(2)
+        assertThat(controller.state.value.config.revision).isEqualTo(2)
+    }
+
+    @Test
+    fun `checking again while a request is on its way is the same request`() = runTest {
+        val gate = CompletableDeferred<AppConfigRefresh>()
+        val repository = Repository()
+        repository.answers += { gate.await() }
+        val controller = controller(repository)
+        controller.start()
+        runCurrent()
+
+        controller.refreshNow()
+        controller.refreshNow()
+        runCurrent()
+
+        assertThat(repository.refreshes).isEqualTo(1)
+        gate.complete(AppConfigRefresh.NotModified(now))
+        settle()
+    }
+
+    @Test
+    fun `checking again before the kept config is read asks nothing`() = runTest {
+        val repository = Repository()
+        val controller = controller(repository)
+
+        controller.refreshNow()
+        settle()
+
+        assertThat(repository.refreshes).isEqualTo(0)
+    }
 }

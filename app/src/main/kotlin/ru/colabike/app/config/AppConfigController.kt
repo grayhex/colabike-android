@@ -28,6 +28,10 @@ data class AppConfigState(
     val loaded: Boolean = false,
     /** When the server last confirmed [config]; null for the built-in one. */
     val validatedAt: Instant? = null,
+    /** A request is on its way. */
+    val refreshing: Boolean = false,
+    /** The last request came to nothing (no network, a fault): what is shown may be out of date. */
+    val refreshFailed: Boolean = false,
 ) {
     val features: FeatureAvailability
         get() = config.features
@@ -42,6 +46,12 @@ interface AppConfigSource {
      * throws; what comes of it arrives through [state].
      */
     fun refreshIfStale()
+
+    /**
+     * Asks the server now, whatever the last attempt was (the person pressed "check again" on the
+     * update screen). Same promises as above.
+     */
+    fun refreshNow()
 }
 
 /**
@@ -94,11 +104,17 @@ class AppConfigController(
         refresh()
     }
 
+    override fun refreshNow() {
+        if (!mutable.value.loaded) return
+        refresh()
+    }
+
     /** One request at a time; a second call while one is on its way is the same request. */
     @Synchronized
     private fun refresh() {
         if (refreshing?.isActive == true) return
         lastAttempt = Instant.now(clock)
+        mutable.value = mutable.value.copy(refreshing = true, refreshFailed = false)
         refreshing = scope.launch { apply(repository.refresh()) }
     }
 
@@ -116,10 +132,12 @@ class AppConfigController(
                         validatedAt = result.stored.validatedAt,
                     )
             is AppConfigRefresh.NotModified ->
-                mutable.value = mutable.value.copy(validatedAt = result.validatedAt)
+                mutable.value =
+                    mutable.value.copy(validatedAt = result.validatedAt, refreshing = false)
             // The old config, or the built-in one, stays in use; the next start or resume asks
             // again.
-            is AppConfigRefresh.Failed -> Unit
+            is AppConfigRefresh.Failed ->
+                mutable.value = mutable.value.copy(refreshing = false, refreshFailed = true)
         }
     }
 }

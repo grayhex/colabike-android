@@ -94,6 +94,9 @@ interface AppDependencies {
     /** The provider's screens: the SDK's in the app, drawings in tests. */
     val chatScreens: ChatScreens
 
+    /** The `versionCode` of this build, against which the server's version policy is read. */
+    val versionCode: Int
+
     /**
      * The server-managed config: the flags of the app's functions, the service links, the policy.
      */
@@ -174,6 +177,7 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     // The config and its pictures live outside the image cache and outside the session: they are
     // the same for everybody, and a sign-out takes nothing of them (nor do they hold anything of a
     // person). The pictures are fetched without the session.
+    override val versionCode: Int = BuildConfig.VERSION_CODE
     override val configAssets: ConfigAssets =
         FileConfigAssets(File(context.filesDir, "app-config/assets"), baseClient, config.siteUrl)
     private val appConfigController =

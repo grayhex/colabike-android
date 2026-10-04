@@ -38,6 +38,32 @@ class SettingsTest {
     }
 
     @Test
+    fun `nothing of the server's announcements is seen on a fresh install`() {
+        val settings = PreferencesSettings(preferences)
+
+        assertThat(settings.onboardingSeen.value).isNull()
+        assertThat(settings.noticeClosed.value).isNull()
+        assertThat(settings.updateOfferClosed.value).isNull()
+    }
+
+    @Test
+    fun `the revisions seen and closed survive a restart, each on its own`() {
+        PreferencesSettings(preferences).apply {
+            setOnboardingSeen(7)
+            setNoticeClosed(8)
+        }
+
+        val restarted = PreferencesSettings(preferences)
+
+        assertThat(restarted.onboardingSeen.value).isEqualTo(7)
+        assertThat(restarted.noticeClosed.value).isEqualTo(8)
+        assertThat(restarted.updateOfferClosed.value).isNull()
+
+        restarted.setUpdateOfferClosed(42)
+        assertThat(PreferencesSettings(preferences).updateOfferClosed.value).isEqualTo(42)
+    }
+
+    @Test
     fun `a value from a newer version is the system's choice, not a crash`() {
         preferences.edit().putString("theme_mode", "Sepia").apply()
 

@@ -11,7 +11,7 @@ import ru.colabike.core.auth.CustomTabs
  * (registration, password recovery, e-mail and account management, the legal texts). They open in
  * the system browser; the app never hands them a token (cola docs/modules/accounts.md).
  */
-class SiteLinks(siteUrl: String) {
+class SiteLinks(val siteUrl: String) {
     private val base = siteUrl.trimEnd('/')
 
     val register = "$base/register"
