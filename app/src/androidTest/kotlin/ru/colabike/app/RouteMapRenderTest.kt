@@ -1,5 +1,6 @@
 package ru.colabike.app
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,7 +26,7 @@ import ru.colabike.core.model.RideRoute
  */
 @RunWith(AndroidJUnit4::class)
 class RouteMapRenderTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     // Two lines with a privacy cut between them, in Moscow.
     private val route =
