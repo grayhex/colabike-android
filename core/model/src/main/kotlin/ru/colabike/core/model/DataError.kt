@@ -16,9 +16,16 @@ sealed class DataError(message: String, cause: Throwable? = null) : Exception(me
     /** Too many requests; [retryAfterSeconds] comes from `Retry-After` when the server sent it. */
     class RateLimited(val retryAfterSeconds: Long?) : DataError("Rate limited")
 
-    /** The server refused the request; [code] is the API error code, [userMessage] its text. */
-    class Rejected(val status: Int, val code: String, val userMessage: String) :
-        DataError("Rejected: $status $code")
+    /**
+     * The server refused the request; [code] is the API error code, [userMessage] its text and
+     * [requestId] (`X-Request-ID`) what support needs when the text says nothing.
+     */
+    class Rejected(
+        val status: Int,
+        val code: String,
+        val userMessage: String,
+        val requestId: String? = null,
+    ) : DataError("Rejected: $status $code")
 
     /** A server fault; [requestId] (`X-Request-ID`) is what support needs. */
     class Server(val status: Int, val requestId: String?) : DataError("Server error $status")

@@ -128,6 +128,17 @@ class ViewModelTest {
     }
 
     @Test
+    fun `a refusal without words gives support the status, the code and the request id`() {
+        assertThat(DataError.Rejected(409, "conflict", "", "req-456").toUiText())
+            .isEqualTo(UiText.Res(R.string.error_rejected_code, listOf("409 conflict req-456")))
+        assertThat(DataError.Rejected(409, "conflict", "").toUiText())
+            .isEqualTo(UiText.Res(R.string.error_rejected_code, listOf("409 conflict")))
+        // Words from the server win over codes.
+        assertThat(DataError.Rejected(409, "conflict", "Уже есть", "req-456").toUiText())
+            .isEqualTo(UiText.Plain("Уже есть"))
+    }
+
+    @Test
     fun `rate limits say how long to wait`() {
         assertThat(DataError.RateLimited(900).toUiText())
             .isEqualTo(UiText.Res(R.string.error_rate_limited, listOf(15)))

@@ -51,6 +51,13 @@ class ApiCallTest {
     }
 
     @Test
+    fun `a refusal carries the request id for support`() = runTest {
+        site.json(409, error("brand_new_code", ""), "X-Request-ID", "req-456")
+
+        assertThat((failure() as DataError.Rejected).requestId).isEqualTo("req-456")
+    }
+
+    @Test
     fun `a body that is not an API error still maps by status`() = runTest {
         site.json(400, "<html>proxy</html>")
         val rejected = failure() as DataError.Rejected

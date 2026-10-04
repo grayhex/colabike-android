@@ -35,6 +35,12 @@ fun AboutRoute(links: SiteLinks, onBack: () -> Unit, onLicenses: () -> Unit) {
     val opener = LocalLinkOpener.current
     AboutScreen(
         versionName = BuildConfig.VERSION_NAME,
+        build =
+            stringResource(
+                R.string.about_build,
+                BuildConfig.VERSION_CODE,
+                BuildConfig.CONTRACT_VERSION,
+            ),
         onBack = onBack,
         onTerms = { opener.open(links.terms) },
         onPrivacy = { opener.open(links.privacy) },
@@ -46,6 +52,7 @@ fun AboutRoute(links: SiteLinks, onBack: () -> Unit, onLicenses: () -> Unit) {
 @Composable
 fun AboutScreen(
     versionName: String,
+    build: String,
     onBack: () -> Unit,
     onTerms: () -> Unit,
     onPrivacy: () -> Unit,
@@ -77,6 +84,12 @@ fun AboutScreen(
                     Text(
                         stringResource(R.string.about_version, versionName),
                         style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    // What support asks for first: the build and the API contract it was made for.
+                    Text(
+                        build,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(

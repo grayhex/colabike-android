@@ -45,7 +45,12 @@ fun DataError.toUiText(): UiText =
                 code == "email_verification_required" ->
                     UiText.Res(R.string.error_email_verification)
                 userMessage.isNotBlank() -> UiText.Plain(userMessage)
-                else -> UiText.Res(R.string.error_unexpected)
+                // No words from the server: the code and the request id are what support asks for.
+                else ->
+                    UiText.Res(
+                        R.string.error_rejected_code,
+                        listOf(listOfNotNull(status, code, requestId).joinToString(" ")),
+                    )
             }
         is DataError.SignedOut,
         is DataError.Unexpected -> UiText.Res(R.string.error_unexpected)

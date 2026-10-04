@@ -109,6 +109,7 @@
 
     <string name="about_title">О приложении</string>
     <string name="about_version">Версия %1$s</string>
+    <string name="about_build">Сборка %1$d · контракт API %2$s</string>
     <string name="about_tagline">Нативное приложение сообщества ColaBike для Android. Без сервисов Google Play и без аналитики.</string>
     <string name="about_terms">Условия использования</string>
     <string name="about_privacy">Политика конфиденциальности</string>
@@ -119,8 +120,13 @@
     <string name="licenses_lora_covers">Шрифт заголовков. Лицензия SIL Open Font License 1.1.</string>
     <string name="licenses_sans_title">Source Sans 3</string>
     <string name="licenses_sans_covers">Шрифт текста. Лицензия SIL Open Font License 1.1.</string>
+    <string name="licenses_maplibre_title">MapLibre Native</string>
+    <string name="licenses_maplibre_covers">Карта маршрута. Лицензия BSD 2-Clause.</string>
+    <string name="licenses_stream_title">Stream Chat SDK</string>
+    <string name="licenses_stream_covers">Сообщения. Лицензия Stream (Source Code License Agreement): распространяется программа, исходный код SDK приложение не содержит.</string>
+    <string name="licenses_stream_text">Полный текст лицензии: https://github.com/GetStream/stream-chat-android/blob/main/LICENSE</string>
     <string name="licenses_apache_title">Apache License 2.0</string>
-    <string name="licenses_apache_covers">Иконки Material Symbols, Android Jetpack и Compose, OkHttp, Coil, kotlinx.coroutines и kotlinx.serialization.</string>
+    <string name="licenses_apache_covers">Иконки Material Symbols, Android Jetpack и Compose, OkHttp, Coil, JetBrains Markdown, kotlinx.coroutines и kotlinx.serialization.</string>
 
     <string name="person_title">Человек</string>
     <string name="person_bikes">Велосипеды</string>
@@ -165,6 +171,7 @@
     <string name="error_server_plain">Сервер не ответил. Попробуйте позже.</string>
     <string name="error_email_verification">Подтвердите почту на сайте: без этого комментировать нельзя.</string>
     <string name="error_unexpected">Что-то пошло не так. Повторите.</string>
+    <string name="error_rejected_code">Запрос не выполнен. Код для поддержки: %1$s</string>
 
     <string name="feed_title">Лента</string>
     <string name="feed_filter_all">Всё</string>
