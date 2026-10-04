@@ -71,6 +71,8 @@ data class BikeComponent(
     val sortOrder: Int = 0,
     /** In roubles when the viewer may see it. */
     val priceRub: Double? = null,
+    /** The model from the component catalog, if the owner chose one: it has a page of its own. */
+    val modelId: String? = null,
 )
 
 /** The state of a like after a `PUT` or `DELETE`: what the server says, not what we hoped. */

@@ -75,6 +75,7 @@ class JournalActions(
     val onOpenBike: (BikeId) -> Unit,
     val onOpenAuthor: (ref: String) -> Unit,
     val onOpenComments: (id: JournalId, title: String) -> Unit = { _, _ -> },
+    val onOpenComponent: (modelId: String) -> Unit = {},
 )
 
 @Composable
@@ -249,7 +250,12 @@ private fun Entry(
                     modifier = Modifier.padding(top = Spacing.s).semantics { heading() },
                 )
                 orderComponents(entry.components, emptyList()).forEach { (_, components) ->
-                    ComponentsCard(components, locale, onOpenLink)
+                    ComponentsCard(
+                        components,
+                        locale,
+                        onOpenLink,
+                        onOpenModel = actions.onOpenComponent,
+                    )
                 }
             }
             Counts(summary.likes, summary.comments)

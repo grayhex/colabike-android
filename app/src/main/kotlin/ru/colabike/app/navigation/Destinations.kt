@@ -14,6 +14,12 @@ sealed interface Destination : NavKey {
 
     @Serializable data object Bikes : Destination
 
+    /** The component catalog, opened from the Bikes section. */
+    @Serializable data object Components : Destination
+
+    /** One model of the catalog; [id] is its UUID (a merged model shows its canonical one). */
+    @Serializable data class Component(val id: String) : Destination
+
     @Serializable data class Bike(val id: String) : Destination
 
     @Serializable data object Rides : Destination

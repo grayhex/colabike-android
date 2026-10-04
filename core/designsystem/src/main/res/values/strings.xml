@@ -47,5 +47,12 @@
         <item quantity="many">%d комментариев</item>
         <item quantity="other">%d комментария</item>
     </plurals>
+    <plurals name="cola_component_builds">
+        <item quantity="one">На %d велосипеде</item>
+        <item quantity="few">На %d велосипедах</item>
+        <item quantity="many">На %d велосипедах</item>
+        <item quantity="other">На %d велосипеда</item>
+    </plurals>
+    <string name="cola_component_archived">Архивная модель</string>
     <string name="cola_notification_new">Новое</string>
 </resources>

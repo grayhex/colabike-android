@@ -35,6 +35,10 @@ import ru.colabike.app.comments.CommentsActions
 import ru.colabike.app.comments.CommentsScreen
 import ru.colabike.app.comments.CommentsUiState
 import ru.colabike.app.comments.Composer
+import ru.colabike.app.components.ComponentScreen
+import ru.colabike.app.components.ComponentUiState
+import ru.colabike.app.components.ComponentsScreen
+import ru.colabike.app.components.ComponentsUiState
 import ru.colabike.app.devices.DevicesScreen
 import ru.colabike.app.devices.DevicesUiState
 import ru.colabike.app.feed.FeedActions
@@ -83,6 +87,9 @@ import ru.colabike.core.model.AppNotification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
+import ru.colabike.core.model.ComponentFilters
+import ru.colabike.core.model.ComponentQuery
+import ru.colabike.core.model.ComponentSort
 import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.JournalStatus
 import ru.colabike.core.model.JournalSummary
@@ -143,6 +150,15 @@ enum class ScreenState(val file: String) {
     NotificationsEmpty("notifications_empty"),
     NotificationsError("notifications_error"),
     NotificationsMoreError("notifications_more_error"),
+    ComponentsEmpty("components_empty"),
+    ComponentsNone("components_none"),
+    ComponentsError("components_error"),
+    ComponentsMoreError("components_more_error"),
+    ComponentsFiltered("components_filtered"),
+    ComponentArchived("component_archived"),
+    ComponentNotFound("component_not_found"),
+    ComponentFailed("component_failed"),
+    ComponentNoPhotos("component_no_photos"),
     ChatConnecting("chat_connecting"),
     ChatFailed("chat_failed"),
     ChatEmailUnconfirmed("chat_email_unconfirmed"),
@@ -592,6 +608,76 @@ private fun Content(state: ScreenState) {
                     moreError = UiText.Res(R.string.error_offline),
                 )
             )
+        ScreenState.ComponentsEmpty ->
+            CatalogWith(ComponentsUiState(page = PagedState(loading = false)))
+        ScreenState.ComponentsNone ->
+            CatalogWith(
+                ComponentsUiState(
+                    typed = "кассета 13",
+                    query = ComponentQuery(text = "кассета 13"),
+                    page = PagedState(loading = false),
+                )
+            )
+        ScreenState.ComponentsError ->
+            CatalogWith(
+                ComponentsUiState(
+                    page = PagedState(loading = false, error = UiText.Res(R.string.error_offline))
+                )
+            )
+        ScreenState.ComponentsMoreError ->
+            CatalogWith(
+                ComponentsUiState(
+                    filters = catalogFilters,
+                    page =
+                        PagedState(
+                            items = componentModels(1, 3),
+                            nextCursor = "c1",
+                            loading = false,
+                            moreError = UiText.Res(R.string.error_offline),
+                        ),
+                )
+            )
+        ScreenState.ComponentsFiltered ->
+            CatalogWith(
+                ComponentsUiState(
+                    query = ComponentQuery(category = "Тормоза", sort = ComponentSort.Popular),
+                    filters = catalogFilters,
+                    page =
+                        PagedState(
+                            items =
+                                listOf(
+                                    componentModel(5, brand = "SRAM", category = "Тормоза"),
+                                    componentModel(
+                                        6,
+                                        brand = "Shimano",
+                                        category = "Тормоза",
+                                        archived = true,
+                                    ),
+                                ),
+                            loading = false,
+                        ),
+                )
+            )
+        ScreenState.ComponentArchived ->
+            ComponentScreen(
+                ComponentUiState.Loaded(componentModel(9, archived = true), photos = emptyList()),
+                onBack = {},
+            )
+        ScreenState.ComponentNotFound ->
+            ComponentScreen(
+                ComponentUiState.Failed(UiText.Res(R.string.error_not_found), notFound = true),
+                onBack = {},
+            )
+        ScreenState.ComponentFailed ->
+            ComponentScreen(
+                ComponentUiState.Failed(UiText.Res(R.string.error_offline)),
+                onBack = {},
+            )
+        ScreenState.ComponentNoPhotos ->
+            ComponentScreen(
+                ComponentUiState.Loaded(componentModel(2), photos = emptyList()),
+                onBack = {},
+            )
         ScreenState.ChatConnecting -> ChatStatusWith(ChatConnection.Connecting)
         ScreenState.ChatFailed ->
             ChatStatusWith(
@@ -683,6 +769,12 @@ private fun CommentsWith(state: CommentsUiState) =
     )
 
 private val chatPeople = people(0, 4).map { it.person }
+
+private val catalogFilters =
+    ComponentFilters(listOf("Трансмиссия", "Тормоза"), listOf("Shimano", "SRAM"))
+
+@Composable
+private fun CatalogWith(state: ComponentsUiState) = ComponentsScreen(state = state, onBack = {})
 
 @Composable
 private fun ChatStatusWith(connection: ChatConnection) =

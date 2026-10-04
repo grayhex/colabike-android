@@ -145,6 +145,7 @@ internal fun BikeComponentDto.toModel(): BikeComponent =
         groupId = groupId,
         sortOrder = sortOrder,
         priceRub = price,
+        modelId = modelId?.toString(),
     )
 
 /**
@@ -304,6 +305,7 @@ internal fun JournalComponentDto.toModel(): BikeComponent =
         groupId = groupId,
         sortOrder = sortOrder,
         priceRub = price,
+        modelId = modelId?.toString(),
     )
 
 /** Items the app cannot show (an unknown type, a missing object) are left out of the page. */

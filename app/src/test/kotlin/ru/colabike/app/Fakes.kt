@@ -53,6 +53,12 @@ import ru.colabike.core.model.CommentTarget
 import ru.colabike.core.model.CommentThread
 import ru.colabike.core.model.CommentThreads
 import ru.colabike.core.model.CommentsRepository
+import ru.colabike.core.model.ComponentFilters
+import ru.colabike.core.model.ComponentId
+import ru.colabike.core.model.ComponentModel
+import ru.colabike.core.model.ComponentPhoto
+import ru.colabike.core.model.ComponentQuery
+import ru.colabike.core.model.ComponentsRepository
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.FeedFilter
 import ru.colabike.core.model.FeedItem
@@ -75,6 +81,7 @@ import ru.colabike.core.model.Page
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.PersonSummary
+import ru.colabike.core.model.PhotoSource
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.Range
@@ -1070,6 +1077,125 @@ class FakeChatGateway : ChatGateway {
     }
 }
 
+/** A model of the catalog; `n` makes the id and the name. */
+fun componentModel(
+    n: Int,
+    brand: String = "Shimano",
+    category: String = "Трансмиссия",
+    archived: Boolean = false,
+    coverUrl: String? = null,
+) =
+    ComponentModel(
+        id = ComponentId("c$n"),
+        category = category,
+        brand = brand,
+        name = "Кассета $n",
+        description = "Кассета $n для горного велосипеда.",
+        path = "/components/c$n",
+        builds = n * 3,
+        firstPublicAt = Instant.parse("2026-08-01T10:00:00Z"),
+        coverUrl = coverUrl,
+        archived = archived,
+    )
+
+fun componentModels(from: Int, count: Int): List<ComponentModel> =
+    (from until from + count).map { componentModel(it) }
+
+fun componentPhoto(n: Int, caption: String = "", source: PhotoSource? = null) =
+    ComponentPhoto(
+        id = "p$n",
+        url = "https://colabike.test/media/components/$n.jpg",
+        width = 1600,
+        height = 1200,
+        caption = caption,
+        source = source,
+        author = rider,
+        isCover = n == 0,
+    )
+
+/**
+ * The catalog in memory: pages by cursor, models by id (with canonical aliases), queued failures.
+ */
+class FakeComponents(
+    var pages: Map<String?, Page<ComponentModel>> =
+        mapOf(null to Page(componentModels(1, 4), null)),
+    var filters: ComponentFilters =
+        ComponentFilters(listOf("Трансмиссия", "Тормоза"), listOf("Shimano", "SRAM")),
+    var models: Map<String, ComponentModel> = componentModels(1, 4).associateBy { it.id.value },
+    /** A merged model's id → the canonical one it answers with. */
+    var aliases: Map<String, String> = emptyMap(),
+    var photos: Map<String, List<ComponentPhoto>> =
+        mapOf(
+            "c1" to
+                listOf(
+                    componentPhoto(
+                        0,
+                        caption = "Кассета в сборе",
+                        source =
+                            PhotoSource(
+                                provider = "Wikimedia Commons",
+                                url = "https://commons.wikimedia.org/wiki/File:Deore.jpg",
+                                title = "File:Deore.jpg",
+                                creator = "Иван Фотограф",
+                                credit = "Иван Фотограф / Wikimedia Commons",
+                                license = "CC BY-SA 4.0",
+                                licenseUrl = "https://creativecommons.org/licenses/by-sa/4.0/",
+                            ),
+                    ),
+                    componentPhoto(1),
+                )
+        ),
+) : ComponentsRepository {
+    val queries = mutableListOf<Pair<ComponentQuery, String?>>()
+    val modelCalls = mutableListOf<String>()
+    val photoCalls = mutableListOf<String>()
+    var filterCalls = 0
+    var nextError: DataError? = null
+    var filtersError: DataError? = null
+    var photosError: DataError? = null
+
+    private fun fail() {
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+
+    override suspend fun page(
+        query: ComponentQuery,
+        cursor: String?,
+        limit: Int,
+    ): Page<ComponentModel> {
+        queries += query to cursor
+        fail()
+        return pages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun filters(): ComponentFilters {
+        filterCalls++
+        filtersError?.let {
+            filtersError = null
+            throw it
+        }
+        return filters
+    }
+
+    override suspend fun model(id: ComponentId): ComponentModel {
+        modelCalls += id.value
+        fail()
+        return models[aliases[id.value] ?: id.value] ?: throw DataError.NotFound()
+    }
+
+    override suspend fun photos(id: ComponentId): List<ComponentPhoto> {
+        photoCalls += id.value
+        photosError?.let {
+            photosError = null
+            throw it
+        }
+        return photos[id.value].orEmpty()
+    }
+}
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -1079,6 +1205,7 @@ class FakeDependencies(
     override val comments: FakeComments = FakeComments(),
     override val rides: FakeRides = FakeRides(),
     override val notifications: FakeNotifications = FakeNotifications(),
+    override val components: FakeComponents = FakeComponents(),
     override val chat: FakeChat = FakeChat(),
     val chatGateway: FakeChatGateway = FakeChatGateway(),
     override val chatSession: ChatSession =

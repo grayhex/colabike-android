@@ -107,6 +107,8 @@ object PreviewData {
                         groupId = "drivetrain",
                         sortOrder = 1,
                         priceRub = 12_500.0,
+                        // The owner chose a model from the catalog: the row opens its page.
+                        modelId = "c1",
                     ),
                     BikeComponent(
                         "c3",

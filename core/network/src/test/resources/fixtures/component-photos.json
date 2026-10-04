@@ -1,0 +1,69 @@
+{
+  "modelId": "c0000000-0000-4000-8000-000000000001",
+  "items": [
+    {
+      "id": "d0000000-0000-4000-8000-000000000001",
+      "url": "/media/components/deore.jpg",
+      "width": 1600,
+      "height": 1200,
+      "caption": "Кассета в сборе",
+      "source": {
+        "provider": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:Deore.jpg",
+        "title": "File:Deore.jpg",
+        "creator": "Иван Фотограф",
+        "credit": "Иван Фотограф / Wikimedia Commons",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "author": {
+        "id": "a1000000-0000-4000-8000-000000000001",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": null
+      },
+      "createdAt": "2026-08-02T10:00:00.000Z",
+      "isCover": true
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000002",
+      "url": "/media/components/deore-2.jpg",
+      "width": 1200,
+      "height": 1600,
+      "caption": "",
+      "source": null,
+      "author": {
+        "id": "a1000000-0000-4000-8000-000000000002",
+        "username": "second-rider",
+        "name": "Вторая Райдерша",
+        "avatarUrl": "/media/avatars/second.jpg"
+      },
+      "createdAt": "2026-08-03T10:00:00.000Z",
+      "isCover": false
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000003",
+      "url": "/media/components/deore-3.jpg",
+      "width": 800,
+      "height": 600,
+      "caption": "Чужой источник",
+      "source": {
+        "provider": "Wikimedia Commons",
+        "url": "javascript:alert(1)",
+        "title": "File:X.jpg",
+        "creator": "Автор",
+        "credit": "Автор",
+        "license": "CC0",
+        "licenseUrl": "http://insecure.example/license"
+      },
+      "author": {
+        "id": "a1000000-0000-4000-8000-000000000001",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": null
+      },
+      "createdAt": "2026-08-04T10:00:00.000Z",
+      "isCover": false
+    }
+  ]
+}
