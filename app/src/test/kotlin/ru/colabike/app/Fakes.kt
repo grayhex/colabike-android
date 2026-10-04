@@ -4,6 +4,9 @@ import android.content.Context
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +16,9 @@ import ru.colabike.app.auth.YandexFailure
 import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.links.PendingNavigation
 import ru.colabike.app.links.SiteLinks
+import ru.colabike.app.messages.ChatGateway
+import ru.colabike.app.messages.ChatScreens
+import ru.colabike.app.messages.ChatSession
 import ru.colabike.app.navigation.Destination
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.rides.map.SketchRouteMaps
@@ -35,6 +41,12 @@ import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.ChannelCid
+import ru.colabike.core.model.ChatChannelKind
+import ru.colabike.core.model.ChatCredentials
+import ru.colabike.core.model.ChatPeople
+import ru.colabike.core.model.ChatRepository
+import ru.colabike.core.model.ChatUser
 import ru.colabike.core.model.Comment
 import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.CommentTarget
@@ -967,6 +979,97 @@ class FakePending : PendingNavigation {
     }
 }
 
+/** The chat's bridge in memory: the people to write to, what was opened, queued failures. */
+class FakeChat(
+    var people: ChatPeople = ChatPeople(people(0, 3).map { it.person }, searching = false),
+    var unread: Int = 0,
+) : ChatRepository {
+    data class Opened(
+        val kind: ChatChannelKind,
+        val members: List<UserId>,
+        val name: String?,
+        val key: String?,
+    )
+
+    var credentialCalls = 0
+    val opened = mutableListOf<Opened>()
+    val queries = mutableListOf<String?>()
+    var credentialsError: DataError? = null
+    var peopleError: DataError? = null
+    var openError: DataError? = null
+    var peopleAnswer: (suspend (String?) -> ChatPeople)? = null
+    var cid = ChannelCid("messaging:dm-1")
+
+    override suspend fun credentials(): ChatCredentials {
+        credentialCalls++
+        credentialsError?.let {
+            credentialsError = null
+            throw it
+        }
+        return ChatCredentials(
+            apiKey = "key",
+            user = ChatUser("u1", "Тестовый Райдер", null),
+            token = "token-$credentialCalls",
+            expiresAt = Instant.parse("2026-10-03T20:05:00Z"),
+            channelType = "colabike",
+        )
+    }
+
+    override suspend fun open(
+        kind: ChatChannelKind,
+        members: List<UserId>,
+        name: String?,
+        key: String?,
+    ): ChannelCid {
+        opened += Opened(kind, members, name, key)
+        openError?.let {
+            openError = null
+            throw it
+        }
+        return cid
+    }
+
+    override suspend fun people(query: String?): ChatPeople {
+        queries += query
+        peopleError?.let {
+            peopleError = null
+            throw it
+        }
+        return peopleAnswer?.invoke(query) ?: people
+    }
+
+    override suspend fun unread(): Int = unread
+}
+
+/** The provider's SDK in memory: what it was asked to connect, and a failure or a wait to give. */
+class FakeChatGateway : ChatGateway {
+    val connected = mutableListOf<ChatCredentials>()
+    val disconnects = mutableListOf<Boolean>()
+    var failure: Throwable? = null
+
+    /** When set, [connect] waits for it before it answers. */
+    var hold: CompletableDeferred<Unit>? = null
+    var refreshed: ChatCredentials? = null
+
+    override suspend fun connect(
+        credentials: ChatCredentials,
+        refresh: suspend () -> ChatCredentials,
+    ) {
+        hold?.await()
+        failure?.let {
+            failure = null
+            throw it
+        }
+        connected += credentials
+        // What the SDK does when the first token has expired.
+        refreshed = refresh()
+    }
+
+    override suspend fun disconnect(forget: Boolean) {
+        disconnects += forget
+    }
+}
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -976,6 +1079,11 @@ class FakeDependencies(
     override val comments: FakeComments = FakeComments(),
     override val rides: FakeRides = FakeRides(),
     override val notifications: FakeNotifications = FakeNotifications(),
+    override val chat: FakeChat = FakeChat(),
+    val chatGateway: FakeChatGateway = FakeChatGateway(),
+    override val chatSession: ChatSession =
+        ChatSession(chat, chatGateway, CoroutineScope(Dispatchers.Unconfined)),
+    override val chatScreens: ChatScreens = FakeChatScreens(),
     override val drafts: InMemoryCommentDrafts = InMemoryCommentDrafts(),
     override val sessions: FakeSessions = FakeSessions(),
     override val auth: FakeAuth = FakeAuth(),

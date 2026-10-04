@@ -1,5 +1,7 @@
 package ru.colabike.app.ui
 
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -51,6 +53,9 @@ import ru.colabike.app.journal.JournalActions
 import ru.colabike.app.journal.JournalListRoute
 import ru.colabike.app.journal.JournalRoute
 import ru.colabike.app.journal.JournalSource
+import ru.colabike.app.messages.ConversationRoute
+import ru.colabike.app.messages.ConversationsRoute
+import ru.colabike.app.messages.NewConversationRoute
 import ru.colabike.app.navigation.Destination
 import ru.colabike.app.navigation.Navigator
 import ru.colabike.app.navigation.TopLevel
@@ -79,6 +84,7 @@ import ru.colabike.core.designsystem.component.ColaNavigationRail
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.ChannelCid
 import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.CommentTarget
 import ru.colabike.core.model.JournalId
@@ -121,7 +127,11 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
         !windowSize.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
     // The box to write in sits at the bottom edge, where the floating bar would cover it: while a
     // discussion is open on a phone the bar steps aside (the rail on wider windows is at the side).
-    val barHidden = bottomBar && state.currentStack.lastOrNull() is Destination.Comments
+    val barHidden =
+        bottomBar &&
+            state.currentStack.lastOrNull().let {
+                it is Destination.Comments || it is Destination.Conversation
+            }
 
     val items = sections.map { ColaNavItem(stringResource(it.label), it.icon, it.selectedIcon) }
     val selectedIndex = sections.indexOfFirst { it.root == state.topLevelRoute }.coerceAtLeast(0)
@@ -420,12 +430,18 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             people = dependencies.people,
                                             bikes = dependencies.bikes,
                                             auth = dependencies.auth,
+                                            chat = dependencies.chat,
                                             ref = key.ref,
                                             actions =
                                                 PersonActions(
                                                     onBack = { navigator.back() },
                                                     onOpenBike = { id ->
                                                         navigator.openBike(id.value)
+                                                    },
+                                                    onOpenConversation = { cid ->
+                                                        navigator.open(
+                                                            Destination.Conversation(cid.value)
+                                                        )
                                                     },
                                                     onOpenFollowers = { ref ->
                                                         navigator.open(
@@ -484,6 +500,54 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             },
                                             onOpenSaved = {
                                                 navigator.open(Destination.SavedJournal)
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Messages>(
+                                        metadata =
+                                            ListDetailSceneStrategy.listPane(
+                                                detailPlaceholder = {
+                                                    DetailPlaceholder(
+                                                        R.string.nav_messages,
+                                                        R.string.chat_pick,
+                                                        ColaIcons.Chat,
+                                                    )
+                                                }
+                                            )
+                                    ) {
+                                        ConversationsRoute(
+                                            session = dependencies.chatSession,
+                                            screens = dependencies.chatScreens,
+                                            site = dependencies.links,
+                                            signedIn = member,
+                                            onOpen = { cid ->
+                                                navigator.open(Destination.Conversation(cid.value))
+                                            },
+                                            onNew = { navigator.open(Destination.NewConversation) },
+                                        )
+                                    }
+                                    entry<Destination.Conversation>(
+                                        metadata = ListDetailSceneStrategy.detailPane()
+                                    ) { key ->
+                                        ConversationRoute(
+                                            session = dependencies.chatSession,
+                                            screens = dependencies.chatScreens,
+                                            site = dependencies.links,
+                                            cid = ChannelCid(key.cid),
+                                            onBack = { navigator.back() },
+                                        )
+                                    }
+                                    entry<Destination.NewConversation> {
+                                        NewConversationRoute(
+                                            repository = dependencies.chat,
+                                            session = dependencies.chatSession,
+                                            site = dependencies.links,
+                                            onBack = { navigator.back() },
+                                            onOpened = { cid ->
+                                                // Back from the conversation lands on the list, not
+                                                // here.
+                                                navigator.back()
+                                                navigator.open(Destination.Conversation(cid.value))
                                             },
                                         )
                                     }
@@ -549,12 +613,16 @@ private fun Modifier.fadeBottomEdge(height: Dp): Modifier =
     }
 
 @Composable
-private fun DetailPlaceholder() {
+private fun DetailPlaceholder(
+    @StringRes title: Int = R.string.nav_bikes,
+    @StringRes message: Int = R.string.bikes_pick,
+    @DrawableRes icon: Int = ColaIcons.Bike,
+) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         EmptyState(
-            title = stringResource(R.string.nav_bikes),
-            message = stringResource(R.string.bikes_pick),
-            icon = ColaIcons.Bike,
+            title = stringResource(title),
+            message = stringResource(message),
+            icon = icon,
         )
     }
 }

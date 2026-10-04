@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import okhttp3.OkHttpClient
 import ru.colabike.api.apis.AccountApi
 import ru.colabike.api.apis.BikesApi
+import ru.colabike.api.apis.ChatApi
 import ru.colabike.api.apis.CommentsApi
 import ru.colabike.api.apis.JournalApi
 import ru.colabike.api.apis.PersonalApi
@@ -31,6 +32,7 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
     val personal = PersonalApi(config.apiBaseUrl, client)
     val comments = CommentsApi(config.apiBaseUrl, client)
     val rides = RidesApi(config.apiBaseUrl, client)
+    val chat = ChatApi(config.apiBaseUrl, client)
 
     /**
      * Comments with an `Idempotency-Key` on every request made through it. The contract describes
@@ -39,6 +41,18 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
      */
     fun commentsWithKey(key: String): CommentsApi =
         CommentsApi(
+            config.apiBaseUrl,
+            client
+                .newBuilder()
+                .addInterceptor { chain ->
+                    chain.proceed(chain.request().newBuilder().header(IDEMPOTENCY_KEY, key).build())
+                }
+                .build(),
+        )
+
+    /** The chat bridge with an `Idempotency-Key` on every request made through it. */
+    fun chatWithKey(key: String): ChatApi =
+        ChatApi(
             config.apiBaseUrl,
             client
                 .newBuilder()

@@ -67,6 +67,10 @@ android {
         buildConfig = true
     }
 
+    // The app is in Russian only; the libraries bring a dozen translations of their own that
+    // nobody here can read. The messenger's SDK has no Russian, so values-ru carries it.
+    androidResources { localeFilters += listOf("ru") }
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
@@ -90,6 +94,7 @@ dependencies {
     implementation(project(":core:auth"))
     implementation(project(":core:designsystem"))
     implementation(libs.maplibre.android)
+    implementation(libs.stream.compose)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

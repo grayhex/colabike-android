@@ -44,6 +44,12 @@ import ru.colabike.app.journal.JournalActions
 import ru.colabike.app.journal.JournalListScreen
 import ru.colabike.app.journal.JournalScreen
 import ru.colabike.app.journal.JournalUiState
+import ru.colabike.app.messages.ChatConnection
+import ru.colabike.app.messages.ChatFailure
+import ru.colabike.app.messages.ChatStatusScreen
+import ru.colabike.app.messages.GuestMessages
+import ru.colabike.app.messages.NewConversationScreen
+import ru.colabike.app.messages.NewConversationUiState
 import ru.colabike.app.notifications.NotificationsScreen
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListScreen
@@ -137,6 +143,17 @@ enum class ScreenState(val file: String) {
     NotificationsEmpty("notifications_empty"),
     NotificationsError("notifications_error"),
     NotificationsMoreError("notifications_more_error"),
+    ChatConnecting("chat_connecting"),
+    ChatFailed("chat_failed"),
+    ChatEmailUnconfirmed("chat_email_unconfirmed"),
+    ChatUnavailable("chat_unavailable"),
+    ChatGuest("chat_guest"),
+    ChatNewPeople("chat_new_people"),
+    ChatNewSearch("chat_new_search"),
+    ChatNewGroup("chat_new_group"),
+    ChatNewEmpty("chat_new_empty"),
+    ChatNewError("chat_new_error"),
+    ChatNewRefused("chat_new_refused"),
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -575,6 +592,60 @@ private fun Content(state: ScreenState) {
                     moreError = UiText.Res(R.string.error_offline),
                 )
             )
+        ScreenState.ChatConnecting -> ChatStatusWith(ChatConnection.Connecting)
+        ScreenState.ChatFailed ->
+            ChatStatusWith(
+                ChatConnection.Failed(ChatFailure.Offline, UiText.Res(R.string.error_offline))
+            )
+        ScreenState.ChatEmailUnconfirmed ->
+            ChatStatusWith(
+                ChatConnection.Failed(
+                    ChatFailure.EmailUnconfirmed,
+                    UiText.Res(R.string.chat_email_unconfirmed),
+                )
+            )
+        ScreenState.ChatUnavailable ->
+            ChatStatusWith(
+                ChatConnection.Failed(
+                    ChatFailure.Unavailable,
+                    UiText.Res(R.string.chat_unavailable),
+                )
+            )
+        ScreenState.ChatGuest -> GuestMessages()
+        ScreenState.ChatNewPeople ->
+            NewConversationWith(NewConversationUiState(people = chatPeople, loading = false))
+        ScreenState.ChatNewSearch ->
+            NewConversationWith(
+                NewConversationUiState(
+                    typed = "Райдер 1",
+                    searching = true,
+                    people = chatPeople.take(1),
+                    loading = false,
+                )
+            )
+        ScreenState.ChatNewGroup ->
+            NewConversationWith(
+                NewConversationUiState(
+                    people = chatPeople,
+                    loading = false,
+                    group = true,
+                    selected = chatPeople.take(2),
+                    groupName = "Субботний заезд",
+                )
+            )
+        ScreenState.ChatNewEmpty -> NewConversationWith(NewConversationUiState(loading = false))
+        ScreenState.ChatNewError ->
+            NewConversationWith(
+                NewConversationUiState(loading = false, error = UiText.Res(R.string.error_offline))
+            )
+        ScreenState.ChatNewRefused ->
+            NewConversationWith(
+                NewConversationUiState(
+                    people = chatPeople,
+                    loading = false,
+                    openError = UiText.Res(R.string.chat_cannot_write),
+                )
+            )
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),
@@ -609,6 +680,32 @@ private fun CommentsWith(state: CommentsUiState) =
         meId = PreviewData.rider.id,
         signedIn = true,
         actions = CommentsActions(),
+    )
+
+private val chatPeople = people(0, 4).map { it.person }
+
+@Composable
+private fun ChatStatusWith(connection: ChatConnection) =
+    ChatStatusScreen(
+        connection = connection,
+        title = "Сообщения",
+        onBack = null,
+        onRetry = {},
+        onOpenSite = {},
+    )
+
+@Composable
+private fun NewConversationWith(state: NewConversationUiState) =
+    NewConversationScreen(
+        state = state,
+        onBack = {},
+        onQuery = {},
+        onClear = {},
+        onRetry = {},
+        onGroup = {},
+        onGroupName = {},
+        onPerson = {},
+        onCreate = {},
     )
 
 @Composable

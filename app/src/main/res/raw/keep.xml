@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The chat SDK reads its text from these by name at run time; the Russian twins in
+     values/stream_chat_strings.xml are not referenced from the app's code. -->
+<resources
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/stream_*,@plurals/stream_*" />

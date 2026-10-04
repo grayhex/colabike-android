@@ -1,0 +1,17 @@
+{
+  "people": [
+    {
+      "id": "10000000-0000-4000-8000-000000000002",
+      "username": "rider2",
+      "name": "Вторая Райдерша",
+      "avatarUrl": null
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000003",
+      "username": "rider3",
+      "name": "",
+      "avatarUrl": "/media/u/3.jpg"
+    }
+  ],
+  "mode": "following"
+}
