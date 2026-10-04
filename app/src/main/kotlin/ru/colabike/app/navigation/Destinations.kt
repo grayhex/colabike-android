@@ -18,6 +18,12 @@ sealed interface Destination : NavKey {
 
     @Serializable data object Rides : Destination
 
+    /** A ride or a plan; [id] is its UUID. */
+    @Serializable data class Ride(val id: String) : Destination
+
+    /** The completed public rides of one bike. */
+    @Serializable data class BikeRides(val bikeId: String, val bikeName: String) : Destination
+
     @Serializable data object Messages : Destination
 
     @Serializable data object Profile : Destination

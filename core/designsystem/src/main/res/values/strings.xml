@@ -12,6 +12,10 @@
     <string name="cola_loading">Загрузка</string>
     <string name="cola_ride_planned">План</string>
     <string name="cola_ride_completed">Состоялась</string>
+    <string name="cola_ride_cancelled">Отменена</string>
+    <string name="cola_ride_weekly">Каждую неделю</string>
+    <string name="cola_ride_participants">Едут: %1$d · возможно: %2$d</string>
+    <string name="cola_ride_no_date">Дата не указана</string>
     <string name="cola_by_author">Автор: %1$s</string>
     <string name="cola_username">\@%1$s</string>
     <string name="cola_distance_km">%1$s км</string>

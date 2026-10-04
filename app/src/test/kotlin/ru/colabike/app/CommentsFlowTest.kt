@@ -4,7 +4,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -129,11 +128,11 @@ class CommentsFlowTest {
         start(dependencies())
         openDiscussion()
 
-        compose.onNode(hasText("Лента") and hasClickAction()).assertDoesNotExist()
+        compose.section("Лента").assertDoesNotExist()
 
         compose.onNodeWithContentDescription("Назад").performClick()
         compose.waitForIdle()
-        compose.onNode(hasText("Лента") and hasClickAction()).assertIsDisplayed()
+        compose.section("Лента").assertIsDisplayed()
     }
 
     // --- writing ---------------------------------------------------------------------------

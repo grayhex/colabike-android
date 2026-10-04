@@ -24,7 +24,6 @@ import ru.colabike.api.models.Me as MeDto
 import ru.colabike.api.models.Profile as ProfileDto
 import ru.colabike.api.models.Relationship as RelationshipDto
 import ru.colabike.api.models.ReplyPage as ReplyPageDto
-import ru.colabike.api.models.RideSummary as RideSummaryDto
 import ru.colabike.api.models.UserPage as UserPageDto
 import ru.colabike.api.models.UserSummary as UserSummaryDto
 import ru.colabike.core.model.Account
@@ -52,9 +51,6 @@ import ru.colabike.core.model.Photo
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.Relationship
-import ru.colabike.core.model.RideId
-import ru.colabike.core.model.RideStatus
-import ru.colabike.core.model.RideSummary
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UserId
@@ -324,23 +320,6 @@ internal fun FeedItemDto.toModel(media: MediaUrls): FeedItem? {
         FeedItemDto.Type.unknown_default_open_api -> null
     }
 }
-
-internal fun RideSummaryDto.toModel(media: MediaUrls): RideSummary =
-    RideSummary(
-        id = RideId(id.toString()),
-        title = title,
-        status =
-            when (status) {
-                RideSummaryDto.Status.completed -> RideStatus.Completed
-                RideSummaryDto.Status.planned -> RideStatus.Planned
-                else -> RideStatus.Unknown
-            },
-        time = (startedAt ?: scheduledAt)?.toInstant(),
-        distanceMeters = metrics.distanceM,
-        movingTimeSeconds = metrics.movingTimeS,
-        bikeName = bike.name,
-        author = author.toModel(media),
-    )
 
 internal fun MarketListingDto.toBrief(media: MediaUrls): ListingBrief =
     ListingBrief(

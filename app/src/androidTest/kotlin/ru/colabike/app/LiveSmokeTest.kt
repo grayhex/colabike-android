@@ -1,5 +1,6 @@
 package ru.colabike.app
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -20,9 +21,10 @@ import org.junit.runner.RunWith
 
 /**
  * The live smoke of #325 on an Android 17 emulator against production: sign in with the dedicated
- * smoke account, the bike list (`/bikes`), a bike (`/bikes/{id}`), the profile (`/me`), the devices
- * of the account (`/auth/sessions`), sign out (the device session is revoked, the account does not
- * collect devices).
+ * smoke account, the bike list (`/bikes`), a bike (`/bikes/{id}`), the rides (`/rides/upcoming`,
+ * `/rides`, and a ride's page if there is one), the profile (`/me`), the devices of the account
+ * (`/auth/sessions`), sign out (the device session is revoked, the account does not collect
+ * devices). Everything it asks for is read-only.
  *
  * Credentials come only as instrumentation arguments from CI secrets (smokeEmail, smokePassword);
  * without them the test is skipped, never faked. CI leaves the class out instead (notClass): AGP's
@@ -40,6 +42,20 @@ class LiveSmokeTest {
         SemanticsMatcher("a bike card") {
             it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("bike:") == true
         }
+
+    private val rideCard =
+        SemanticsMatcher("a ride card") {
+            it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("ride:") == true
+        }
+
+    /** A section tab: with more than three sections only the selected one has its text. */
+    private fun sectionTab(name: String) =
+        SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab) and
+            (SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf(name)) or
+                SemanticsMatcher("text $name") {
+                    it.config.getOrNull(SemanticsProperties.Text)?.any { t -> t.text == name } ==
+                        true
+                })
 
     private fun waitFor(timeoutMs: Long = 30_000, condition: () -> Boolean) =
         compose.waitUntil(timeoutMs, condition)
@@ -77,8 +93,36 @@ class LiveSmokeTest {
         }
         compose.onNodeWithContentDescription("Назад").performClick()
 
+        // /rides/upcoming and /rides: plans may be none, a completed public ride is opened if any.
+        compose.onNode(sectionTab("Покатушки")).performClick()
+        waitFor {
+            compose.onAllNodes(rideCard).fetchSemanticsNodes().isNotEmpty() ||
+                hasText("Ближайших планов нет")
+        }
+        compose.onNodeWithText("Состоявшиеся").performClick()
+        waitFor {
+            compose.onAllNodes(rideCard).fetchSemanticsNodes().isNotEmpty() ||
+                hasText("Покатушек пока нет")
+        }
+        if (compose.onAllNodes(rideCard).fetchSemanticsNodes().isNotEmpty()) {
+            compose.onAllNodes(rideCard).onFirst().performClick()
+            // /rides/{id}: the page with its back button.
+            waitFor {
+                compose
+                    .onAllNodes(
+                        SemanticsMatcher.expectValue(
+                            SemanticsProperties.ContentDescription,
+                            listOf("Назад"),
+                        )
+                    )
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
+            }
+            compose.onNodeWithContentDescription("Назад").performClick()
+        }
+
         // /me: the profile shows the account.
-        compose.onNodeWithText("Профиль").performClick()
+        compose.onNode(sectionTab("Профиль")).performClick()
         waitFor { hasText("Устройства и входы") }
 
         // /auth/sessions: this device is in the list, marked as this one.

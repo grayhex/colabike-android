@@ -1,0 +1,73 @@
+{
+  "id": "a0000001-0000-4000-8000-000000000001",
+  "title": "Вечерняя по набережной",
+  "status": "completed",
+  "kind": "recorded",
+  "startedAt": "2026-09-20T16:00:00Z",
+  "scheduledAt": null,
+  "recurrence": "none",
+  "hasTrack": true,
+  "metrics": {
+    "distanceM": 32450,
+    "elapsedTimeS": 6000,
+    "movingTimeS": 5400,
+    "avgSpeedMps": 6.0,
+    "elevationGainM": 120.0
+  },
+  "bike": {
+    "id": "6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+    "name": "Городской Трэвел"
+  },
+  "author": {
+    "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+    "username": "test-rider",
+    "name": "Тестовый Райдер",
+    "avatarUrl": "/api/avatars/8d9e0f1a"
+  },
+  "likes": 3,
+  "comments": 2,
+  "liked": false,
+  "participants": null,
+  "description": "Закат над рекой.",
+  "features": [],
+  "meetingPoint": null,
+  "meetingHidden": false,
+  "expectedEndAt": null,
+  "recruitmentClosed": false,
+  "passport": null,
+  "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+      [
+        [
+          37.61,
+          55.75
+        ],
+        [
+          37.62,
+          55.76
+        ]
+      ],
+      [
+        [
+          37.64,
+          55.77
+        ],
+        [
+          37.65,
+          55.78
+        ]
+      ]
+    ]
+  },
+  "bounds": [
+    37.61,
+    55.75,
+    37.65,
+    55.78
+  ],
+  "extraMetrics": {
+    "avgHeartRate": 142.0,
+    "calories": 820.0
+  }
+}

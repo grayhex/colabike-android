@@ -53,7 +53,7 @@ class AccountFlowTest {
         compose.waitForIdle()
     }
 
-    private fun section(name: String) = compose.onNode(hasText(name) and hasClickAction())
+    private fun section(name: String) = compose.section(name)
 
     private fun guestApp() =
         FakeDependencies(

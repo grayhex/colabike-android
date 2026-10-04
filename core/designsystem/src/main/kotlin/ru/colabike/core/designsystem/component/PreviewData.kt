@@ -15,6 +15,9 @@ import ru.colabike.core.model.ListingBrief
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.Photo
 import ru.colabike.core.model.RideId
+import ru.colabike.core.model.RideMetrics
+import ru.colabike.core.model.RideParticipants
+import ru.colabike.core.model.RideRecurrence
 import ru.colabike.core.model.RideStatus
 import ru.colabike.core.model.RideSummary
 import ru.colabike.core.model.UserId
@@ -135,10 +138,19 @@ object PreviewData {
             title = "Вечерняя по набережной",
             status = RideStatus.Completed,
             time = Instant.parse("2026-09-20T16:00:00Z"),
-            distanceMeters = 32_450,
-            movingTimeSeconds = 5_400,
-            bikeName = "Городской Трэвел",
+            metrics =
+                RideMetrics(
+                    distanceM = 32_450,
+                    elapsedTimeS = 6_000,
+                    movingTimeS = 5_400,
+                    avgSpeedMps = 6.0,
+                    elevationGainM = 120.0,
+                ),
+            bike = BikeRef(BikeId("b1"), "Городской Трэвел"),
             author = rider,
+            hasTrack = true,
+            likes = 3,
+            comments = 2,
         )
 
     val plannedRide =
@@ -146,8 +158,11 @@ object PreviewData {
             id = RideId("r2"),
             title = "Воскресный выезд за город",
             status = RideStatus.Planned,
-            distanceMeters = null,
-            movingTimeSeconds = null,
+            time = Instant.parse("2026-10-11T07:00:00Z"),
+            metrics = RideMetrics(),
+            recurrence = RideRecurrence.Weekly,
+            hasTrack = false,
+            participants = RideParticipants(going = 4, maybe = 2),
         )
 
     val journal =

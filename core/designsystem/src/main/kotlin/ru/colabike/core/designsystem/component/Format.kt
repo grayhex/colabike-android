@@ -37,3 +37,14 @@ internal fun amount(value: Double, locale: Locale): String =
             maximumFractionDigits = 2
         }
         .format(value)
+
+/** A day and the hour in the device's own time zone: the time a plan begins. */
+internal fun dateTime(
+    instant: Instant,
+    locale: Locale,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String =
+    DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+        .withLocale(locale)
+        .withZone(zone)
+        .format(instant)

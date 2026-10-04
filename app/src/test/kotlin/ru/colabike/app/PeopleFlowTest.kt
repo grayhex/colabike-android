@@ -181,7 +181,7 @@ class PeopleFlowTest {
             dependencies(people = peopleWith(Relationship(true, false, false, false)))
         start(dependencies)
 
-        compose.onNodeWithText("Профиль").performClick()
+        compose.section("Профиль").performClick()
         compose.onNodeWithText("Мой публичный профиль").performScrollTo().performClick()
         compose.waitForIdle()
 

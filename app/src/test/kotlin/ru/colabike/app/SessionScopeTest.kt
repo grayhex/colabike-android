@@ -24,7 +24,7 @@ class SessionScopeTest {
         val dependencies = FakeDependencies()
         compose.setContent { ColaBikeTheme { ColaBikeApp(dependencies) } }
 
-        compose.onNodeWithText("Профиль").performClick()
+        compose.section("Профиль").performClick()
         compose.onNodeWithText("Тестовый Райдер").assertExists()
 
         dependencies.account.result = {
@@ -36,7 +36,7 @@ class SessionScopeTest {
             dependencies.auth.signIn("second@example.test", "password")
         }
         compose.waitForIdle()
-        compose.onNodeWithText("Профиль").performClick()
+        compose.section("Профиль").performClick()
 
         compose.onNodeWithText("Вторая Райдерша").assertExists()
         compose.onNodeWithText("Тестовый Райдер").assertDoesNotExist()

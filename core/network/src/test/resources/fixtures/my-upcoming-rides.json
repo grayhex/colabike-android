@@ -1,0 +1,199 @@
+{
+  "items": [
+    {
+      "id": "a0000001-0000-4000-8000-000000000001",
+      "title": "Мой план",
+      "status": "planned",
+      "kind": "planned",
+      "startedAt": null,
+      "scheduledAt": "2026-10-11T07:00:00Z",
+      "recurrence": "none",
+      "hasTrack": false,
+      "metrics": {
+        "distanceM": null,
+        "elapsedTimeS": null,
+        "movingTimeS": null,
+        "avgSpeedMps": null,
+        "elevationGainM": null
+      },
+      "bike": {
+        "id": "6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+        "name": "Городской Трэвел"
+      },
+      "author": {
+        "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": "/api/avatars/8d9e0f1a"
+      },
+      "likes": 3,
+      "comments": 2,
+      "liked": false,
+      "participants": {
+        "going": 4,
+        "maybe": 2
+      },
+      "role": "organizer",
+      "occurrenceCancelled": false,
+      "changedAfterAnswer": false,
+      "meetingPoint": "У фонтана",
+      "meetingHidden": false
+    },
+    {
+      "id": "a0000002-0000-4000-8000-000000000002",
+      "title": "Принятый",
+      "status": "planned",
+      "kind": "planned",
+      "startedAt": null,
+      "scheduledAt": "2026-10-11T07:00:00Z",
+      "recurrence": "none",
+      "hasTrack": false,
+      "metrics": {
+        "distanceM": null,
+        "elapsedTimeS": null,
+        "movingTimeS": null,
+        "avgSpeedMps": null,
+        "elevationGainM": null
+      },
+      "bike": {
+        "id": "6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+        "name": "Городской Трэвел"
+      },
+      "author": {
+        "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": "/api/avatars/8d9e0f1a"
+      },
+      "likes": 3,
+      "comments": 2,
+      "liked": false,
+      "participants": {
+        "going": 4,
+        "maybe": 2
+      },
+      "role": "accepted",
+      "occurrenceCancelled": false,
+      "changedAfterAnswer": true,
+      "meetingPoint": "Площадь",
+      "meetingHidden": false
+    },
+    {
+      "id": "a0000003-0000-4000-8000-000000000003",
+      "title": "Серия, дата отменена",
+      "status": "planned",
+      "kind": "planned",
+      "startedAt": null,
+      "scheduledAt": "2026-10-11T07:00:00Z",
+      "recurrence": "weekly",
+      "hasTrack": false,
+      "metrics": {
+        "distanceM": null,
+        "elapsedTimeS": null,
+        "movingTimeS": null,
+        "avgSpeedMps": null,
+        "elevationGainM": null
+      },
+      "bike": {
+        "id": "6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+        "name": "Городской Трэвел"
+      },
+      "author": {
+        "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": "/api/avatars/8d9e0f1a"
+      },
+      "likes": 3,
+      "comments": 2,
+      "liked": false,
+      "participants": {
+        "going": 4,
+        "maybe": 2
+      },
+      "role": "maybe",
+      "occurrenceCancelled": true,
+      "changedAfterAnswer": false,
+      "meetingPoint": null,
+      "meetingHidden": false
+    },
+    {
+      "id": "a0000004-0000-4000-8000-000000000004",
+      "title": "Приглашение",
+      "status": "planned",
+      "kind": "planned",
+      "startedAt": null,
+      "scheduledAt": "2026-10-11T07:00:00Z",
+      "recurrence": "none",
+      "hasTrack": false,
+      "metrics": {
+        "distanceM": null,
+        "elapsedTimeS": null,
+        "movingTimeS": null,
+        "avgSpeedMps": null,
+        "elevationGainM": null
+      },
+      "bike": {
+        "id": "6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+        "name": "Городской Трэвел"
+      },
+      "author": {
+        "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": "/api/avatars/8d9e0f1a"
+      },
+      "likes": 3,
+      "comments": 2,
+      "liked": false,
+      "participants": {
+        "going": 4,
+        "maybe": 2
+      },
+      "role": "invited",
+      "occurrenceCancelled": false,
+      "changedAfterAnswer": false,
+      "meetingPoint": null,
+      "meetingHidden": true
+    },
+    {
+      "id": "a0000005-0000-4000-8000-000000000005",
+      "title": "Отменён целиком",
+      "status": "cancelled",
+      "kind": "planned",
+      "startedAt": null,
+      "scheduledAt": "2026-10-11T07:00:00Z",
+      "recurrence": "none",
+      "hasTrack": false,
+      "metrics": {
+        "distanceM": null,
+        "elapsedTimeS": null,
+        "movingTimeS": null,
+        "avgSpeedMps": null,
+        "elevationGainM": null
+      },
+      "bike": {
+        "id": "6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+        "name": "Городской Трэвел"
+      },
+      "author": {
+        "id": "8d9e0f1a-2b3c-4d5e-8f70-8192a3b4c5d6",
+        "username": "test-rider",
+        "name": "Тестовый Райдер",
+        "avatarUrl": "/api/avatars/8d9e0f1a"
+      },
+      "likes": 3,
+      "comments": 2,
+      "liked": false,
+      "participants": {
+        "going": 4,
+        "maybe": 2
+      },
+      "role": "cancelled",
+      "occurrenceCancelled": false,
+      "changedAfterAnswer": false,
+      "meetingPoint": null,
+      "meetingHidden": false
+    }
+  ]
+}

@@ -57,6 +57,10 @@ import ru.colabike.app.people.PeopleListRoute
 import ru.colabike.app.people.PersonActions
 import ru.colabike.app.people.PersonRoute
 import ru.colabike.app.profile.ProfileRoute
+import ru.colabike.app.rides.BikeRidesRoute
+import ru.colabike.app.rides.RideActions
+import ru.colabike.app.rides.RideRoute
+import ru.colabike.app.rides.RidesRoute
 import ru.colabike.app.search.SearchRoute
 import ru.colabike.core.designsystem.component.BrandMark
 import ru.colabike.core.designsystem.component.ColaIcons
@@ -69,6 +73,7 @@ import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.CommentTarget
 import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.RideId
 
 /**
  * The signed-in shell. The window decides the navigation: a floating bar below the medium width, a
@@ -179,6 +184,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onOpenJournal = { id ->
                                                     navigator.open(Destination.Journal(id.value))
                                                 },
+                                                onOpenRide = { id ->
+                                                    navigator.open(Destination.Ride(id.value))
+                                                },
                                                 onFindPeople = {
                                                     navigator.open(
                                                         Destination.Search(people = true)
@@ -259,6 +267,57 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         },
                                     )
                                 }
+                                entry<Destination.Rides> {
+                                    RidesRoute(
+                                        repository = dependencies.rides,
+                                        auth = dependencies.auth,
+                                        onOpen = { id ->
+                                            navigator.open(Destination.Ride(id.value))
+                                        },
+                                        scrollToTop =
+                                            remember(navigator) {
+                                                navigator.reselects(Destination.Rides)
+                                            },
+                                        commentChanges = dependencies.comments.countChanges,
+                                    )
+                                }
+                                entry<Destination.Ride> { key ->
+                                    RideRoute(
+                                        repository = dependencies.rides,
+                                        auth = dependencies.auth,
+                                        id = RideId(key.id),
+                                        actions =
+                                            RideActions(
+                                                onBack = { navigator.back() },
+                                                onOpenBike = { id -> navigator.openBike(id.value) },
+                                                onOpenAuthor = { ref ->
+                                                    navigator.open(Destination.Person(ref))
+                                                },
+                                                onOpenComments = { id, title ->
+                                                    navigator.open(
+                                                        Destination.Comments(
+                                                            "ride",
+                                                            id.value,
+                                                            title,
+                                                        )
+                                                    )
+                                                },
+                                            ),
+                                        commentChanges = dependencies.comments.countChanges,
+                                    )
+                                }
+                                entry<Destination.BikeRides> { key ->
+                                    BikeRidesRoute(
+                                        repository = dependencies.rides,
+                                        bike = BikeId(key.bikeId),
+                                        bikeName = key.bikeName,
+                                        onBack = { navigator.back() },
+                                        onOpen = { id ->
+                                            navigator.open(Destination.Ride(id.value))
+                                        },
+                                        commentChanges = dependencies.comments.countChanges,
+                                    )
+                                }
                                 entry<Destination.Bikes>(
                                     metadata =
                                         ListDetailSceneStrategy.listPane(
@@ -305,6 +364,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             navigator.open(
                                                 Destination.Comments("bike", id.value, name)
                                             )
+                                        },
+                                        onOpenRides = { id, name ->
+                                            navigator.open(Destination.BikeRides(id.value, name))
                                         },
                                         commentChanges = dependencies.comments.countChanges,
                                     )

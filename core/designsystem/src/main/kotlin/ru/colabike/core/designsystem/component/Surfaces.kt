@@ -178,7 +178,7 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
             Modifier.padding(Spacing.card),
             verticalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
-            Eyebrow(label)
+            Eyebrow(label, maxLines = 2)
             Text(value, style = ColaTheme.textStyles.numeral, maxLines = 2)
         }
     }

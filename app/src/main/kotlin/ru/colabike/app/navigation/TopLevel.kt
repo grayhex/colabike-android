@@ -25,8 +25,8 @@ enum class TopLevel(
     Feed(Destination.Feed, R.string.nav_feed, ColaIcons.Feed, ColaIcons.FeedFilled, true),
     Bikes(Destination.Bikes, R.string.nav_bikes, ColaIcons.Bike, ColaIcons.BikeFilled, true),
 
-    /** Rides, my plans, the map: slice 7. */
-    Rides(Destination.Rides, R.string.nav_rides, ColaIcons.Route, ColaIcons.Route, false),
+    /** Rides and plans, one's own (the map: second part of slice 7). */
+    Rides(Destination.Rides, R.string.nav_rides, ColaIcons.Route, ColaIcons.Route, true),
 
     /** Personal chat and the notification centre: slice 8. */
     Messages(
