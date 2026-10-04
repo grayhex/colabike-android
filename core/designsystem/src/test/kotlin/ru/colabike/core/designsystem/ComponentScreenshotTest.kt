@@ -36,6 +36,7 @@ import ru.colabike.core.designsystem.component.JournalCard
 import ru.colabike.core.designsystem.component.LikeButton
 import ru.colabike.core.designsystem.component.ListItemAction
 import ru.colabike.core.designsystem.component.ListingCard
+import ru.colabike.core.designsystem.component.NotificationRow
 import ru.colabike.core.designsystem.component.PhotoTile
 import ru.colabike.core.designsystem.component.PillBadge
 import ru.colabike.core.designsystem.component.PreviewData
@@ -113,6 +114,46 @@ class ComponentScreenshotTest {
     @Test
     fun rideVariantsLargeText() =
         rideVariants(dark = false, fontScale = 2f, name = "ride_variants_font_200")
+
+    private fun notificationRows(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                NotificationRow(
+                    title = "Новый комментарий",
+                    body = "Тестовый Райдер · Городской Трэвел",
+                    whenText = "3 окт. 2026 г., 18:30",
+                    unread = true,
+                    actor = PreviewData.rider,
+                    onClick = {},
+                )
+                NotificationRow(
+                    title = "Новый подписчик",
+                    body = "Тестовый Райдер (@test-rider)",
+                    whenText = "3 окт. 2026 г., 12:00",
+                    unread = false,
+                    actor = PreviewData.rider,
+                    onClick = {},
+                )
+                NotificationRow(
+                    title = "Объявление",
+                    body =
+                        "Втулка Shimano Deore. Срок объявления скоро выйдет. Действует до 9 окт. 2026 г., 09:00",
+                    whenText = "2 окт. 2026 г., 09:00",
+                    unread = true,
+                    actor = null,
+                )
+            }
+        }
+
+    @Test
+    fun notificationRowsLight() = notificationRows(dark = false, name = "notification_rows_light")
+
+    @Test
+    fun notificationRowsDark() = notificationRows(dark = true, name = "notification_rows_dark")
+
+    @Test
+    fun notificationRowsLargeText() =
+        notificationRows(dark = false, fontScale = 2f, name = "notification_rows_font_200")
 
     private fun charts(dark: Boolean, fontScale: Float = 1f, name: String) =
         compose.snapshot(name, dark, fontScale) {

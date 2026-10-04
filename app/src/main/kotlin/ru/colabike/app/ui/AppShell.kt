@@ -14,6 +14,7 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -29,7 +30,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -52,6 +55,11 @@ import ru.colabike.app.navigation.Destination
 import ru.colabike.app.navigation.Navigator
 import ru.colabike.app.navigation.TopLevel
 import ru.colabike.app.navigation.rememberNavigationState
+import ru.colabike.app.notifications.LocalNotificationsEntry
+import ru.colabike.app.notifications.NotificationBadgeViewModel
+import ru.colabike.app.notifications.NotificationsEntry
+import ru.colabike.app.notifications.NotificationsRoute
+import ru.colabike.app.notifications.badge
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListRoute
 import ru.colabike.app.people.PersonActions
@@ -62,6 +70,7 @@ import ru.colabike.app.rides.RideActions
 import ru.colabike.app.rides.RideRoute
 import ru.colabike.app.rides.RidesRoute
 import ru.colabike.app.search.SearchRoute
+import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.BrandMark
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaNavItem
@@ -118,345 +127,403 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
     val selectedIndex = sections.indexOfFirst { it.root == state.topLevelRoute }.coerceAtLeast(0)
     val onSelect: (Int) -> Unit = { navigator.select(sections[it].root) }
 
-    ColaCanvas(modifier.fillMaxSize()) {
-        NavigationSuiteScaffoldLayout(
-            layoutType =
-                when {
-                    barHidden -> NavigationSuiteType.None
-                    bottomBar -> NavigationSuiteType.NavigationBar
-                    else -> NavigationSuiteType.NavigationRail
+    // The bell: the count the server gave, asked for again when the app returns, and at most once
+    // in half a minute while the person moves about. A guest has no inbox, and no bell.
+    val authState by dependencies.auth.state.collectAsStateWithLifecycle()
+    val member = authState is AuthState.SignedIn
+    val badgeModel = viewModel { NotificationBadgeViewModel(dependencies.notifications) }
+    val unread by badgeModel.count.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(member) {
+        if (member) badgeModel.refresh()
+        onPauseOrDispose {}
+    }
+    val here = state.currentStack.lastOrNull()
+    LaunchedEffect(here, member) { if (member) badgeModel.refresh() }
+    val bell =
+        remember(member, unread, navigator) {
+            if (member) {
+                NotificationsEntry(unread.badge(), { navigator.open(Destination.Notifications) })
+            } else null
+        }
+
+    CompositionLocalProvider(LocalNotificationsEntry provides bell) {
+        ColaCanvas(modifier.fillMaxSize()) {
+            NavigationSuiteScaffoldLayout(
+                layoutType =
+                    when {
+                        barHidden -> NavigationSuiteType.None
+                        bottomBar -> NavigationSuiteType.NavigationBar
+                        else -> NavigationSuiteType.NavigationRail
+                    },
+                navigationSuite = {
+                    if (barHidden) {
+                        // The layout type says "none", and so must the content, or the bar is drawn
+                        // anyway at the corner.
+                    } else if (bottomBar) {
+                        ColaNavigationBar(items, selectedIndex, onSelect)
+                    } else {
+                        ColaNavigationRail(
+                            items,
+                            selectedIndex,
+                            onSelect,
+                            header = { BrandMark(size = BrandMarkRail) },
+                        )
+                    }
                 },
-            navigationSuite = {
-                if (barHidden) {
-                    // The layout type says "none", and so must the content, or the bar is drawn
-                    // anyway at the corner.
-                } else if (bottomBar) {
-                    ColaNavigationBar(items, selectedIndex, onSelect)
-                } else {
-                    ColaNavigationRail(
-                        items,
-                        selectedIndex,
-                        onSelect,
-                        header = { BrandMark(size = BrandMarkRail) },
+            ) {
+                // The bar or the rail already keeps clear of the system bars on its side. Above a
+                // bar
+                // the
+                // page fades out instead of ending in a hard edge.
+                Box(
+                    Modifier.then(
+                            when {
+                                barHidden -> Modifier
+                                bottomBar ->
+                                    Modifier.consumeWindowInsets(
+                                        NavigationBarDefaults.windowInsets.only(
+                                            WindowInsetsSides.Bottom
+                                        )
+                                    )
+                                else ->
+                                    Modifier.consumeWindowInsets(
+                                        NavigationRailDefaults.windowInsets.only(
+                                            WindowInsetsSides.Start
+                                        )
+                                    )
+                            }
+                        )
+                        .then(
+                            if (bottomBar && !barHidden) Modifier.fadeBottomEdge(FadeHeight)
+                            else Modifier
+                        )
+                ) {
+                    NavDisplay(
+                        entries =
+                            state.toDecoratedEntries(
+                                entryProvider {
+                                    entry<Destination.Feed> {
+                                        FeedRoute(
+                                            commentChanges = dependencies.comments.countChanges,
+                                            feed = dependencies.feed,
+                                            bikes = dependencies.bikes,
+                                            auth = dependencies.auth,
+                                            actions =
+                                                FeedActions(
+                                                    onOpenBike = { id ->
+                                                        navigator.openBike(id.value)
+                                                    },
+                                                    onOpenJournal = { id ->
+                                                        navigator.open(
+                                                            Destination.Journal(id.value)
+                                                        )
+                                                    },
+                                                    onOpenRide = { id ->
+                                                        navigator.open(Destination.Ride(id.value))
+                                                    },
+                                                    onFindPeople = {
+                                                        navigator.open(
+                                                            Destination.Search(people = true)
+                                                        )
+                                                    },
+                                                    onBrowseBikes = {
+                                                        navigator.select(Destination.Bikes)
+                                                    },
+                                                ),
+                                            scrollToTop =
+                                                remember(navigator) {
+                                                    navigator.reselects(Destination.Feed)
+                                                },
+                                        )
+                                    }
+                                    entry<Destination.Journal> { key ->
+                                        JournalRoute(
+                                            repository = dependencies.journal,
+                                            auth = dependencies.auth,
+                                            id = JournalId(key.id),
+                                            actions =
+                                                JournalActions(
+                                                    onBack = { navigator.back() },
+                                                    onOpenBike = { id ->
+                                                        navigator.openBike(id.value)
+                                                    },
+                                                    onOpenAuthor = { ref ->
+                                                        navigator.open(Destination.Person(ref))
+                                                    },
+                                                    onOpenComments = { id, title ->
+                                                        navigator.open(
+                                                            Destination.Comments(
+                                                                "journal",
+                                                                id.value,
+                                                                title,
+                                                            )
+                                                        )
+                                                    },
+                                                ),
+                                            commentChanges = dependencies.comments.countChanges,
+                                        )
+                                    }
+                                    entry<Destination.Comments> { key ->
+                                        CommentsRoute(
+                                            repository = dependencies.comments,
+                                            drafts = dependencies.drafts,
+                                            auth = dependencies.auth,
+                                            target = CommentTarget(commentKind(key.kind), key.id),
+                                            title = key.title,
+                                            focus = key.focus,
+                                            onBack = { navigator.back() },
+                                            onOpenAuthor = { ref ->
+                                                navigator.open(Destination.Person(ref))
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.BikeJournal> { key ->
+                                        JournalListRoute(
+                                            commentChanges = dependencies.comments.countChanges,
+                                            repository = dependencies.journal,
+                                            source = JournalSource.OfBike(BikeId(key.bikeId)),
+                                            title = stringResource(R.string.journal_of_bike),
+                                            subtitle = key.bikeName,
+                                            onBack = { navigator.back() },
+                                            onOpen = { id ->
+                                                navigator.open(Destination.Journal(id.value))
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.SavedJournal> {
+                                        JournalListRoute(
+                                            commentChanges = dependencies.comments.countChanges,
+                                            repository = dependencies.journal,
+                                            source = JournalSource.Saved,
+                                            title = stringResource(R.string.journal_saved_title),
+                                            subtitle = null,
+                                            onBack = { navigator.back() },
+                                            onOpen = { id ->
+                                                navigator.open(Destination.Journal(id.value))
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Rides> {
+                                        RidesRoute(
+                                            repository = dependencies.rides,
+                                            auth = dependencies.auth,
+                                            onOpen = { id ->
+                                                navigator.open(Destination.Ride(id.value))
+                                            },
+                                            scrollToTop =
+                                                remember(navigator) {
+                                                    navigator.reselects(Destination.Rides)
+                                                },
+                                            commentChanges = dependencies.comments.countChanges,
+                                        )
+                                    }
+                                    entry<Destination.Ride> { key ->
+                                        RideRoute(
+                                            repository = dependencies.rides,
+                                            auth = dependencies.auth,
+                                            id = RideId(key.id),
+                                            maps = dependencies.maps,
+                                            actions =
+                                                RideActions(
+                                                    onBack = { navigator.back() },
+                                                    onOpenBike = { id ->
+                                                        navigator.openBike(id.value)
+                                                    },
+                                                    onOpenAuthor = { ref ->
+                                                        navigator.open(Destination.Person(ref))
+                                                    },
+                                                    onOpenComments = { id, title ->
+                                                        navigator.open(
+                                                            Destination.Comments(
+                                                                "ride",
+                                                                id.value,
+                                                                title,
+                                                            )
+                                                        )
+                                                    },
+                                                ),
+                                            commentChanges = dependencies.comments.countChanges,
+                                        )
+                                    }
+                                    entry<Destination.BikeRides> { key ->
+                                        BikeRidesRoute(
+                                            repository = dependencies.rides,
+                                            bike = BikeId(key.bikeId),
+                                            bikeName = key.bikeName,
+                                            onBack = { navigator.back() },
+                                            onOpen = { id ->
+                                                navigator.open(Destination.Ride(id.value))
+                                            },
+                                            commentChanges = dependencies.comments.countChanges,
+                                        )
+                                    }
+                                    entry<Destination.Bikes>(
+                                        metadata =
+                                            ListDetailSceneStrategy.listPane(
+                                                detailPlaceholder = { DetailPlaceholder() }
+                                            )
+                                    ) {
+                                        BikesRoute(
+                                            dependencies.bikes,
+                                            dependencies.auth,
+                                            commentChanges = dependencies.comments.countChanges,
+                                            onOpen = { id -> navigator.openBike(id.value) },
+                                            onSearch = { navigator.open(Destination.Search()) },
+                                            scrollToTop =
+                                                remember(navigator) {
+                                                    navigator.reselects(Destination.Bikes)
+                                                },
+                                        )
+                                    }
+                                    entry<Destination.Bike>(
+                                        metadata = ListDetailSceneStrategy.detailPane()
+                                    ) { key ->
+                                        // Side by side with the list there is nothing to go back
+                                        // from; opened over a person or a search it fills the area
+                                        // and needs its arrow.
+                                        val stack = state.currentStack
+                                        val besideList =
+                                            twoPane &&
+                                                stack.getOrNull(stack.lastIndexOf(key) - 1) ==
+                                                    Destination.Bikes
+                                        BikeDetailRoute(
+                                            repository = dependencies.bikes,
+                                            auth = dependencies.auth,
+                                            links = dependencies.links,
+                                            id = BikeId(key.id),
+                                            showBack = !besideList,
+                                            onBack = { navigator.back() },
+                                            onOpenAuthor = { ref ->
+                                                navigator.open(Destination.Person(ref))
+                                            },
+                                            onOpenJournal = { id, name ->
+                                                navigator.open(
+                                                    Destination.BikeJournal(id.value, name)
+                                                )
+                                            },
+                                            onOpenComments = { id, name ->
+                                                navigator.open(
+                                                    Destination.Comments("bike", id.value, name)
+                                                )
+                                            },
+                                            onOpenRides = { id, name ->
+                                                navigator.open(
+                                                    Destination.BikeRides(id.value, name)
+                                                )
+                                            },
+                                            commentChanges = dependencies.comments.countChanges,
+                                        )
+                                    }
+                                    entry<Destination.Person> { key ->
+                                        PersonRoute(
+                                            commentChanges = dependencies.comments.countChanges,
+                                            people = dependencies.people,
+                                            bikes = dependencies.bikes,
+                                            auth = dependencies.auth,
+                                            ref = key.ref,
+                                            actions =
+                                                PersonActions(
+                                                    onBack = { navigator.back() },
+                                                    onOpenBike = { id ->
+                                                        navigator.openBike(id.value)
+                                                    },
+                                                    onOpenFollowers = { ref ->
+                                                        navigator.open(
+                                                            Destination.People(
+                                                                ref,
+                                                                following = false,
+                                                            )
+                                                        )
+                                                    },
+                                                    onOpenFollowing = { ref ->
+                                                        navigator.open(
+                                                            Destination.People(
+                                                                ref,
+                                                                following = true,
+                                                            )
+                                                        )
+                                                    },
+                                                    onOpenAccount = {
+                                                        navigator.select(Destination.Profile)
+                                                    },
+                                                ),
+                                        )
+                                    }
+                                    entry<Destination.People> { key ->
+                                        PeopleListRoute(
+                                            repository = dependencies.people,
+                                            ref = key.ref,
+                                            kind =
+                                                if (key.following) PeopleListKind.Following
+                                                else PeopleListKind.Followers,
+                                            onBack = { navigator.back() },
+                                            onOpenPerson = { ref ->
+                                                navigator.open(Destination.Person(ref))
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Search> { key ->
+                                        SearchRoute(
+                                            startOnPeople = key.people,
+                                            bikes = dependencies.bikes,
+                                            people = dependencies.people,
+                                            onBack = { navigator.back() },
+                                            onOpenBike = { id -> navigator.openBike(id.value) },
+                                            onOpenPerson = { ref ->
+                                                navigator.open(Destination.Person(ref))
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Profile> {
+                                        ProfileRoute(
+                                            dependencies,
+                                            onOpenDevices = { navigator.open(Destination.Devices) },
+                                            onOpenAbout = { navigator.open(Destination.About) },
+                                            onOpenPublicProfile = { id ->
+                                                navigator.open(Destination.Person(id))
+                                            },
+                                            onOpenSaved = {
+                                                navigator.open(Destination.SavedJournal)
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Notifications> {
+                                        NotificationsRoute(
+                                            repository = dependencies.notifications,
+                                            site = dependencies.links,
+                                            onBack = { navigator.back() },
+                                            onOpen = { destination ->
+                                                if (destination is Destination.Bike) {
+                                                    navigator.openBike(destination.id)
+                                                } else {
+                                                    navigator.open(destination)
+                                                }
+                                            },
+                                        )
+                                    }
+                                    entry<Destination.Devices> {
+                                        DevicesRoute(
+                                            dependencies.sessions,
+                                            dependencies.clock,
+                                            onBack = { navigator.back() },
+                                        )
+                                    }
+                                    entry<Destination.About> {
+                                        AboutRoute(
+                                            dependencies.links,
+                                            onBack = { navigator.back() },
+                                            onLicenses = { navigator.open(Destination.Licenses) },
+                                        )
+                                    }
+                                    entry<Destination.Licenses> {
+                                        LicensesRoute(onBack = { navigator.back() })
+                                    }
+                                }
+                            ),
+                        sceneStrategies = listOf(listDetail),
+                        onBack = { navigator.back() },
                     )
                 }
-            },
-        ) {
-            // The bar or the rail already keeps clear of the system bars on its side. Above a bar
-            // the
-            // page fades out instead of ending in a hard edge.
-            Box(
-                Modifier.then(
-                        when {
-                            barHidden -> Modifier
-                            bottomBar ->
-                                Modifier.consumeWindowInsets(
-                                    NavigationBarDefaults.windowInsets.only(
-                                        WindowInsetsSides.Bottom
-                                    )
-                                )
-                            else ->
-                                Modifier.consumeWindowInsets(
-                                    NavigationRailDefaults.windowInsets.only(
-                                        WindowInsetsSides.Start
-                                    )
-                                )
-                        }
-                    )
-                    .then(
-                        if (bottomBar && !barHidden) Modifier.fadeBottomEdge(FadeHeight)
-                        else Modifier
-                    )
-            ) {
-                NavDisplay(
-                    entries =
-                        state.toDecoratedEntries(
-                            entryProvider {
-                                entry<Destination.Feed> {
-                                    FeedRoute(
-                                        commentChanges = dependencies.comments.countChanges,
-                                        feed = dependencies.feed,
-                                        bikes = dependencies.bikes,
-                                        auth = dependencies.auth,
-                                        actions =
-                                            FeedActions(
-                                                onOpenBike = { id -> navigator.openBike(id.value) },
-                                                onOpenJournal = { id ->
-                                                    navigator.open(Destination.Journal(id.value))
-                                                },
-                                                onOpenRide = { id ->
-                                                    navigator.open(Destination.Ride(id.value))
-                                                },
-                                                onFindPeople = {
-                                                    navigator.open(
-                                                        Destination.Search(people = true)
-                                                    )
-                                                },
-                                                onBrowseBikes = {
-                                                    navigator.select(Destination.Bikes)
-                                                },
-                                            ),
-                                        scrollToTop =
-                                            remember(navigator) {
-                                                navigator.reselects(Destination.Feed)
-                                            },
-                                    )
-                                }
-                                entry<Destination.Journal> { key ->
-                                    JournalRoute(
-                                        repository = dependencies.journal,
-                                        auth = dependencies.auth,
-                                        id = JournalId(key.id),
-                                        actions =
-                                            JournalActions(
-                                                onBack = { navigator.back() },
-                                                onOpenBike = { id -> navigator.openBike(id.value) },
-                                                onOpenAuthor = { ref ->
-                                                    navigator.open(Destination.Person(ref))
-                                                },
-                                                onOpenComments = { id, title ->
-                                                    navigator.open(
-                                                        Destination.Comments(
-                                                            "journal",
-                                                            id.value,
-                                                            title,
-                                                        )
-                                                    )
-                                                },
-                                            ),
-                                        commentChanges = dependencies.comments.countChanges,
-                                    )
-                                }
-                                entry<Destination.Comments> { key ->
-                                    CommentsRoute(
-                                        repository = dependencies.comments,
-                                        drafts = dependencies.drafts,
-                                        auth = dependencies.auth,
-                                        target = CommentTarget(commentKind(key.kind), key.id),
-                                        title = key.title,
-                                        focus = key.focus,
-                                        onBack = { navigator.back() },
-                                        onOpenAuthor = { ref ->
-                                            navigator.open(Destination.Person(ref))
-                                        },
-                                    )
-                                }
-                                entry<Destination.BikeJournal> { key ->
-                                    JournalListRoute(
-                                        commentChanges = dependencies.comments.countChanges,
-                                        repository = dependencies.journal,
-                                        source = JournalSource.OfBike(BikeId(key.bikeId)),
-                                        title = stringResource(R.string.journal_of_bike),
-                                        subtitle = key.bikeName,
-                                        onBack = { navigator.back() },
-                                        onOpen = { id ->
-                                            navigator.open(Destination.Journal(id.value))
-                                        },
-                                    )
-                                }
-                                entry<Destination.SavedJournal> {
-                                    JournalListRoute(
-                                        commentChanges = dependencies.comments.countChanges,
-                                        repository = dependencies.journal,
-                                        source = JournalSource.Saved,
-                                        title = stringResource(R.string.journal_saved_title),
-                                        subtitle = null,
-                                        onBack = { navigator.back() },
-                                        onOpen = { id ->
-                                            navigator.open(Destination.Journal(id.value))
-                                        },
-                                    )
-                                }
-                                entry<Destination.Rides> {
-                                    RidesRoute(
-                                        repository = dependencies.rides,
-                                        auth = dependencies.auth,
-                                        onOpen = { id ->
-                                            navigator.open(Destination.Ride(id.value))
-                                        },
-                                        scrollToTop =
-                                            remember(navigator) {
-                                                navigator.reselects(Destination.Rides)
-                                            },
-                                        commentChanges = dependencies.comments.countChanges,
-                                    )
-                                }
-                                entry<Destination.Ride> { key ->
-                                    RideRoute(
-                                        repository = dependencies.rides,
-                                        auth = dependencies.auth,
-                                        id = RideId(key.id),
-                                        maps = dependencies.maps,
-                                        actions =
-                                            RideActions(
-                                                onBack = { navigator.back() },
-                                                onOpenBike = { id -> navigator.openBike(id.value) },
-                                                onOpenAuthor = { ref ->
-                                                    navigator.open(Destination.Person(ref))
-                                                },
-                                                onOpenComments = { id, title ->
-                                                    navigator.open(
-                                                        Destination.Comments(
-                                                            "ride",
-                                                            id.value,
-                                                            title,
-                                                        )
-                                                    )
-                                                },
-                                            ),
-                                        commentChanges = dependencies.comments.countChanges,
-                                    )
-                                }
-                                entry<Destination.BikeRides> { key ->
-                                    BikeRidesRoute(
-                                        repository = dependencies.rides,
-                                        bike = BikeId(key.bikeId),
-                                        bikeName = key.bikeName,
-                                        onBack = { navigator.back() },
-                                        onOpen = { id ->
-                                            navigator.open(Destination.Ride(id.value))
-                                        },
-                                        commentChanges = dependencies.comments.countChanges,
-                                    )
-                                }
-                                entry<Destination.Bikes>(
-                                    metadata =
-                                        ListDetailSceneStrategy.listPane(
-                                            detailPlaceholder = { DetailPlaceholder() }
-                                        )
-                                ) {
-                                    BikesRoute(
-                                        dependencies.bikes,
-                                        dependencies.auth,
-                                        commentChanges = dependencies.comments.countChanges,
-                                        onOpen = { id -> navigator.openBike(id.value) },
-                                        onSearch = { navigator.open(Destination.Search()) },
-                                        scrollToTop =
-                                            remember(navigator) {
-                                                navigator.reselects(Destination.Bikes)
-                                            },
-                                    )
-                                }
-                                entry<Destination.Bike>(
-                                    metadata = ListDetailSceneStrategy.detailPane()
-                                ) { key ->
-                                    // Side by side with the list there is nothing to go back
-                                    // from; opened over a person or a search it fills the area
-                                    // and needs its arrow.
-                                    val stack = state.currentStack
-                                    val besideList =
-                                        twoPane &&
-                                            stack.getOrNull(stack.lastIndexOf(key) - 1) ==
-                                                Destination.Bikes
-                                    BikeDetailRoute(
-                                        repository = dependencies.bikes,
-                                        auth = dependencies.auth,
-                                        links = dependencies.links,
-                                        id = BikeId(key.id),
-                                        showBack = !besideList,
-                                        onBack = { navigator.back() },
-                                        onOpenAuthor = { ref ->
-                                            navigator.open(Destination.Person(ref))
-                                        },
-                                        onOpenJournal = { id, name ->
-                                            navigator.open(Destination.BikeJournal(id.value, name))
-                                        },
-                                        onOpenComments = { id, name ->
-                                            navigator.open(
-                                                Destination.Comments("bike", id.value, name)
-                                            )
-                                        },
-                                        onOpenRides = { id, name ->
-                                            navigator.open(Destination.BikeRides(id.value, name))
-                                        },
-                                        commentChanges = dependencies.comments.countChanges,
-                                    )
-                                }
-                                entry<Destination.Person> { key ->
-                                    PersonRoute(
-                                        commentChanges = dependencies.comments.countChanges,
-                                        people = dependencies.people,
-                                        bikes = dependencies.bikes,
-                                        auth = dependencies.auth,
-                                        ref = key.ref,
-                                        actions =
-                                            PersonActions(
-                                                onBack = { navigator.back() },
-                                                onOpenBike = { id -> navigator.openBike(id.value) },
-                                                onOpenFollowers = { ref ->
-                                                    navigator.open(
-                                                        Destination.People(ref, following = false)
-                                                    )
-                                                },
-                                                onOpenFollowing = { ref ->
-                                                    navigator.open(
-                                                        Destination.People(ref, following = true)
-                                                    )
-                                                },
-                                                onOpenAccount = {
-                                                    navigator.select(Destination.Profile)
-                                                },
-                                            ),
-                                    )
-                                }
-                                entry<Destination.People> { key ->
-                                    PeopleListRoute(
-                                        repository = dependencies.people,
-                                        ref = key.ref,
-                                        kind =
-                                            if (key.following) PeopleListKind.Following
-                                            else PeopleListKind.Followers,
-                                        onBack = { navigator.back() },
-                                        onOpenPerson = { ref ->
-                                            navigator.open(Destination.Person(ref))
-                                        },
-                                    )
-                                }
-                                entry<Destination.Search> { key ->
-                                    SearchRoute(
-                                        startOnPeople = key.people,
-                                        bikes = dependencies.bikes,
-                                        people = dependencies.people,
-                                        onBack = { navigator.back() },
-                                        onOpenBike = { id -> navigator.openBike(id.value) },
-                                        onOpenPerson = { ref ->
-                                            navigator.open(Destination.Person(ref))
-                                        },
-                                    )
-                                }
-                                entry<Destination.Profile> {
-                                    ProfileRoute(
-                                        dependencies,
-                                        onOpenDevices = { navigator.open(Destination.Devices) },
-                                        onOpenAbout = { navigator.open(Destination.About) },
-                                        onOpenPublicProfile = { id ->
-                                            navigator.open(Destination.Person(id))
-                                        },
-                                        onOpenSaved = { navigator.open(Destination.SavedJournal) },
-                                    )
-                                }
-                                entry<Destination.Devices> {
-                                    DevicesRoute(
-                                        dependencies.sessions,
-                                        dependencies.clock,
-                                        onBack = { navigator.back() },
-                                    )
-                                }
-                                entry<Destination.About> {
-                                    AboutRoute(
-                                        dependencies.links,
-                                        onBack = { navigator.back() },
-                                        onLicenses = { navigator.open(Destination.Licenses) },
-                                    )
-                                }
-                                entry<Destination.Licenses> {
-                                    LicensesRoute(onBack = { navigator.back() })
-                                }
-                            }
-                        ),
-                    sceneStrategies = listOf(listDetail),
-                    onBack = { navigator.back() },
-                )
             }
         }
     }

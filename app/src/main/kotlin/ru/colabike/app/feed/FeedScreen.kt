@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.notifications.NotificationsBell
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.resolve
@@ -112,7 +113,12 @@ fun FeedRoute(
 fun FeedGuestScreen(onSignIn: () -> Unit, onBrowse: () -> Unit) {
     Scaffold(
         containerColor = Color.Transparent,
-        topBar = { ColaTopBar(title = stringResource(R.string.feed_title)) },
+        topBar = {
+            ColaTopBar(
+                title = stringResource(R.string.feed_title),
+                actions = { NotificationsBell() },
+            )
+        },
     ) { padding ->
         EmptyState(
             title = stringResource(R.string.feed_guest_title),
@@ -146,7 +152,12 @@ fun FeedScreen(
     val page = state.page
     Scaffold(
         containerColor = Color.Transparent,
-        topBar = { ColaTopBar(title = stringResource(R.string.feed_title)) },
+        topBar = {
+            ColaTopBar(
+                title = stringResource(R.string.feed_title),
+                actions = { NotificationsBell() },
+            )
+        },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             FlowRow(

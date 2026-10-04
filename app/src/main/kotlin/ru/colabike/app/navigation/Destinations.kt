@@ -26,6 +26,9 @@ sealed interface Destination : NavKey {
 
     @Serializable data object Messages : Destination
 
+    /** The inbox of ColaBike events; opened from the bell of a top-level screen. */
+    @Serializable data object Notifications : Destination
+
     @Serializable data object Profile : Destination
 
     /** A person's public page; [ref] is a UUID (from a list) or a username (from a link). */

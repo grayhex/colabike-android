@@ -1,0 +1,69 @@
+{
+  "items": [
+    {
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "type": "comment",
+      "createdAt": "2026-10-03T18:30:00Z",
+      "readAt": null,
+      "actor": {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "username": "rider2",
+        "name": "Вторая Райдерша",
+        "avatarUrl": null
+      },
+      "target": {
+        "type": "bike",
+        "id": "6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+        "name": "Городской Трэвел",
+        "path": "/b/city-travel-4k7m9p2x#comment-b2000000-0000-4000-8000-000000000002"
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "type": "follow",
+      "createdAt": "2026-10-03T12:00:00Z",
+      "readAt": "2026-10-03T13:00:00Z",
+      "actor": {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "username": "rider3",
+        "name": "Третий",
+        "avatarUrl": null
+      },
+      "target": {
+        "type": "profile",
+        "id": "10000000-0000-4000-8000-000000000001",
+        "name": "Тестовый Райдер",
+        "path": "/@test-rider"
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "type": "market_expiring",
+      "createdAt": "2026-10-02T09:00:00Z",
+      "readAt": null,
+      "actor": null,
+      "target": {
+        "type": "market",
+        "id": "c3000000-0000-4000-8000-000000000001",
+        "name": "Втулка Shimano Deore",
+        "path": "/market/c3000000-0000-4000-8000-000000000001",
+        "expiresAt": "2026-10-09T09:00:00Z",
+        "state": "expiring"
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "type": "a_kind_from_the_future",
+      "createdAt": "2026-10-01T09:00:00Z",
+      "readAt": null,
+      "actor": null,
+      "target": {
+        "type": "galaxy",
+        "id": "d4000000-0000-4000-8000-000000000001",
+        "name": "Что-то новое",
+        "path": "/galaxy/1"
+      }
+    }
+  ],
+  "nextCursor": "eyJ0IjoiMSJ9"
+}

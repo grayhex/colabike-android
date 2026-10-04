@@ -26,6 +26,7 @@ import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.AnalysisChannel
 import ru.colabike.core.model.AnalysisPoint
+import ru.colabike.core.model.AppNotification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
@@ -53,6 +54,10 @@ import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
 import ru.colabike.core.model.LikeChange
 import ru.colabike.core.model.LikeState
+import ru.colabike.core.model.ListingState
+import ru.colabike.core.model.NotificationCount
+import ru.colabike.core.model.NotificationTarget
+import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.PeopleRepository
@@ -801,6 +806,84 @@ class FakeRides(
     }
 }
 
+/** The inbox in memory: pages by cursor, and a count the test sets. */
+class FakeNotifications(
+    var pages: Map<String?, Page<AppNotification>> = mapOf(null to Page(notifications(0, 3), null)),
+    var unread: NotificationCount = NotificationCount(unread = 2, capped = false),
+) : NotificationsRepository {
+    val pageCalls = mutableListOf<String?>()
+    var countCalls = 0
+    var nextError: DataError? = null
+
+    private fun fail() {
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+
+    override suspend fun page(cursor: String?, limit: Int): Page<AppNotification> {
+        pageCalls += cursor
+        fail()
+        return pages[cursor] ?: Page(emptyList(), null)
+    }
+
+    override suspend fun count(): NotificationCount {
+        countCalls++
+        fail()
+        return unread
+    }
+}
+
+fun notification(
+    n: Int,
+    kind: String = "comment",
+    type: String = "bike",
+    read: Boolean = false,
+    path: String = "/b/6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+    actor: Person? = PreviewData.rider,
+) =
+    AppNotification(
+        id = "n$n",
+        kind = kind,
+        createdAt = Instant.parse("2026-10-03T18:30:00Z"),
+        read = read,
+        actor = actor,
+        target =
+            NotificationTarget(
+                type = type,
+                id = "6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
+                name = "Городской Трэвел",
+                path = path,
+            ),
+    )
+
+/** One of each look the inbox has: a person's, the site's own, a listing, and a kind to come. */
+fun sampleInbox(): List<AppNotification> =
+    listOf(
+        notification(1, kind = "comment", read = false),
+        notification(2, kind = "follow", type = "profile", read = false, path = "/@test-rider"),
+        notification(3, kind = "ride_like", type = "ride", read = true, path = "/r/x"),
+        notification(4, kind = "reply", read = true),
+        notification(5, kind = "session_reuse", type = "account", read = false, actor = null).let {
+            it.copy(target = it.target.copy(name = ""))
+        },
+        notification(6, kind = "market_expiring", type = "market", read = false, actor = null).let {
+            it.copy(
+                target =
+                    it.target.copy(
+                        name = "Втулка Shimano Deore",
+                        expiresAt = Instant.parse("2026-10-09T09:00:00Z"),
+                        state = ListingState.Expiring,
+                    )
+            )
+        },
+        notification(7, kind = "something_new", type = "galaxy", read = true, actor = null),
+    )
+
+fun notifications(from: Int, count: Int): List<AppNotification> =
+    (from until from + count).map { notification(it, read = it % 2 == 1) }
+
 class FakeAccount(var result: () -> Account = { account }) : AccountRepository {
     /** How many times the account was asked for: a guest asks nothing. */
     var calls = 0
@@ -892,6 +975,7 @@ class FakeDependencies(
     override val journal: FakeJournal = FakeJournal(),
     override val comments: FakeComments = FakeComments(),
     override val rides: FakeRides = FakeRides(),
+    override val notifications: FakeNotifications = FakeNotifications(),
     override val drafts: InMemoryCommentDrafts = InMemoryCommentDrafts(),
     override val sessions: FakeSessions = FakeSessions(),
     override val auth: FakeAuth = FakeAuth(),
