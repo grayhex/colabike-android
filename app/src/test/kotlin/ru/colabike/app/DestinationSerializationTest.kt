@@ -45,6 +45,7 @@ class DestinationSerializationTest {
             Destination.SavedJournal,
             Destination.Search(people = true),
             Destination.Devices,
+            Destination.NotificationSettings,
             Destination.About,
             Destination.Licenses,
         )
