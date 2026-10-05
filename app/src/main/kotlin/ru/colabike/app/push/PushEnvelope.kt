@@ -12,7 +12,8 @@ import kotlinx.serialization.json.intOrNull
 /**
  * Where a tap on a push leads, in ids: the app asks the server for the name, the state and the
  * right to see it. The same fields as the typed target of the inbox, without names and addresses.
- * [type] is an open set; [id] is null for a target without an object (the server's own).
+ * [type] is an open set; [id] is null for a target without an object (the server's own, or a
+ * conversation, which is named by [ref]).
  */
 data class PushTarget(
     val type: String,
@@ -20,6 +21,8 @@ data class PushTarget(
     val commentId: String?,
     val occurrenceAt: Instant?,
     val agreementRevision: Int?,
+    /** The conversation of a chat message (its `cid`), where the target has no object id. */
+    val ref: String? = null,
 )
 
 /**
@@ -93,6 +96,9 @@ object PushEnvelopes {
     private const val VERSION = 1
     private val UUID =
         Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+    /** A conversation's `cid` as the chat names it: `type:id`, 120 characters at most. */
+    val CID = Regex("[A-Za-z0-9_-]{1,32}:[A-Za-z0-9_!.@-]{1,87}")
 
     /**
      * [binding] is the generation the phone holds now (null: none, nothing may be shown), [now]
@@ -178,7 +184,17 @@ object PushEnvelopes {
                 is kotlinx.serialization.json.JsonNull -> null
                 else -> json.int("agreementRevision")?.takeIf { it >= 1 } ?: return null
             }
-        return PushTarget(type, id, commentId, occurrenceAt, revision)
+        val ref =
+            when (val value = json["ref"]) {
+                null,
+                is kotlinx.serialization.json.JsonNull -> null
+                else ->
+                    (value as? JsonPrimitive)
+                        ?.takeIf { it.isString }
+                        ?.content
+                        ?.takeIf { CID.matches(it) } ?: return null
+            }
+        return PushTarget(type, id, commentId, occurrenceAt, revision, ref)
     }
 
     private object Failure : Exception()

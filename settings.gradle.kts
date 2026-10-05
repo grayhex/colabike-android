@@ -17,6 +17,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // The push SDK of RuStore (docs/adr/0017): its own repository, and nothing else is taken
+        // from it, so another group can never be resolved from there.
+        maven("https://nexus-external.rustore.ru/repository/maven-rustore-exposed/") {
+            content { includeGroup("ru.rustore.sdk") }
+        }
     }
 }
 

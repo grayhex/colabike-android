@@ -1,5 +1,6 @@
 package ru.colabike.app
 
+import android.app.Application
 import android.content.Context
 import android.os.Build
 import java.io.File
@@ -26,18 +27,24 @@ import ru.colabike.app.messages.StreamChatScreens
 import ru.colabike.app.notifications.settings.AndroidDeviceNotifications
 import ru.colabike.app.notifications.settings.DeviceNotifications
 import ru.colabike.app.push.DeliveryLedger
-import ru.colabike.app.push.NoPushBinding
 import ru.colabike.app.push.NoPushProvider
 import ru.colabike.app.push.PreferencesLedgerStore
 import ru.colabike.app.push.PushHandler
 import ru.colabike.app.push.PushOpener
+import ru.colabike.app.push.PushPolicy
 import ru.colabike.app.push.PushProvider
+import ru.colabike.app.push.PushRegistrar
 import ru.colabike.app.push.PushRenderer
+import ru.colabike.app.push.PushSync
+import ru.colabike.app.push.RuStorePushProvider
+import ru.colabike.app.push.StoredPushBinding
+import ru.colabike.app.push.VisibleConversation
 import ru.colabike.app.rides.map.MapLibreRouteMaps
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.settings.AppSettings
 import ru.colabike.app.settings.PreferencesSettings
 import ru.colabike.core.auth.AuthInterceptor
+import ru.colabike.core.auth.AuthState
 import ru.colabike.core.auth.DeviceInfo
 import ru.colabike.core.auth.DeviceSession
 import ru.colabike.core.auth.EncryptedFileStore
@@ -78,6 +85,7 @@ import ru.colabike.core.network.NetworkMarketRepository
 import ru.colabike.core.network.NetworkNotificationSettingsRepository
 import ru.colabike.core.network.NetworkNotificationsRepository
 import ru.colabike.core.network.NetworkPeopleRepository
+import ru.colabike.core.network.NetworkPushDeviceRepository
 import ru.colabike.core.network.NetworkRidesRepository
 
 /** What screens get: repositories and auth actions, never HTTP clients (AGENTS.md). */
@@ -96,6 +104,12 @@ interface AppDependencies {
 
     /** This phone's side of notifications: the permission, the channels, the provider. */
     val deviceNotifications: DeviceNotifications
+
+    /** Makes the phone's push registration follow the person's choices (docs/adr/0017). */
+    val pushSync: PushSync
+
+    /** The conversation in front, whose new messages make no notification. */
+    val visibleConversation: VisibleConversation
 
     /** The public component catalog: models, their photos and filters. */
     val components: ComponentsRepository
@@ -250,18 +264,40 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
             scope = scope,
         )
 
-    // Push: the pieces that do not need a provider. The transport (its SDK) will call the handler;
-    // until a provider is configured nothing arrives, and with no binding nothing would be shown.
-    val pushProvider: PushProvider = NoPushProvider
+    // Push (docs/adr/0015, 0017). A build without a project of the owner's at RuStore has no
+    // provider: push is not offered and nothing arrives. The binding is what the phone remembers of
+    // its registration at the server; without it no message is shown.
+    val pushProvider: PushProvider =
+        if (BuildConfig.RUSTORE_PROJECT_ID.isBlank()) NoPushProvider
+        else
+            RuStorePushProvider(
+                context.applicationContext as Application,
+                BuildConfig.RUSTORE_PROJECT_ID,
+            )
     override val deviceNotifications: DeviceNotifications =
         AndroidDeviceNotifications(
             context,
             pushProvider,
             context.getSharedPreferences("device-notifications", Context.MODE_PRIVATE),
         )
+    private val pushBinding =
+        StoredPushBinding(context.getSharedPreferences("push-binding", Context.MODE_PRIVATE))
+    val pushRegistrar =
+        PushRegistrar(
+            provider = pushProvider,
+            devices = NetworkPushDeviceRepository(api.personal),
+            settings = notificationSettings,
+            phone = deviceNotifications,
+            store = pushBinding,
+            account = { (session.state.value as? AuthState.SignedIn)?.account?.id?.value },
+            scope = scope,
+            clock = clock,
+        )
+    override val pushSync: PushSync = pushRegistrar
+    override val visibleConversation = VisibleConversation()
     val pushHandler =
         PushHandler(
-            binding = NoPushBinding,
+            binding = pushBinding,
             ledger =
                 DeliveryLedger(
                     PreferencesLedgerStore(
@@ -269,12 +305,22 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
                     )
                 ),
             surface = PushRenderer(context),
+            // A message of the conversation the person is reading is on their screen already.
+            policy = PushPolicy { envelope, _ -> !visibleConversation.isShowing(envelope) },
             clock = clock,
         )
     val pushOpener = PushOpener(pending, notifications, auth, scope)
 
     init {
         scope.launch { session.restore() }
+        // A signed-in person whose account is known gets the phone registered if they chose push
+        // (and unregistered if they did not); nothing is asked of the network when it is whole.
+        scope.launch {
+            session.state.collect { state ->
+                if (state is AuthState.SignedIn && state.account != null)
+                    pushRegistrar.request(force = false)
+            }
+        }
         // Reads what the device kept and asks the server afterwards; nothing waits for the network.
         appConfigController.start()
         // Only a person leaving clears what they leave behind: a start without a session is no
@@ -288,6 +334,7 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
                 // nothing of their notifications in the tray.
                 chatSession.end()
                 pushHandler.onSignedOut()
+                pushRegistrar.onSignedOut()
                 onSignedOut()
             }
         }

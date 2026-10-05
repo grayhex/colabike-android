@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.colabike.app.R
+import ru.colabike.app.push.PushSync
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
 import ru.colabike.core.model.CircleMode
@@ -63,6 +64,8 @@ class NotificationSettingsViewModel(
     private val device: DeviceNotifications,
     private val clock: Clock,
     private val phoneZone: ZoneId = ZoneId.systemDefault(),
+    /** Makes the phone's registration at the server follow what the person just chose. */
+    private val pushSync: PushSync = PushSync.None,
 ) : ViewModel() {
     private val mutableState =
         MutableStateFlow<NotificationSettingsUiState>(NotificationSettingsUiState.Loading)
@@ -101,6 +104,8 @@ class NotificationSettingsViewModel(
     fun permissionAsked() {
         device.markAsked()
         refreshDevice()
+        // A yes to the system's question is what lets this phone be registered.
+        pushSync.request(true)
     }
 
     fun dismissNotice() = updateLoaded { it.copy(notice = null, problem = null) }
@@ -229,6 +234,8 @@ class NotificationSettingsViewModel(
                 } catch (e: DataError) {
                     Outcome.Failed(e.toUiText())
                 }
+            // The consent and the categories of push decide whether the phone is registered.
+            if (outcome is Outcome.Saved) pushSync.request(true)
             updateLoaded { current ->
                 when (outcome) {
                     is Outcome.Saved ->

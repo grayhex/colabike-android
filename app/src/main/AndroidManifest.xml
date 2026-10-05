@@ -78,6 +78,21 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.NoDisplay" />
 
+        <!--
+            Where RuStore delivers a message (docs/adr/0017). Exported because the RuStore
+            application binds to it from outside; whatever arrives is checked in full by
+            PushHandler before anything is shown. Without a project of the owner's the SDK is
+            never started and nothing arrives.
+        -->
+        <service
+            android:name=".push.ColaPushService"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="ru.rustore.sdk.pushclient.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- Components the messenger's SDK brings and the app never starts (docs/adr/0011). -->
         <!-- MissingClass: these live in the libraries' runtime classpath only; they are removed. -->
         <provider

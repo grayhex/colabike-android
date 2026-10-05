@@ -30,6 +30,8 @@ import ru.colabike.app.notifications.settings.DeviceNotificationsState
 import ru.colabike.app.notifications.settings.OsPermission
 import ru.colabike.app.push.PushAvailability
 import ru.colabike.app.push.PushChannel
+import ru.colabike.app.push.PushSync
+import ru.colabike.app.push.VisibleConversation
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.rides.map.SketchRouteMaps
 import ru.colabike.app.settings.AppSettings
@@ -1739,4 +1741,14 @@ class FakeDependencies(
     override val pending: FakePending = FakePending(),
     override val clock: Clock = Clock.fixed(Instant.parse("2026-10-03T20:00:00Z"), ZoneOffset.UTC),
     override val maps: RouteMaps = SketchRouteMaps,
+    override val pushSync: FakePushSync = FakePushSync(),
+    override val visibleConversation: VisibleConversation = VisibleConversation(),
 ) : AppDependencies
+
+class FakePushSync : PushSync {
+    val requests = mutableListOf<Boolean>()
+
+    override fun request(force: Boolean) {
+        requests += force
+    }
+}

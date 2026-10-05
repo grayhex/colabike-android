@@ -14,7 +14,8 @@ import ru.colabike.app.navigation.Destination
  * them there yet: before sign-in, while the session is read, across a cold start or a trip to the
  * browser. The shell takes it as soon as it is on screen. Only a destination the app can open from
  * a link or a notification is kept (an object by its id, a discussion at a comment, the devices,
- * the inbox), and only for a while: an old intention is not carried out out of the blue.
+ * the inbox, a conversation by its cid, the list of conversations), and only for a while: an old
+ * intention is not carried out out of the blue.
  */
 interface PendingNavigation {
     val destination: StateFlow<Destination?>
@@ -76,6 +77,9 @@ class PreferencesPendingNavigation(
                     null
                 }
             }
+            is Destination.Conversation ->
+                if (CID.matches(destination.cid)) "$CHAT${destination.cid}" else null
+            Destination.Messages -> MESSAGES
             Destination.Devices -> DEVICES
             Destination.Notifications -> NOTIFICATIONS
             else -> null
@@ -94,6 +98,9 @@ class PreferencesPendingNavigation(
             value.startsWith(COMPONENT) ->
                 uuid(value.removePrefix(COMPONENT))?.let { Destination.Component(it) }
             value.startsWith(COMMENTS) -> decodeComments(value.removePrefix(COMMENTS))
+            value.startsWith(CHAT) ->
+                value.removePrefix(CHAT).takeIf(CID::matches)?.let { Destination.Conversation(it) }
+            value == MESSAGES -> Destination.Messages
             value == DEVICES -> Destination.Devices
             value == NOTIFICATIONS -> Destination.Notifications
             else -> null
@@ -122,10 +129,13 @@ class PreferencesPendingNavigation(
         const val LISTING = "listing:"
         const val COMPONENT = "component:"
         const val COMMENTS = "comments:"
+        const val CHAT = "chat:"
+        const val MESSAGES = "messages"
         const val DEVICES = "devices"
         const val NOTIFICATIONS = "notifications"
         val COMMENT_KINDS = setOf("bike", "ride", "journal", "component")
         val UUID = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
         val USERNAME = Regex("^[A-Za-z0-9][A-Za-z0-9_.-]{2,29}$")
+        val CID = Regex("^[A-Za-z0-9_-]{1,32}:[A-Za-z0-9_!.@-]{1,87}$")
     }
 }

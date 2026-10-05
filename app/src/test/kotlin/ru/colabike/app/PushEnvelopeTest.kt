@@ -148,6 +148,70 @@ class PushEnvelopeTest {
             }
     }
 
+    private val chat =
+        """
+        {"v":1,"deliveryId":"00000000-0000-4000-8000-0000000000d6",
+         "eventId":"00000000-0000-4000-8000-000000000072","bindingGeneration":4,
+         "createdAt":"2026-10-04T09:00:00.000Z","category":"chat","type":"chat_message",
+         "expiresAt":"2026-10-06T21:00:00.000Z","neutral":false,"title":"Новое сообщение",
+         "body":"От: Анна Райдер",
+         "group":"chat:colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c",
+         "target":{"id":null,"commentId":null,"occurrenceAt":null,"agreementRevision":null,
+         "type":"chat","ref":"colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c"}}
+        """
+            .trimIndent()
+
+    @Test
+    fun `a message of a chat carries its conversation, and no object`() {
+        val parsed = PushEnvelopes.parse(chat, now, binding)
+
+        assertThat(parsed).isInstanceOf(ParsedPush.Valid::class.java)
+        val target = (parsed as ParsedPush.Valid).envelope.target
+        assertThat(target.type).isEqualTo("chat")
+        assertThat(target.id).isNull()
+        assertThat(target.ref).isEqualTo("colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c")
+        assertThat(parsed.envelope.category).isEqualTo("chat")
+    }
+
+    @Test
+    fun `a conversation that is not named as the chat names them makes the message malformed`() {
+        listOf(
+                chat.replace(
+                    "colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c\"}}",
+                    "../me\"}}",
+                ),
+                chat.replace(
+                    "\"ref\":\"colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c\"",
+                    "\"ref\":7",
+                ),
+                chat.replace(
+                    "\"ref\":\"colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c\"",
+                    "\"ref\":\"a b:c\"",
+                ),
+                chat.replace(
+                    "\"ref\":\"colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c\"",
+                    "\"ref\":\"" + "x".repeat(130) + "\"",
+                ),
+            )
+            .forEach { raw ->
+                assertThat(PushEnvelopes.parse(raw, now, binding))
+                    .isEqualTo(ParsedPush.Dropped(DropReason.Malformed))
+            }
+    }
+
+    @Test
+    fun `a target without a conversation is still a message, shown to the list`() {
+        val raw =
+            chat.replace(
+                ",\"ref\":\"colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c\"",
+                "",
+            )
+
+        val parsed = PushEnvelopes.parse(raw, now, binding)
+
+        assertThat((parsed as ParsedPush.Valid).envelope.target.ref).isNull()
+    }
+
     @Test
     fun `printing an envelope shows no text`() {
         val envelope =

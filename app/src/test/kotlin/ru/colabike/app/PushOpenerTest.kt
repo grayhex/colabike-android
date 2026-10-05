@@ -70,6 +70,29 @@ class PushOpenerTest {
     }
 
     @Test
+    fun `a message of a chat opens its conversation and marks nothing, it has no line in the inbox`() =
+        runTest {
+            val cid = "colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c"
+            val pending = FakePending()
+            val notifications = FakeNotifications()
+            val opener =
+                PushOpener(
+                    pending,
+                    notifications,
+                    FakeAuth(AuthState.SignedIn(account)),
+                    backgroundScope,
+                )
+
+            opener.opened(
+                PushTap(event, "chat_message", PushTarget("chat", null, null, null, null, cid))
+            )
+            runCurrent()
+
+            assertThat(pending.destination.value).isEqualTo(Destination.Conversation(cid))
+            assertThat(notifications.marks).isEmpty()
+        }
+
+    @Test
     fun `a session that never comes is not waited for for ever`() = runTest {
         val auth = FakeAuth(AuthState.Restoring)
         val notifications = FakeNotifications()

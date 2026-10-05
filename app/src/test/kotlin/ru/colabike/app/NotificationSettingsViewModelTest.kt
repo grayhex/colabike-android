@@ -31,6 +31,8 @@ class NotificationSettingsViewModelTest {
     private val people = FakePeople()
     private val device = FakeDeviceNotifications()
 
+    private val sync = FakePushSync()
+
     private fun viewModel() =
         NotificationSettingsViewModel(
             repository = repository,
@@ -38,6 +40,7 @@ class NotificationSettingsViewModelTest {
             device = device,
             clock = Clock.fixed(now, ZoneOffset.UTC),
             phoneZone = moscow,
+            pushSync = sync,
         )
 
     private fun loaded(vm: NotificationSettingsViewModel) =
@@ -165,6 +168,30 @@ class NotificationSettingsViewModelTest {
             )
             .inOrder()
         assertThat(loaded(vm).settings.channels.pushEnabled).isFalse()
+    }
+
+    @Test
+    fun `a saved change asks for the phone's registration to be made right, a refused one does not`() =
+        runTest {
+            withPush()
+            val vm = viewModel()
+
+            vm.setPush(true)
+            assertThat(sync.requests).containsExactly(true)
+
+            repository.failChange = DataError.Offline(IOException())
+            vm.setPush(false)
+
+            assertThat(sync.requests).containsExactly(true)
+        }
+
+    @Test
+    fun `an answer to the system's question asks for the registration too`() = runTest {
+        val vm = viewModel()
+
+        vm.permissionAsked()
+
+        assertThat(sync.requests).containsExactly(true)
     }
 
     @Test

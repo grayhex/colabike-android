@@ -27,6 +27,16 @@ val contractVersion: String = run {
     "$version ($checksum)"
 }
 
+// The project of this app at RuStore Push, given by the owner when the app is registered there
+// (-Pcolabike.rustore.projectId=... or gradle.properties; never committed). Empty: the build has
+// no push provider and push is simply not offered (docs/adr/0017).
+val rustoreProjectId =
+    providers.gradleProperty("colabike.rustore.projectId").orElse("").get().trim()
+
+check(rustoreProjectId.isEmpty() || Regex("[A-Za-z0-9._-]{1,100}").matches(rustoreProjectId)) {
+    "colabike.rustore.projectId must be a project id from the RuStore console"
+}
+
 check(
     mapStyleUrl.isEmpty() ||
         (mapStyleUrl.startsWith("https://") && '"' !in mapStyleUrl && '\\' !in mapStyleUrl)
@@ -51,6 +61,7 @@ android {
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
         buildConfigField("String", "NATIVE_AUTH_RETURN_URL", "\"$siteUrl/app/auth\"")
         buildConfigField("String", "MAP_STYLE_URL", "\"$mapStyleUrl\"")
+        buildConfigField("String", "RUSTORE_PROJECT_ID", "\"$rustoreProjectId\"")
         buildConfigField("String", "CONTRACT_VERSION", "\"$contractVersion\"")
         // The Yandex ID button waits for cola#324 (App Link and NATIVE_AUTH_RETURN_URL on the
         // site): ./gradlew assembleDebug -Pcolabike.yandexSignIn=true to try it earlier.
@@ -118,6 +129,10 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(libs.maplibre.android)
     implementation(libs.stream.compose)
+    // The SDK reports its own crashes through Tracer when the library is there and falls back to a
+    // stub when it is not (it looks the class up by name): without it nothing of the SDK's crashes
+    // leaves the phone (docs/adr/0017).
+    implementation(libs.rustore.push) { exclude(group = "ru.ok.tracer") }
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
