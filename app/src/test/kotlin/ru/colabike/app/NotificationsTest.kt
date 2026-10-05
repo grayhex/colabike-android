@@ -166,8 +166,16 @@ class NotificationRouteTest {
     }
 
     @Test
-    fun `a ride's invitation, change, cancellation, answer and reminder open the ride`() {
-        listOf("ride_invite", "ride_changed", "ride_cancelled", "ride_response", "ride_reminder")
+    fun `a ride's invitation, change, cancellation, answer, reminder and offer open the ride`() {
+        listOf(
+                "ride_invite",
+                "ride_changed",
+                "ride_cancelled",
+                "ride_response",
+                "ride_reminder",
+                "plan_published",
+                "plan_nearby",
+            )
             .forEach { kind ->
                 val ride =
                     notification(1, kind = kind, type = "ride", path = "/r/x", actor = null).let {

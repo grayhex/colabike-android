@@ -64,6 +64,7 @@ import ru.colabike.core.model.ListingState
 import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.NotificationFilter
+import ru.colabike.core.model.NotificationReason
 import ru.colabike.core.model.NotificationsRepository
 
 @Composable
@@ -280,6 +281,7 @@ private fun NotificationCategory.label(): Int =
         NotificationCategory.Discussions -> R.string.notifications_category_discussions
         NotificationCategory.Plans -> R.string.notifications_category_plans
         NotificationCategory.Intents -> R.string.notifications_category_intents
+        NotificationCategory.Nearby -> R.string.notifications_category_nearby
         NotificationCategory.Market -> R.string.notifications_category_market
         NotificationCategory.Chat -> R.string.notifications_category_chat
         NotificationCategory.Reactions -> R.string.notifications_category_reactions
@@ -401,15 +403,42 @@ private fun AppNotification.text(
         kind == "ride_reminder" ->
             stringResource(R.string.notifications_ride_reminder) to rideLine(about, formatter)
         kind == "plan_published" ->
-            stringResource(R.string.notifications_plan_published) to rideLine(about, formatter)
+            stringResource(R.string.notifications_plan_published) to
+                withReasons(rideLine(about, formatter))
+        kind == "plan_nearby" ->
+            stringResource(R.string.notifications_plan_nearby) to
+                withReasons(rideLine(about, formatter))
         kind == "intent_published" ->
-            stringResource(R.string.notifications_intent_published) to (who ?: about)
+            stringResource(R.string.notifications_intent_published) to withReasons(who ?: about)
         kind == "session_reuse" ->
             stringResource(R.string.notifications_session) to
                 stringResource(R.string.notifications_session_body)
         kind == "bike_week" -> stringResource(R.string.notifications_bike_week) to target.name
         else -> stringResource(R.string.notifications_generic) to about
     }
+}
+
+/**
+ * Adds why a new plan or intent reached the person ("in your area"): the circle alone is the
+ * default and is not said. A reason names no place and no distance.
+ */
+@Composable
+private fun AppNotification.withReasons(line: String): String {
+    if (reasons.isEmpty() || reasons == setOf(NotificationReason.Friend)) return line
+    val friend = stringResource(R.string.notifications_reason_friend)
+    val nearby = stringResource(R.string.notifications_reason_nearby)
+    val intent = stringResource(R.string.notifications_reason_intent)
+    val why =
+        NotificationReason.entries
+            .filter { it in reasons }
+            .joinToString(", ") {
+                when (it) {
+                    NotificationReason.Friend -> friend
+                    NotificationReason.Nearby -> nearby
+                    NotificationReason.Intent -> intent
+                }
+            }
+    return listOf(line, why).filter { it.isNotBlank() }.joinToString(". ")
 }
 
 /** The ride and, when the notification names a date, that date: "Who · Ride. Sat, 10:00". */

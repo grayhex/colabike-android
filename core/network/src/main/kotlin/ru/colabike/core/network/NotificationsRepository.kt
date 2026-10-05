@@ -17,6 +17,7 @@ import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.NotificationFilter
 import ru.colabike.core.model.NotificationPage
 import ru.colabike.core.model.NotificationReadResult
+import ru.colabike.core.model.NotificationReason
 import ru.colabike.core.model.NotificationTarget
 import ru.colabike.core.model.NotificationsRepository
 
@@ -141,6 +142,17 @@ private fun NotificationDto.toModel(media: MediaUrls) =
         read = readAt != null,
         actor = actor?.toModel(media),
         target = target.toModel(),
+        reasons =
+            reasons
+                .mapNotNull {
+                    when (it) {
+                        NotificationDto.Reasons.friend -> NotificationReason.Friend
+                        NotificationDto.Reasons.nearby -> NotificationReason.Nearby
+                        NotificationDto.Reasons.intent -> NotificationReason.Intent
+                        else -> null
+                    }
+                }
+                .toSet(),
     )
 
 private fun NotificationTargetDto.toModel() =

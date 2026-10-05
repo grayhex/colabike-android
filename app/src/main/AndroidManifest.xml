@@ -7,12 +7,19 @@
 
     <!--
         The map library's own manifest asks for the location and for the Wi-Fi state. A route is
-        only looked at, never located: no location permission and no background service
-        (docs/adr/0009-route-map-and-analysis.md).
+        only looked at, never located (docs/adr/0009-route-map-and-analysis.md). The one place the
+        app reads is the approximate one, once and only when the person taps "use my phone" for the
+        area of rides near me (docs/adr/0018-nearby-rides.md): no precise location, no background
+        location, no Wi-Fi state and no service.
     -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
+
+    <!-- A phone without location hardware is no reason to hide the app: the area is chosen on the site. -->
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
 
     <!--
         The messenger's SDK (Stream Chat) asks for more than a text chat with photos needs: the

@@ -24,6 +24,8 @@ import ru.colabike.app.messages.ChatScreens
 import ru.colabike.app.messages.ChatSession
 import ru.colabike.app.messages.StreamChatGateway
 import ru.colabike.app.messages.StreamChatScreens
+import ru.colabike.app.nearby.AndroidCoarseLocation
+import ru.colabike.app.nearby.CoarseLocation
 import ru.colabike.app.notifications.settings.AndroidDeviceNotifications
 import ru.colabike.app.notifications.settings.DeviceNotifications
 import ru.colabike.app.push.DeliveryLedger
@@ -62,6 +64,7 @@ import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.MarketRepository
+import ru.colabike.core.model.NearbyRepository
 import ru.colabike.core.model.NotificationSettingsRepository
 import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.PeopleRepository
@@ -82,6 +85,7 @@ import ru.colabike.core.network.NetworkComponentsRepository
 import ru.colabike.core.network.NetworkFeedRepository
 import ru.colabike.core.network.NetworkJournalRepository
 import ru.colabike.core.network.NetworkMarketRepository
+import ru.colabike.core.network.NetworkNearbyRepository
 import ru.colabike.core.network.NetworkNotificationSettingsRepository
 import ru.colabike.core.network.NetworkNotificationsRepository
 import ru.colabike.core.network.NetworkPeopleRepository
@@ -104,6 +108,12 @@ interface AppDependencies {
 
     /** This phone's side of notifications: the permission, the channels, the provider. */
     val deviceNotifications: DeviceNotifications
+
+    /** The private area of "rides near me" and the rides on now in it (docs/adr/0018). */
+    val nearby: NearbyRepository
+
+    /** The phone's approximate place, read once and only when the person asks for it. */
+    val coarseLocation: CoarseLocation
 
     /** Makes the phone's push registration follow the person's choices (docs/adr/0017). */
     val pushSync: PushSync
@@ -204,6 +214,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
         NetworkNotificationsRepository(api.personal, media)
     override val notificationSettings: NotificationSettingsRepository =
         NetworkNotificationSettingsRepository(api.personal, media)
+    override val nearby: NearbyRepository = NetworkNearbyRepository(api.planning, media)
+    override val coarseLocation: CoarseLocation = AndroidCoarseLocation(context)
     override val components: ComponentsRepository =
         NetworkComponentsRepository(api.components, media)
     override val market: MarketRepository = NetworkMarketRepository(api.market, api.personal, media)

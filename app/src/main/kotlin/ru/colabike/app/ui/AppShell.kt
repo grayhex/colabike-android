@@ -84,6 +84,8 @@ import ru.colabike.app.navigation.Destination
 import ru.colabike.app.navigation.Navigator
 import ru.colabike.app.navigation.TopLevel
 import ru.colabike.app.navigation.rememberNavigationState
+import ru.colabike.app.nearby.NearbyOffersRoute
+import ru.colabike.app.nearby.NearbyRoute
 import ru.colabike.app.notifications.LocalNotificationsEntry
 import ru.colabike.app.notifications.NotificationBadgeViewModel
 import ru.colabike.app.notifications.NotificationsEntry
@@ -812,6 +814,35 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             NotificationSettingsRoute(
                                                 dependencies,
                                                 onBack = { navigator.back() },
+                                                onOpenNearby =
+                                                    if (features.isEnabled(Feature.Rides)) {
+                                                        {
+                                                            navigator.open(
+                                                                Destination.NearbySettings
+                                                            )
+                                                        }
+                                                    } else null,
+                                            )
+                                        }
+                                        entry<Destination.NearbySettings> {
+                                            NearbyRoute(
+                                                dependencies,
+                                                onBack = { navigator.back() },
+                                                onOpenOffers = {
+                                                    navigator.open(Destination.NearbyOffers)
+                                                },
+                                            )
+                                        }
+                                        entry<Destination.NearbyOffers> {
+                                            NearbyOffersRoute(
+                                                dependencies,
+                                                onBack = { navigator.back() },
+                                                onOpenRide = { id ->
+                                                    navigator.open(Destination.Ride(id.value))
+                                                },
+                                                onOpenSettings = {
+                                                    navigator.open(Destination.NearbySettings)
+                                                },
                                             )
                                         }
                                         entry<Destination.About> {

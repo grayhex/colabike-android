@@ -161,6 +161,8 @@ class Navigator(
                 is Destination.Comments ->
                     if (destination.kind == "ride") TopLevel.Rides.root else TopLevel.Bikes.root
                 Destination.Devices,
+                Destination.NearbySettings,
+                Destination.NearbyOffers,
                 Destination.NotificationSettings -> TopLevel.Profile.root
                 // The inbox opens where the person is.
                 Destination.Notifications -> state.topLevelRoute

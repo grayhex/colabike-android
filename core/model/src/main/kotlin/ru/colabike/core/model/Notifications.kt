@@ -55,6 +55,9 @@ enum class NotificationCategory(val key: String) {
     /** Intents to ride of those people. */
     Intents("intents"),
 
+    /** Public rides in the area the person chose (off until they turn it on). */
+    Nearby("nearby"),
+
     /** The end of a listing's term. */
     Market("market"),
 
@@ -83,6 +86,16 @@ enum class NotificationCategory(val key: String) {
 }
 
 /**
+ * Why a new plan reached the person: it is from their circle, in the area they chose, or on a date
+ * of their own intention. A reason names no place and no distance.
+ */
+enum class NotificationReason {
+    Friend,
+    Nearby,
+    Intent,
+}
+
+/**
  * A notification for the signed-in person. [kind] is an open set (`follow`, `like`, `comment`,
  * `reply`, `ride_like`, `journal_comment`, `market_expiring`, `session_reuse`, and others): the
  * server shows only what the person may see now, and a withdrawn action leaves none.
@@ -96,6 +109,8 @@ data class AppNotification(
     /** Who did it; null for the site's own notifications. */
     val actor: Person?,
     val target: NotificationTarget,
+    /** Why a new plan or intent was offered; empty for every other kind. */
+    val reasons: Set<NotificationReason> = emptySet(),
 )
 
 /**
