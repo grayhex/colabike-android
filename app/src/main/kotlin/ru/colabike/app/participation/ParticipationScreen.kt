@@ -30,7 +30,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.Locale
 import ru.colabike.app.R
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaCard
@@ -273,10 +272,8 @@ private fun Changed(p: RideParticipation) {
                 )
             }
             if (p.agreement.changes.isNotEmpty()) {
-                val names =
-                    p.agreement.changes.map {
-                        stringResource(it.label()).lowercase(Locale.getDefault())
-                    }
+                val locale = LocalConfiguration.current.locales[0]
+                val names = p.agreement.changes.map { stringResource(it.label()).lowercase(locale) }
                 Text(
                     stringResource(R.string.participation_changed_what, names.joinToString(", ")),
                     style = MaterialTheme.typography.bodyMedium,
