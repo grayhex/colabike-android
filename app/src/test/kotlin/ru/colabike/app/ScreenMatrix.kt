@@ -25,6 +25,7 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import java.io.File
+import java.time.Instant
 import ru.colabike.app.config.LaunchFrame
 import ru.colabike.app.config.LaunchPlan
 import ru.colabike.app.config.OnboardingScreen
@@ -339,9 +340,11 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                             Screen.ParticipationCancelled ->
                                                 sampleParticipation(
                                                     requested = RequestedDateStatus.Cancelled,
-                                                    allowed = emptySet(),
+                                                    allowed = setOf(ParticipationResponse.Declined),
                                                     meetingHidden = true,
                                                     state = ParticipationState.None,
+                                                    scheduledAt =
+                                                        Instant.parse("2026-10-17T07:00:00Z"),
                                                 )
                                             else -> sampleParticipation()
                                         }

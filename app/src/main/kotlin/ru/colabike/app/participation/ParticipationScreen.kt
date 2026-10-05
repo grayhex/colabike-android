@@ -189,7 +189,8 @@ private fun Header(p: RideParticipation) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            val moment = p.scheduledAt ?: p.requested?.at
+            // The date the person came for; if it is another than the one to answer for, both.
+            val moment = p.requested?.at ?: p.scheduledAt
             if (moment != null) {
                 Text(
                     momentLine(moment, p.timeZone),
@@ -204,6 +205,14 @@ private fun Header(p: RideParticipation) {
                         modifier = Modifier.testTag("participation:zone"),
                     )
                 }
+            }
+            val next = p.scheduledAt
+            if (next != null && moment != null && next != moment) {
+                Text(
+                    stringResource(R.string.participation_next_date, momentLine(next, p.timeZone)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.testTag("participation:next"),
+                )
             }
         }
     }
@@ -300,7 +309,7 @@ private fun Terms(p: RideParticipation) {
                     modifier = Modifier.testTag("participation:meeting"),
                 )
             }
-            if (p.meetingHidden) {
+            if (p.meetingHidden && !p.planCancelled && !p.dateCancelled) {
                 Text(
                     stringResource(R.string.participation_meeting_hidden),
                     style = MaterialTheme.typography.bodyMedium,

@@ -827,10 +827,11 @@
     <string name="participation_unavailable">Приглашение отозвано, выезд закрыт или удалён, либо у вас больше нет к нему доступа. Больше о нём ничего не известно.</string>
     <string name="participation_open_rides">К покатушкам</string>
     <string name="participation_plan_cancelled">Выезд отменён целиком.</string>
-    <string name="participation_date_cancelled_goes_on">Эта дата отменена, серия продолжается: ниже ближайшая дата.</string>
+    <string name="participation_date_cancelled_goes_on">Эта дата отменена, серия продолжается.</string>
+    <string name="participation_next_date">Ближайшая дата: %1$s</string>
     <string name="participation_date_cancelled">Эта дата отменена.</string>
     <string name="participation_date_past">Эта дата уже прошла.</string>
-    <string name="participation_date_moved">Эта дата изменилась. Ниже актуальная, ответ относится к ней.</string>
+    <string name="participation_date_moved">Эта дата изменилась: ответ относится к ближайшей дате, указанной ниже.</string>
     <string name="participation_changed_meanwhile">Пока вы выбирали, дата или условия изменились. Ответ не принят: решите заново по актуальным условиям.</string>
     <string name="participation_changed_title">Условия изменились — подтвердите участие</string>
     <string name="participation_previous">Вы отвечали на прежние условия: %1$s. Это не согласие с новыми.</string>

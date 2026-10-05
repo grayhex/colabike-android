@@ -178,6 +178,29 @@ class ParticipationFlowTest {
     }
 
     @Test
+    fun `a cancelled date of a series that goes on shows the cancelled date and the next one`() {
+        participation.current =
+            sampleParticipation(
+                requested = RequestedDateStatus.Cancelled,
+                allowed = emptySet(),
+                scheduledAt = Instant.parse("2026-10-17T07:00:00Z"),
+            )
+        start()
+
+        compose
+            .onNodeWithTag("participation:date-notice")
+            .assertTextContains("серия продолжается", substring = true)
+        // The page is about the date that was cancelled; the next one is said apart.
+        compose
+            .onNodeWithTag("participation:when")
+            .assertTextContains("10 октября", substring = true)
+        compose
+            .onNodeWithTag("participation:next")
+            .assertTextContains("17 октября", substring = true)
+        compose.onNodeWithTag("participation:accepted").assertDoesNotExist()
+    }
+
+    @Test
     fun `a cancelled plan is told apart from a cancelled date`() {
         participation.current =
             sampleParticipation(
