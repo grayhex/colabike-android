@@ -20,7 +20,8 @@
         "occurrenceAt": null,
         "agreementRevision": null
       },
-      "category": "discussions"
+      "category": "discussions",
+      "reasons": []
     },
     {
       "id": "a1000000-0000-4000-8000-000000000002",
@@ -42,7 +43,8 @@
         "occurrenceAt": null,
         "agreementRevision": null
       },
-      "category": "reactions"
+      "category": "reactions",
+      "reasons": []
     },
     {
       "id": "a1000000-0000-4000-8000-000000000003",
@@ -61,7 +63,8 @@
         "occurrenceAt": null,
         "agreementRevision": null
       },
-      "category": "market"
+      "category": "market",
+      "reasons": []
     },
     {
       "id": "a1000000-0000-4000-8000-000000000004",
@@ -78,7 +81,35 @@
         "occurrenceAt": null,
         "agreementRevision": null
       },
-      "category": "a_category_from_the_future"
+      "category": "a_category_from_the_future",
+      "reasons": []
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "type": "plan_nearby",
+      "createdAt": "2026-10-03T09:00:00Z",
+      "readAt": null,
+      "actor": {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "username": "rider2",
+        "name": "Вторая Райдерша",
+        "avatarUrl": null
+      },
+      "target": {
+        "type": "ride",
+        "id": "b2000000-0000-4000-8000-0000000000b2",
+        "name": "Воскресный выезд",
+        "path": "/r/sunday-4k7m9p2x",
+        "commentId": null,
+        "occurrenceAt": "2026-10-11T07:00:00Z",
+        "agreementRevision": null
+      },
+      "category": "nearby",
+      "reasons": [
+        "nearby",
+        "intent",
+        "a_reason_from_the_future"
+      ]
     }
   ],
   "nextCursor": "eyJ0IjoiMSJ9",

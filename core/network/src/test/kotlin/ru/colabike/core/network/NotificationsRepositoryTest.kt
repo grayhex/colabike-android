@@ -19,6 +19,7 @@ import ru.colabike.core.model.DataError
 import ru.colabike.core.model.ListingState
 import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationFilter
+import ru.colabike.core.model.NotificationReason
 import ru.colabike.core.model.NotificationsRepository
 
 class NotificationsRepositoryTest {
@@ -66,6 +67,14 @@ class NotificationsRepositoryTest {
             assertThat(future.target.type).isEqualTo("galaxy")
             // A category from the future is kept as "other", not dropped with its notification.
             assertThat(future.category).isEqualTo(NotificationCategory.Other)
+            // A ride offered in the person's area says why; a reason from the future is dropped,
+            // and the others stay.
+            val offer = page.items[4]
+            assertThat(offer.kind).isEqualTo("plan_nearby")
+            assertThat(offer.category).isEqualTo(NotificationCategory.Nearby)
+            assertThat(offer.reasons)
+                .containsExactly(NotificationReason.Nearby, NotificationReason.Intent)
+            assertThat(comment.reasons).isEmpty()
         }
 
     @Test

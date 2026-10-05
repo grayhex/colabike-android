@@ -25,6 +25,9 @@ import ru.colabike.app.messages.ChatGateway
 import ru.colabike.app.messages.ChatScreens
 import ru.colabike.app.messages.ChatSession
 import ru.colabike.app.navigation.Destination
+import ru.colabike.app.nearby.CoarseFix
+import ru.colabike.app.nearby.CoarseLocation
+import ru.colabike.app.nearby.CoarseResult
 import ru.colabike.app.notifications.settings.DeviceNotifications
 import ru.colabike.app.notifications.settings.DeviceNotificationsState
 import ru.colabike.app.notifications.settings.OsPermission
@@ -106,12 +109,23 @@ import ru.colabike.core.model.ListingStatus
 import ru.colabike.core.model.MarketQuery
 import ru.colabike.core.model.MarketRepository
 import ru.colabike.core.model.MuteKind
+import ru.colabike.core.model.NearbyArea
+import ru.colabike.core.model.NearbyChange
+import ru.colabike.core.model.NearbyGrid
+import ru.colabike.core.model.NearbyLimits
+import ru.colabike.core.model.NearbyOffers
+import ru.colabike.core.model.NearbyOffersState
+import ru.colabike.core.model.NearbyPreferences
+import ru.colabike.core.model.NearbyRepository
+import ru.colabike.core.model.NearbySettings
+import ru.colabike.core.model.NearbySource
 import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.NotificationFilter
 import ru.colabike.core.model.NotificationMute
 import ru.colabike.core.model.NotificationPage
 import ru.colabike.core.model.NotificationReadResult
+import ru.colabike.core.model.NotificationReason
 import ru.colabike.core.model.NotificationSettings
 import ru.colabike.core.model.NotificationSettingsChange
 import ru.colabike.core.model.NotificationSettingsRepository
@@ -962,6 +976,7 @@ fun notification(
     path: String = "/b/6e7f8091-a2b3-4c4d-9e5f-60718293a4b5",
     actor: Person? = PreviewData.rider,
     category: NotificationCategory = categoryOf(kind),
+    reasons: Set<NotificationReason> = emptySet(),
 ) =
     AppNotification(
         id = "n$n",
@@ -977,6 +992,7 @@ fun notification(
                 name = "Городской Трэвел",
                 path = path,
             ),
+        reasons = reasons,
     )
 
 /** The category the server files a kind under. */
@@ -993,6 +1009,9 @@ fun categoryOf(kind: String): NotificationCategory =
         kind == "follow" || kind == "like" || kind.endsWith("_like") ->
             NotificationCategory.Reactions
         kind == "market_expiring" -> NotificationCategory.Market
+        kind == "plan_published" -> NotificationCategory.Plans
+        kind == "intent_published" -> NotificationCategory.Intents
+        kind == "plan_nearby" -> NotificationCategory.Nearby
         kind == "session_reuse" || kind == "bike_week" -> NotificationCategory.Site
         else -> NotificationCategory.Other
     }
@@ -1712,6 +1731,157 @@ class FakeDeviceNotifications(var state: DeviceNotificationsState = freshPhone) 
         android.content.Intent("test.CHANNEL")
 }
 
+/** The grid of the site: a cell of 0.03° by 0.05°, the same as the server's. */
+val testNearbyLimits =
+    NearbyLimits(
+        minRadiusM = 5_000,
+        maxRadiusM = 50_000,
+        radiusStepM = 1_000,
+        deviceTtlHours = 24,
+        grid = NearbyGrid(latStep = 0.03, lngStep = 0.05),
+    )
+
+/** Off, with no area: the state of a person who has never opened the screen. */
+val defaultNearbySettings =
+    NearbySettings(
+        available = true,
+        enabled = false,
+        source = null,
+        area = null,
+        observedAt = null,
+        expiresAt = null,
+        expired = false,
+        horizonDays = 7,
+        preferences = NearbyPreferences(),
+        limits = testNearbyLimits,
+        version = "\"nearby-1\"",
+    )
+
+/** On, with an area from the site and a kind chosen. */
+val activeNearbySettings =
+    defaultNearbySettings.copy(
+        enabled = true,
+        source = NearbySource.Manual,
+        area = NearbyArea(label = "Центр", longitude = 37.625, latitude = 55.755, radiusM = 10_000),
+        preferences = NearbyPreferences(purposes = setOf("leisure")),
+        version = "\"nearby-2\"",
+    )
+
+/**
+ * The area as a server keeps it: a change is applied to what is held, the version moves on, and
+ * [failNext] makes the next write fail. Nothing here knows a place but the one it was given.
+ */
+class FakeNearby(
+    var current: NearbySettings = defaultNearbySettings,
+    var loadError: DataError? = null,
+    var offers: NearbyOffers = NearbyOffers(NearbyOffersState.Ready, emptyList()),
+) : NearbyRepository {
+    val changes = mutableListOf<NearbyChange>()
+
+    /** The areas a phone confirmed: radius and the centre it sent (to check the rounding). */
+    val confirmed = mutableListOf<Triple<Double, Double, Int>>()
+    var replaced: Boolean? = null
+    var removed = 0
+    var forgotten = 0
+    var offerCalls = 0
+    var failNext: DataError? = null
+    var offersError: DataError? = null
+
+    private fun fail() {
+        failNext?.let {
+            failNext = null
+            throw it
+        }
+    }
+
+    private var revision = 0
+
+    private fun bump(next: NearbySettings): NearbySettings {
+        current = next.copy(version = "\"nearby-${++revision}\"")
+        return current
+    }
+
+    override suspend fun settings(): NearbySettings {
+        loadError?.let { throw it }
+        return current
+    }
+
+    override suspend fun change(change: NearbyChange, version: String?): NearbySettings {
+        changes += change
+        fail()
+        val c = current
+        return bump(
+            c.copy(
+                enabled = change.enabled ?: c.enabled,
+                horizonDays = change.horizonDays ?: c.horizonDays,
+                preferences =
+                    c.preferences.copy(
+                        purposes = change.purposes ?: c.preferences.purposes,
+                        paces = change.paces ?: c.preferences.paces,
+                        surfaces = change.surfaces ?: c.preferences.surfaces,
+                    ),
+            )
+        )
+    }
+
+    override suspend fun confirmDeviceArea(
+        longitude: Double,
+        latitude: Double,
+        radiusM: Int,
+        replaceManual: Boolean,
+        version: String?,
+    ): NearbySettings {
+        confirmed += Triple(longitude, latitude, radiusM)
+        replaced = replaceManual
+        fail()
+        if (current.source == NearbySource.Manual && !replaceManual) {
+            throw DataError.Rejected(409, "nearby_area_source", "Действует район с сайта")
+        }
+        return bump(
+            current.copy(
+                source = NearbySource.Device,
+                area = NearbyArea(null, longitude, latitude, radiusM),
+                observedAt = Instant.parse("2026-10-03T20:00:00Z"),
+                expiresAt = Instant.parse("2026-10-04T20:00:00Z"),
+                expired = false,
+            )
+        )
+    }
+
+    override suspend fun removeArea(version: String?): NearbySettings {
+        removed++
+        fail()
+        return bump(current.copy(source = null, area = null, observedAt = null, expiresAt = null))
+    }
+
+    override suspend fun forget() {
+        forgotten++
+        fail()
+        current = defaultNearbySettings.copy(version = "\"nearby-forgotten\"")
+    }
+
+    override suspend fun offers(limit: Int): NearbyOffers {
+        offerCalls++
+        offersError?.let { throw it }
+        return offers
+    }
+}
+
+/** The phone's approximate place, as a test says it is. */
+class FakeCoarseLocation(
+    var granted: Boolean = true,
+    var result: CoarseResult = CoarseResult.Located(CoarseFix(37.6173, 55.7558)),
+) : CoarseLocation {
+    var reads = 0
+
+    override fun granted() = granted
+
+    override suspend fun current(): CoarseResult {
+        reads++
+        return result
+    }
+}
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -1723,6 +1893,8 @@ class FakeDependencies(
     override val notifications: FakeNotifications = FakeNotifications(),
     override val notificationSettings: FakeNotificationSettings = FakeNotificationSettings(),
     override val deviceNotifications: FakeDeviceNotifications = FakeDeviceNotifications(),
+    override val nearby: FakeNearby = FakeNearby(),
+    override val coarseLocation: FakeCoarseLocation = FakeCoarseLocation(),
     override val components: FakeComponents = FakeComponents(),
     override val market: FakeMarket = FakeMarket(),
     override val appConfig: FakeAppConfig = FakeAppConfig(),

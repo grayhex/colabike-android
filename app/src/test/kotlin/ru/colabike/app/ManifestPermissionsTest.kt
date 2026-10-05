@@ -10,7 +10,8 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * What the merged manifest asks the person for: the map library and the messenger's SDK bring more
- * than the app wants (docs/adr/0009, docs/adr/0011).
+ * than the app wants (docs/adr/0009, docs/adr/0011), and the one place it reads is the approximate
+ * one (docs/adr/0018).
  */
 @RunWith(RobolectricTestRunner::class)
 class ManifestPermissionsTest {
@@ -24,17 +25,33 @@ class ManifestPermissionsTest {
             .toList()
 
     @Test
-    fun `viewing a route asks for no location and no Wi-Fi state`() {
+    fun `the only place the app can read is the approximate one, and it never asks for the background`() {
         val requested = requested()
 
         assertThat(requested).contains("android.permission.INTERNET")
+        assertThat(requested).contains("android.permission.ACCESS_COARSE_LOCATION")
         assertThat(requested)
             .containsNoneOf(
                 "android.permission.ACCESS_FINE_LOCATION",
-                "android.permission.ACCESS_COARSE_LOCATION",
-                "android.permission.ACCESS_WIFI_STATE",
                 "android.permission.ACCESS_BACKGROUND_LOCATION",
+                "android.permission.ACCESS_WIFI_STATE",
             )
+    }
+
+    @Test
+    fun `a phone without location hardware can still install the app`() {
+        val info =
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_CONFIGURATIONS,
+            )
+        val required =
+            info.reqFeatures.orEmpty().filter {
+                it.flags and android.content.pm.FeatureInfo.FLAG_REQUIRED != 0
+            }
+
+        assertThat(required.mapNotNull { it.name })
+            .containsNoneOf("android.hardware.location", "android.hardware.location.network")
     }
 
     @Test

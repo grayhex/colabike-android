@@ -22,7 +22,11 @@ import ru.colabike.app.AppDependencies
  * has said why, and the answer is not taken for granted.
  */
 @Composable
-fun NotificationSettingsRoute(dependencies: AppDependencies, onBack: () -> Unit) {
+fun NotificationSettingsRoute(
+    dependencies: AppDependencies,
+    onBack: () -> Unit,
+    onOpenNearby: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     val viewModel = viewModel {
         NotificationSettingsViewModel(
@@ -63,9 +67,10 @@ fun NotificationSettingsRoute(dependencies: AppDependencies, onBack: () -> Unit)
     }
     val quiet = (state as? NotificationSettingsUiState.Loaded)?.settings?.quietHours
     val actions =
-        remember(viewModel, quiet) {
+        remember(viewModel, quiet, onOpenNearby) {
             NotificationSettingsActions(
                 onBack = onBack,
+                onOpenNearby = onOpenNearby,
                 onRetryLoad = viewModel::load,
                 onRetryChange = viewModel::retry,
                 onPush = viewModel::setPush,

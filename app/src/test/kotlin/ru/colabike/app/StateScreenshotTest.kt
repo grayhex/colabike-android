@@ -63,6 +63,12 @@ import ru.colabike.app.messages.ChatStatusScreen
 import ru.colabike.app.messages.GuestMessages
 import ru.colabike.app.messages.NewConversationScreen
 import ru.colabike.app.messages.NewConversationUiState
+import ru.colabike.app.nearby.NearbyActions
+import ru.colabike.app.nearby.NearbyOffersActions
+import ru.colabike.app.nearby.NearbyOffersScreen
+import ru.colabike.app.nearby.NearbyOffersUiState
+import ru.colabike.app.nearby.NearbyScreen
+import ru.colabike.app.nearby.NearbyUiState
 import ru.colabike.app.notifications.InboxUi
 import ru.colabike.app.notifications.NotificationsScreen
 import ru.colabike.app.notifications.settings.NotificationSettingsActions
@@ -116,6 +122,9 @@ import ru.colabike.core.model.ListingSort
 import ru.colabike.core.model.ListingStatus
 import ru.colabike.core.model.ListingType
 import ru.colabike.core.model.MarketQuery
+import ru.colabike.core.model.NearbyOffers
+import ru.colabike.core.model.NearbyOffersState
+import ru.colabike.core.model.NearbySource
 import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationFilter
 import ru.colabike.core.model.NotificationSettingsChange
@@ -187,6 +196,12 @@ enum class ScreenState(val file: String) {
     NotificationSettingsFailed("notification_settings_failed"),
     NotificationSettingsPaused("notification_settings_paused"),
     NotificationSettingsRefused("notification_settings_refused"),
+
+    /** Rides near me: unreadable, a phone's area whose term passed, and the offers' empty lists. */
+    NearbyFailed("nearby_failed"),
+    NearbyExpired("nearby_expired"),
+    NearbyOffersNoArea("nearby_offers_no_area"),
+    NearbyOffersNone("nearby_offers_none"),
     ComponentsEmpty("components_empty"),
     ComponentsNone("components_none"),
     ComponentsError("components_error"),
@@ -704,6 +719,31 @@ private fun Content(state: ScreenState) {
                         ),
                 ),
                 NotificationSettingsActions(),
+            )
+        ScreenState.NearbyFailed ->
+            NearbyScreen(NearbyUiState.Failed(UiText.Res(R.string.error_offline)), NearbyActions())
+        ScreenState.NearbyExpired ->
+            NearbyScreen(
+                NearbyUiState.Loaded(
+                    settings =
+                        activeNearbySettings.copy(
+                            source = NearbySource.Device,
+                            expired = true,
+                            expiresAt = Instant.parse("2026-10-02T20:00:00Z"),
+                        ),
+                    problem = UiText.Res(R.string.nearby_location_unavailable),
+                ),
+                NearbyActions(onOpenOffers = {}),
+            )
+        ScreenState.NearbyOffersNoArea ->
+            NearbyOffersScreen(
+                NearbyOffersUiState.Loaded(NearbyOffers(NearbyOffersState.NoArea, emptyList())),
+                NearbyOffersActions(),
+            )
+        ScreenState.NearbyOffersNone ->
+            NearbyOffersScreen(
+                NearbyOffersUiState.Loaded(NearbyOffers(NearbyOffersState.Ready, emptyList())),
+                NearbyOffersActions(),
             )
         ScreenState.NotificationsMoreError ->
             InboxWith(

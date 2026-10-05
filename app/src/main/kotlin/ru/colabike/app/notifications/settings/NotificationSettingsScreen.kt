@@ -92,6 +92,8 @@ data class NotificationSettingsActions(
     val onRemoveMute: (NotificationMute) -> Unit = {},
     val onAskPermission: () -> Unit = {},
     val onOpenSystemSettings: () -> Unit = {},
+    /** Rides near me, in settings of its own; null where the rides are switched off. */
+    val onOpenNearby: (() -> Unit)? = null,
 )
 
 private val ContentWidth = 600.dp
@@ -269,6 +271,15 @@ private fun AccountPart(
 
         QuietHoursCard(state, actions)
         CircleCard(state, actions)
+        actions.onOpenNearby?.let { open ->
+            ColaListItem(
+                title = stringResource(R.string.notif_settings_nearby),
+                supporting = stringResource(R.string.notif_settings_nearby_hint),
+                icon = ColaIcons.Location,
+                onClick = open,
+                modifier = Modifier.testTag("notif-settings:nearby"),
+            )
+        }
         MutesCard(settings, idle, actions)
     }
 }

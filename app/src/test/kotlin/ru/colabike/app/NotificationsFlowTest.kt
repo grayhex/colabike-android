@@ -30,6 +30,7 @@ import ru.colabike.core.model.DataError
 import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.NotificationFilter
+import ru.colabike.core.model.NotificationReason
 import ru.colabike.core.model.Page
 
 /** The bell and the inbox as a person uses them. */
@@ -229,6 +230,60 @@ class NotificationsFlowTest {
         compose.onNodeWithTag("notification:n2").assertContentDescriptionDoesNotContain("Новое.")
         // Nothing unread is left to read: the action goes.
         compose.onNodeWithTag("notifications:read_all").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a ride offered near the person says why, and the category narrows the inbox to it`() {
+        val notifications =
+            FakeNotifications(
+                mapOf(
+                    null to
+                        Page(
+                            listOf(
+                                notification(
+                                    1,
+                                    kind = "plan_nearby",
+                                    type = "ride",
+                                    reasons =
+                                        setOf(NotificationReason.Nearby, NotificationReason.Intent),
+                                ),
+                                notification(
+                                    2,
+                                    kind = "plan_published",
+                                    type = "ride",
+                                    reasons = setOf(NotificationReason.Friend),
+                                ),
+                                notification(3, kind = "comment"),
+                            ),
+                            null,
+                        )
+                )
+            )
+        start(dependencies(notifications = notifications))
+        openInbox()
+
+        compose
+            .onNodeWithTag("notification:n1")
+            .assertContentDescriptionContains("Покатушка рядом", substring = true)
+            .assertContentDescriptionContains(
+                "В вашем районе, Совпадает с вашим намерением",
+                substring = true,
+            )
+        // A plan of the circle alone is what the category already says: no reason line.
+        compose
+            .onNodeWithTag("notification:n2")
+            .assertContentDescriptionContains("Новый план друга", substring = true)
+            .assertContentDescriptionDoesNotContain("Из вашего круга")
+
+        // The row of chips is longer than a phone is wide.
+        compose
+            .onNodeWithTag("notifications:filters")
+            .performScrollToNode(hasTestTag("notifications:filter:nearby"))
+        compose.onNodeWithTag("notifications:filter:nearby").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("notification:n1").assertIsDisplayed()
+        compose.onNodeWithTag("notification:n3").assertDoesNotExist()
     }
 
     @Test

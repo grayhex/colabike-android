@@ -45,11 +45,16 @@ import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.LaunchFill
 import ru.colabike.core.model.ListingBikeLink
 import ru.colabike.core.model.ListingCatalogLink
+import ru.colabike.core.model.NearbyOffer
+import ru.colabike.core.model.NearbyOffers
+import ru.colabike.core.model.NearbyOffersState
+import ru.colabike.core.model.NearbyReason
 import ru.colabike.core.model.NoticeAction
 import ru.colabike.core.model.NoticeKind
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.OnboardingItem
 import ru.colabike.core.model.Page
+import ru.colabike.core.model.RideId
 import ru.colabike.core.model.ServiceLinks
 import ru.colabike.core.model.UpdateMode
 import ru.colabike.core.model.UpdateState
@@ -111,6 +116,14 @@ enum class Screen(val file: String) {
     NotificationSettings("notification_settings"),
     NotificationSettingsBusy("notification_settings_busy"),
     NotificationSettingsPhone("notification_settings_phone"),
+
+    /**
+     * Profile → Notifications → Rides near me: an area from the site with a kind chosen, an area
+     * this phone has just read waiting for a yes, and the rides on now in it.
+     */
+    Nearby("nearby"),
+    NearbyDraft("nearby_draft"),
+    NearbyOffers("nearby_offers"),
 
     /** The component catalog, a model's page, and the credits of its photos further down. */
     Components("components"),
@@ -276,6 +289,37 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                         AppShell(
                             FakeDependencies(
                                 deviceNotifications = FakeDeviceNotifications(deniedPhone)
+                            )
+                        )
+                    Screen.Nearby,
+                    Screen.NearbyDraft,
+                    Screen.NearbyOffers ->
+                        AppShell(
+                            FakeDependencies(
+                                nearby =
+                                    FakeNearby(
+                                        current = activeNearbySettings,
+                                        offers =
+                                            NearbyOffers(
+                                                NearbyOffersState.Ready,
+                                                listOf(
+                                                    NearbyOffer(
+                                                        PreviewData.plannedRide,
+                                                        setOf(NearbyReason.Nearby),
+                                                    ),
+                                                    NearbyOffer(
+                                                        PreviewData.plannedRide.copy(
+                                                            id = RideId("plan-2"),
+                                                            title = "Вечерний круг по набережной",
+                                                        ),
+                                                        setOf(
+                                                            NearbyReason.Nearby,
+                                                            NearbyReason.Intent,
+                                                        ),
+                                                    ),
+                                                ),
+                                            ),
+                                    )
                             )
                         )
                     Screen.FeatureOff ->
@@ -466,6 +510,23 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                     onNodeWithTag("notif-settings:mute:ride-1").performScrollTo()
                 Screen.NotificationSettingsPhone ->
                     onNodeWithTag("notif-settings:os-off").performScrollTo()
+                else -> Unit
+            }
+        }
+        Screen.Nearby,
+        Screen.NearbyDraft,
+        Screen.NearbyOffers -> {
+            section("Профиль").performClick()
+            onNodeWithText("Что, когда и от кого присылать").performScrollTo().performClick()
+            onNodeWithTag("notif-settings:nearby").performScrollTo().performClick()
+            when (screen) {
+                Screen.NearbyDraft -> {
+                    onNodeWithTag("nearby:locate").performScrollTo().performClick()
+                    onNodeWithTag("nearby:locate-allow").performClick()
+                    onNodeWithTag("nearby:confirm").performScrollTo()
+                }
+                Screen.NearbyOffers ->
+                    onNodeWithTag("nearby:offers").performScrollTo().performClick()
                 else -> Unit
             }
         }

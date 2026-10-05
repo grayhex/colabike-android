@@ -1,4 +1,4 @@
 Shared notification examples of the backend (grayhex/cola), docs/contracts/notifications/v1.
-Pinned to commit 7ed82f0 (merge of pull request #350: the chat message and its category on top of the
-push registry of #342, issue #341 policy fields from pull request #346). Do not edit by hand: refresh by
-copying the files from the backend at a newer commit and review the diff.
+Pinned to commit 34d0bc7 (merge of pull request #353: the nearby category, the `plan_nearby` event and
+the `reasons` of a notification, on top of the chat message of #350 and the push registry of #342).
+Do not edit by hand: refresh by copying the files from the backend at a newer commit and review the diff.

@@ -40,6 +40,10 @@
             "description": "Публичные покатушки: состоявшиеся, ближайшие планы, публичная геометрия и разбор трека."
         },
         {
+            "name": "Planning",
+            "description": "Договориться о поездке: намерения покататься и ответ на покатушку на конкретную дату. Права и правила те же, что на сайте."
+        },
+        {
             "name": "Comments",
             "description": "Комментарии к велосипедам, записям и покатушкам: один вид на всё."
         },
@@ -286,6 +290,7 @@
                                 "market",
                                 "plans",
                                 "intents",
+                                "nearby",
                                 "reactions",
                                 "site"
                             ]
@@ -9301,6 +9306,1907 @@
                     }
                 }
             }
+        },
+        "/me/ride-intents": {
+            "get": {
+                "operationId": "listOwnRideIntents",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Мои намерения покататься",
+                "description": "Свои намерения в любом состоянии, кроме удалённых: действующие, отменённые и те, у которых окна прошли (`status`). Новые сверху, курсор по `(время создания, id)`.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Limit"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Cursor"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Страница своих намерений.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideIntentPage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/ride-intents": {
+            "get": {
+                "operationId": "listCommunityRideIntents",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Намерения сообщества",
+                "description": "Действующие намерения, которые авторы опубликовали для сообщества и окна которых ещё не закончились. Только для вошедших; заблокированные авторы не видны. Включает и свои опубликованные (`own: true`). Новые сверху, курсор по `(время создания, id)`. Намерение — не мероприятие: ответить «Иду» на него нельзя, можно открыть автора и договориться.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Limit"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Cursor"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Страница намерений сообщества.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideIntentPage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createRideIntent",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Создать намерение покататься",
+                "description": "Заголовок `Idempotency-Key` (UUID) обязателен и есть личность намерения: повтор того же запроса отдаёт то же намерение (`Idempotency-Replayed: true`), а не второе; тот же ключ с другим телом — 409 `conflict`. Не больше 5 действующих намерений (409). Для `visibility: community` нужна подтверждённая почта. Гараж не нужен. Публикация, готовность и истечение окон вызывают те же уведомления друзьям, что и на сайте; отдельной отправки здесь нет. Бюджет — 40 за окно, общий с сайтом.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RideIntentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Повтор после того, как ключ уже забыт, но намерение есть: то же намерение.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия намерения: для `If-Match` следующей замены.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideIntent"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Намерение создано.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия намерения: для `If-Match` следующей замены.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideIntent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело, параметры или `Idempotency-Key` не подходят, окна нарушают правила (пересекаются, дальше 90 дней, дольше 24 часов, время не существует при переводе часов) либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`) либо публикация сообществу без подтверждённой почты (`email_verification_required`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "description": "`Idempotency-Key` уже использован с другим телом либо активных намерений уже 5.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/ride-intents/{id}": {
+            "get": {
+                "operationId": "getRideIntent",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Намерение покататься",
+                "description": "Своё — в любом состоянии, кроме удалённого. Чужое — только опубликованное для сообщества, действующее и с не закончившимися окнами. Недоступное, удалённое, заблокированного автора и несуществующее одинаково 404.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideIntentId"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Намерение.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия намерения: для `If-Match` следующей замены.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideIntent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "replaceRideIntent",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Заменить своё намерение",
+                "description": "Полная замена: окна, район, готовность, видимость. `If-Match` с `ETag` необязателен: с ним замена применяется только к версии, которую клиент видел (412, если другое устройство успело раньше). Отменённое намерение не правится (409): создайте новое. Публикация сообществу — с подтверждённой почтой. Бюджет общий с созданием.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideIntentId"
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "`ETag` намерения, которое клиент видел: при другой версии — 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RideIntentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Намерение после замены.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия намерения: для `If-Match` следующей замены.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideIntent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело, параметры или `Idempotency-Key` не подходят, окна нарушают правила (пересекаются, дальше 90 дней, дольше 24 часов, время не существует при переводе часов) либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`) либо публикация сообществу без подтверждённой почты (`email_verification_required`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "description": "Намерение отменено, либо замена оставила бы больше 5 действующих.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "`If-Match` не совпал с текущей версией: прочитайте намерение снова.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteRideIntent",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Удалить своё намерение",
+                "description": "Убирает намерение и его окна; остаётся только отметка, по которой запоздалый повтор создания не воскресит его. Повтор тоже 204. Чужое и несуществующее — 404.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideIntentId"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Намерение удалено.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/ride-intents/{id}/cancel": {
+            "post": {
+                "operationId": "cancelRideIntent",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Отменить своё намерение",
+                "description": "Снимает намерение с публикации и закрывает его: оно остаётся в своём списке со статусом `cancelled`, ожидающие уведомления о нём не уходят. Повтор тоже 200. Тела нет.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideIntentId"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Отменённое намерение.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия намерения: для `If-Match` следующей замены.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideIntent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело, параметры или `Idempotency-Key` не подходят, окна нарушают правила (пересекаются, дальше 90 дней, дольше 24 часов, время не существует при переводе часов) либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`) либо публикация сообществу без подтверждённой почты (`email_verification_required`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "description": "Тело больше 8192 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/rides/{id}/participation": {
+            "get": {
+                "operationId": "getRideParticipation",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Моё участие в покатушке",
+                "description": "Как человек связан с планом и его датой: ближайшая дата и часовой пояс, редакция условий (`agreement.revision`) и что в ней изменилось, набор, мой ответ, приглашение, `changedAfterAnswer`, разрешённая точка встречи, что сервер сейчас примет (`allowedResponses`). `occurrenceAt` — дата из уведомления: ответ говорит, текущая она, перенесена, отменена или прошла. Это то, что открывает уведомление о закрытом приглашении, изменении или отмене: читать может организатор, приглашённый и тот, кому доступен публичный план; ответивший на отменённый план видит лишь, что он отменён. Публичную карточку `GET /rides/{id}` это не расширяет, имён участников здесь нет. Недоступный, чужой закрытый и несуществующий план одинаково 404.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideId"
+                    },
+                    {
+                        "name": "occurrenceAt",
+                        "in": "query",
+                        "required": false,
+                        "description": "Дата выезда (`scheduledAt`, `target.occurrenceAt` уведомления), любой допустимый вид даты со смещением.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Участие человека.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideParticipation"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "respondToRide",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Ответить на покатушку",
+                "description": "«Иду», «возможно» или «не иду» на одну дату — тем условиям, которые человек видел: `occurrenceAt` из `scheduledAt` и, для «иду» и «возможно», `expectedAgreementRevision` из `agreement.revision`. Если дата или условия уже другие, организатор закрыл набор или организатор отвечает на свой план, ответ не принимается: 409 с `current` — состоянием как оно есть сейчас, чтобы человек решил заново; молча подтвердить новые условия сервер не может. Выйти («не иду») можно всегда. Повтор того же ответа ничего не меняет. Велосипед не нужен; подтверждённая почта — как на сайте, не нужна. Бюджет — 20 за окно, общий с сайтом.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RideId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RideParticipationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Участие после ответа.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideParticipation"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не подходит (для «иду» и «возможно» нужен `expectedAgreementRevision`) либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "description": "Ответ не принят: дата или условия изменились, набор закрыт либо организатор отвечает на свой план. `current` — состояние сейчас (null, если план стал недоступен).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RideParticipationConflict"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 2048 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/nearby": {
+            "get": {
+                "operationId": "getNearby",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Район «поездки рядом» и настройки",
+                "description": "Свой район и настройки: включено ли, откуда район, его срок, на сколько дней вперёд искать, предпочтения и пределы. Не включено по умолчанию. Версия — в `ETag` и у пустого состояния. Район хранится один, последний, как центр ячейки сетки; истории мест нет.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Район и настройки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия района и настроек: для `If-Match` следующего изменения.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Nearby"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "updateNearbySettings",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Включить поиск рядом, горизонт и предпочтения",
+                "description": "Меняется только указанное. Включение — отдельное согласие: оно не включает push и публикацию намерений, а сохранённый район его не включает. Выключить можно всегда, и когда оператор выключил возможность (`available: false`) включить нельзя (503). `If-Match` необязателен.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "`ETag`, который клиент видел: при другой версии — 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NearbySettingsPatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Состояние после изменения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия района и настроек: для `If-Match` следующего изменения.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Nearby"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не подходит либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`) либо район с телефона прислан не с токена приложения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "`If-Match` не совпал: прочитайте состояние снова.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 2048 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    },
+                    "503": {
+                        "description": "Оператор выключил возможность.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "forgetNearby",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Отказаться от поиска рядом и забыть всё",
+                "description": "Удаляет район, переключатель и предпочтения целиком; запланированная доставка, основанная на районе, отменяется. Повтор тоже 204.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Всё удалено.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`) либо район с телефона прислан не с токена приложения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/nearby/area": {
+            "put": {
+                "operationId": "saveNearbyArea",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Сохранить район",
+                "description": "Один район на аккаунт, последний. Телефон присылает центр ячейки сетки (`limits.cell`), а не точку: более точное сервер не округляет, а отклоняет (400), потому что округление на сервере не заменяет минимизацию до отправки. Район с телефона живёт `limits.deviceTtlHours` часов от подтверждения и ничем, кроме нового подтверждения, не продлевается; срок не продлевает и приход push. Выбранный вручную район сервер приводит к ячейке сам и хранит до удаления. Район другого источника заменяется только с `replaceSource: true` (иначе 409), поэтому два устройства не затирают район молча. Заголовок `If-Match` обязателен. Сохранение не включает возможность.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "`ETag` района, который клиент видел, обязателен: без него 428, при другой версии 412. До первого сохранения версия есть и у пустого состояния.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NearbyAreaRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Состояние после сохранения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия района и настроек: для `If-Match` следующего изменения.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Nearby"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не подходит: радиус вне 5 км…предела оператора или не кратен километру, положение с телефона не центр ячейки, название у района с телефона.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`) либо район с телефона прислан не с токена приложения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Действует район другого источника, а `replaceSource` не указан.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "`If-Match` не совпал: прочитайте состояние снова.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 2048 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "Нет заголовка `If-Match`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    },
+                    "503": {
+                        "description": "Оператор выключил возможность.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "removeNearbyArea",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Удалить район",
+                "description": "Убирает район; переключатель и предпочтения остаются. Предложения, основанные на районе, перестают подбираться. Повтор тоже 200. `If-Match` необязателен.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "`ETag`, который клиент видел: при другой версии — 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Состояние без района.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия района и настроек: для `If-Match` следующего изменения.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Nearby"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`) либо район с телефона прислан не с токена приложения.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "`If-Match` не совпал: прочитайте состояние снова.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/nearby/offers": {
+            "get": {
+                "operationId": "listNearbyOffers",
+                "tags": [
+                    "Planning"
+                ],
+                "summary": "Что есть в выбранном районе сейчас",
+                "description": "Короткий список текущих предложений по запросу — для выдачи после первого включения поиска рядом или переезда. Это чтение: ничего не рассылается и не записывается, а уже опубликованное не приходит новостью. Берётся публичная приблизительная область плана и его вид, но не точка встречи; свои планы, планы, куда вы приглашены или уже ответили, и заглушённые авторы не показываются. Расстояния до вас в ответе нет. Если района нет, срок района с телефона вышел или поиск выключен, список пуст, а `state` говорит почему.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "Сколько показать, от 1 до 20; по умолчанию 10.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20,
+                            "default": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Предложения и состояние поиска.",
+                        "headers": {
+                            "Cache-Control": {
+                                "description": "`no-store`: ответ зависит от района человека.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NearbyOffers"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Параметры не подходят либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -12719,6 +14625,18 @@
                     },
                     "target": {
                         "$ref": "#/components/schemas/NotificationTarget"
+                    },
+                    "reasons": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "friend",
+                                "nearby",
+                                "intent"
+                            ]
+                        },
+                        "description": "Почему пришло новое предложение (`plan_published`, `intent_published`, `plan_nearby`): `friend` — новый план или намерение человека из вашего круга, `nearby` — покатушка в выбранном вами районе, `intent` — совпадает со временем вашего намерения. Названия места и расстояния нет: ни автор, ни другие не узнают, где вы. У остальных уведомлений пусто."
                     }
                 },
                 "required": [
@@ -12728,7 +14646,8 @@
                     "createdAt",
                     "readAt",
                     "actor",
-                    "target"
+                    "target",
+                    "reasons"
                 ],
                 "additionalProperties": false,
                 "description": "Уведомление вошедшему. Показывается только то, что получатель вправе видеть сейчас: приватное, скрытое и заблокированное не просачивается, а отменённое действие (снятый лайк, удалённый комментарий) уведомления не оставляет."
@@ -12846,6 +14765,7 @@
                             "market",
                             "plans",
                             "intents",
+                            "nearby",
                             "reactions",
                             "site"
                         ]
@@ -13146,7 +15066,7 @@
                         "additionalProperties": false
                     },
                     "categories": {
-                        "maxItems": 7,
+                        "maxItems": 9,
                         "type": "array",
                         "items": {
                             "type": "object",
@@ -13159,6 +15079,8 @@
                                         "market",
                                         "plans",
                                         "intents",
+                                        "chat",
+                                        "nearby",
                                         "reactions",
                                         "site"
                                     ]
@@ -13496,6 +15418,1049 @@
                 ],
                 "additionalProperties": false,
                 "description": "Страница ленты, новые сверху. Лента состоит из публикаций тех, на кого подписан человек (и велосипедов, за которыми он следит); страница читается заново по видимости зрителя, поэтому скрытое между страницами не показывается."
+            },
+            "RideIntentWindow": {
+                "type": "object",
+                "properties": {
+                    "startsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "startsAt",
+                    "endsAt"
+                ],
+                "additionalProperties": false,
+                "description": "Окно доступности: промежуток, в который человек может поехать. Для чужого намерения приходят только окна, что ещё не закончились."
+            },
+            "RideIntentRequest": {
+                "type": "object",
+                "properties": {
+                    "readiness": {
+                        "type": "string",
+                        "enum": [
+                            "ready",
+                            "considering"
+                        ],
+                        "description": "`ready` — готов ехать; `considering` — думаю."
+                    },
+                    "timeZone": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Часовой пояс IANA, например `Europe/Moscow`, или `UTC`. Окна читаются только в нём, не в поясе сервера."
+                    },
+                    "windows": {
+                        "minItems": 1,
+                        "maxItems": 4,
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "startLocal": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$",
+                                    "description": "Местное время в `timeZone`, `ГГГГ-ММ-ДДTЧЧ:ММ`, без смещения. Время, которого нет при переводе часов, — 400; повторяющееся требует `startFold`/`endFold`."
+                                },
+                                "endLocal": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$",
+                                    "description": "Местное время в `timeZone`, `ГГГГ-ММ-ДДTЧЧ:ММ`, без смещения. Время, которого нет при переводе часов, — 400; повторяющееся требует `startFold`/`endFold`."
+                                },
+                                "startFold": {
+                                    "type": "string",
+                                    "enum": [
+                                        "earlier",
+                                        "later"
+                                    ],
+                                    "description": "Какое из двух повторяющихся при переводе часов времён имеется в виду: первое или второе."
+                                },
+                                "endFold": {
+                                    "type": "string",
+                                    "enum": [
+                                        "earlier",
+                                        "later"
+                                    ],
+                                    "description": "Какое из двух повторяющихся при переводе часов времён имеется в виду: первое или второе."
+                                }
+                            },
+                            "required": [
+                                "startLocal",
+                                "endLocal"
+                            ],
+                            "additionalProperties": false
+                        }
+                    },
+                    "passport": {
+                        "type": "object",
+                        "properties": {
+                            "area": {
+                                "type": "object",
+                                "properties": {
+                                    "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                    },
+                                    "center": {
+                                        "description": "[долгота, широта]; нужен вместе с `radiusM`.",
+                                        "minItems": 2,
+                                        "maxItems": 2,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "radiusM": {
+                                        "type": "integer",
+                                        "minimum": 1000,
+                                        "maximum": 100000
+                                    }
+                                },
+                                "required": [
+                                    "label"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "purpose": {
+                                "type": "string",
+                                "enum": [
+                                    "leisure",
+                                    "social",
+                                    "training",
+                                    "exploration",
+                                    "adventure"
+                                ]
+                            },
+                            "pace": {
+                                "type": "string",
+                                "enum": [
+                                    "relaxed",
+                                    "moderate",
+                                    "sporty"
+                                ]
+                            },
+                            "surface": {
+                                "type": "string",
+                                "enum": [
+                                    "asphalt",
+                                    "gravel",
+                                    "trail",
+                                    "mixed"
+                                ]
+                            },
+                            "difficulty": {
+                                "type": "string",
+                                "enum": [
+                                    "easy",
+                                    "intermediate",
+                                    "technical"
+                                ]
+                            },
+                            "regroupPolicy": {
+                                "type": "string",
+                                "enum": [
+                                    "wait",
+                                    "regroup",
+                                    "independent"
+                                ]
+                            },
+                            "distanceKm": {
+                                "type": "object",
+                                "properties": {
+                                    "min": {
+                                        "type": "number",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 1000
+                                    },
+                                    "max": {
+                                        "type": "number",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 1000
+                                    }
+                                },
+                                "required": [
+                                    "min",
+                                    "max"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "durationMinutes": {
+                                "type": "object",
+                                "properties": {
+                                    "min": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 10080
+                                    },
+                                    "max": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 10080
+                                    }
+                                },
+                                "required": [
+                                    "min",
+                                    "max"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "groupSize": {
+                                "type": "object",
+                                "properties": {
+                                    "min": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 100
+                                    },
+                                    "max": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 100
+                                    }
+                                },
+                                "required": [
+                                    "min",
+                                    "max"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "speedKmh": {
+                                "type": "object",
+                                "properties": {
+                                    "min": {
+                                        "type": "number",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 60
+                                    },
+                                    "max": {
+                                        "type": "number",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 60
+                                    }
+                                },
+                                "required": [
+                                    "min",
+                                    "max"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "beginnerFriendly": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "area",
+                            "purpose"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "meetNewPeople": {
+                        "type": "boolean"
+                    },
+                    "visibility": {
+                        "type": "string",
+                        "enum": [
+                            "private",
+                            "community"
+                        ],
+                        "description": "`private` — только автору; `community` — вошедшим в аккаунт (нужна подтверждённая почта автора, чтобы публиковать)."
+                    },
+                    "allowSuggestions": {
+                        "type": "boolean",
+                        "description": "Разрешить сайту подбирать этому намерению подходящие поездки. Сам по себе подбор никому не раскрывает, где человек."
+                    }
+                },
+                "required": [
+                    "readiness",
+                    "timeZone",
+                    "windows",
+                    "passport",
+                    "visibility",
+                    "allowSuggestions"
+                ],
+                "additionalProperties": false,
+                "description": "Намерение покататься целиком: создание и полная замена (`PUT`). Окна задаются местным временем в `timeZone`; до 4 окон по 24 часа, не пересекаются, в пределах 90 дней. Район обязателен, центр на карте — с точностью до сотой градуса (точку сервер не хранит), радиус от 1 до 100 км. Гараж и велосипед не нужны."
+            },
+            "RideIntent": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "own": {
+                        "type": "boolean"
+                    },
+                    "readiness": {
+                        "type": "string",
+                        "enum": [
+                            "ready",
+                            "considering"
+                        ]
+                    },
+                    "timeZone": {
+                        "type": "string"
+                    },
+                    "passport": {
+                        "$ref": "#/components/schemas/RidePassport"
+                    },
+                    "windows": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RideIntentWindow"
+                        }
+                    },
+                    "meetNewPeople": {
+                        "type": "boolean"
+                    },
+                    "visibility": {
+                        "type": "string",
+                        "enum": [
+                            "private",
+                            "community"
+                        ],
+                        "description": "`private` — только автору; `community` — вошедшим в аккаунт (нужна подтверждённая почта автора, чтобы публиковать)."
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "active",
+                            "cancelled",
+                            "expired"
+                        ],
+                        "description": "`active` — действует; `cancelled` — отменено автором; `expired` — все окна прошли. Удалённое намерение не возвращается никогда."
+                    },
+                    "allowSuggestions": {
+                        "description": "Только в своём намерении.",
+                        "type": "boolean"
+                    },
+                    "author": {
+                        "$ref": "#/components/schemas/Author"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "own",
+                    "readiness",
+                    "timeZone",
+                    "passport",
+                    "windows",
+                    "visibility",
+                    "status",
+                    "author",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "additionalProperties": false,
+                "description": "Намерение покататься. Чужое видно, только пока оно опубликовано для сообщества и не закончилось; приватное — только автору. Намерение не мероприятие: ответить «Иду» на него нельзя, можно открыть автора и договориться."
+            },
+            "RideIntentPage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RideIntent"
+                        }
+                    },
+                    "nextCursor": {
+                        "description": "Курсор следующей страницы или null, если страниц больше нет.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "items",
+                    "nextCursor"
+                ],
+                "additionalProperties": false,
+                "description": "Страница намерений, новые сверху."
+            },
+            "RideParticipationRequest": {
+                "type": "object",
+                "properties": {
+                    "response": {
+                        "type": "string",
+                        "enum": [
+                            "accepted",
+                            "maybe",
+                            "declined"
+                        ],
+                        "description": "`accepted` — иду; `maybe` — возможно; `declined` — не иду."
+                    },
+                    "occurrenceAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "expectedAgreementRevision": {
+                        "type": "integer",
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "response",
+                    "occurrenceAt"
+                ],
+                "additionalProperties": false,
+                "description": "Ответ на покатушку на конкретную дату. `occurrenceAt` — дата, которую человек видел (`scheduledAt` из чтения): если дата изменилась, ответ не принимается (409). `expectedAgreementRevision` — редакция условий, которую человек видел (`agreement.revision`); обязательна для `accepted` и `maybe`, чтобы нельзя было согласиться со старыми условиями. «Не иду» условиями не проверяется: выйти можно всегда."
+            },
+            "RideParticipation": {
+                "type": "object",
+                "properties": {
+                    "rideId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "planned",
+                            "cancelled",
+                            "completed"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "features": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "author": {
+                        "$ref": "#/components/schemas/Author"
+                    },
+                    "timeZone": {
+                        "type": "string",
+                        "description": "Часовой пояс плана (IANA)."
+                    },
+                    "recurrence": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "weekly"
+                        ]
+                    },
+                    "scheduledAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Ближайшая дата, на которую можно ответить; null, если план отменён, состоялся или дата прошла. Именно её клиент отправляет как `occurrenceAt`."
+                    },
+                    "expectedEndAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "requested": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "at": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "current",
+                                            "moved",
+                                            "cancelled",
+                                            "past"
+                                        ],
+                                        "description": "`current` — это ближайшая дата; `moved` — дата другая, смотрите `scheduledAt`; `cancelled` — эта дата или весь план отменены; `past` — дата прошла."
+                                    }
+                                },
+                                "required": [
+                                    "at",
+                                    "status"
+                                ],
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Дата, о которой спросили (`occurrenceAt`); null, если не спрашивали."
+                    },
+                    "agreement": {
+                        "type": "object",
+                        "properties": {
+                            "revision": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": "Редакция условий. Растёт, когда меняется старт, место или маршрут."
+                            },
+                            "changes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "start",
+                                        "place",
+                                        "route"
+                                    ]
+                                },
+                                "description": "Что изменилось в последней редакции. Прежних значений сервер не хранит."
+                            },
+                            "changedAt": {
+                                "anyOf": [
+                                    {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            }
+                        },
+                        "required": [
+                            "revision",
+                            "changes",
+                            "changedAt"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "recruitmentClosed": {
+                        "type": "boolean",
+                        "description": "Организатор закрыл набор на ближайшую дату."
+                    },
+                    "meetingPoint": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "meetingHidden": {
+                        "type": "boolean",
+                        "description": "Точка встречи есть, но показывается только организатору и принявшим участие."
+                    },
+                    "passport": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RidePassport"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "participants": {
+                        "type": "object",
+                        "properties": {
+                            "going": {
+                                "type": "integer"
+                            },
+                            "maybe": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "going",
+                            "maybe"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Количество ответивших на ближайшую дату, без имён."
+                    },
+                    "viewer": {
+                        "type": "object",
+                        "properties": {
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "organizer",
+                                    "invitee",
+                                    "visitor"
+                                ]
+                            },
+                            "participation": {
+                                "type": "string",
+                                "enum": [
+                                    "organizer",
+                                    "accepted",
+                                    "maybe",
+                                    "declined",
+                                    "reconfirm",
+                                    "invited",
+                                    "none"
+                                ],
+                                "description": "Единое состояние: `reconfirm` — человек отвечал «иду»/«возможно» на прежние условия и должен подтвердить новые; `invited` — приглашён и не отвечал."
+                            },
+                            "response": {
+                                "anyOf": [
+                                    {
+                                        "type": "string",
+                                        "enum": [
+                                            "accepted",
+                                            "maybe",
+                                            "declined"
+                                        ],
+                                        "description": "`accepted` — иду; `maybe` — возможно; `declined` — не иду."
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "description": "Ответ на текущие условия; null, если не отвечал или ответ относится к прежней редакции."
+                            },
+                            "previousResponse": {
+                                "anyOf": [
+                                    {
+                                        "type": "string",
+                                        "enum": [
+                                            "accepted",
+                                            "maybe",
+                                            "declined"
+                                        ],
+                                        "description": "`accepted` — иду; `maybe` — возможно; `declined` — не иду."
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "description": "Прежний ответ при `reconfirm`, иначе null."
+                            },
+                            "changedAfterAnswer": {
+                                "type": "boolean",
+                                "description": "Условия изменились после ответа «иду» или «возможно»."
+                            },
+                            "allowedResponses": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "accepted",
+                                        "maybe",
+                                        "declined"
+                                    ],
+                                    "description": "`accepted` — иду; `maybe` — возможно; `declined` — не иду."
+                                },
+                                "description": "Что сервер сейчас примет. Пусто: отвечать нечем (организатор, дата прошла, план отменён, набор закрыт для постороннего)."
+                            }
+                        },
+                        "required": [
+                            "role",
+                            "participation",
+                            "response",
+                            "previousResponse",
+                            "changedAfterAnswer",
+                            "allowedResponses"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "rideId",
+                    "title",
+                    "status",
+                    "description",
+                    "features",
+                    "author",
+                    "timeZone",
+                    "recurrence",
+                    "scheduledAt",
+                    "expectedEndAt",
+                    "requested",
+                    "agreement",
+                    "recruitmentClosed",
+                    "meetingPoint",
+                    "meetingHidden",
+                    "passport",
+                    "participants",
+                    "viewer"
+                ],
+                "additionalProperties": false,
+                "description": "Как человек связан с планом покатушки и её датой: то, что открывает уведомление о приглашении, изменении или отмене. Читать может организатор, приглашённый и тот, кому доступен публичный план; ответивший на дату отменённого плана видит только то, что он отменён. Чужих имён здесь нет, только счётчики. Закрытый план остаётся недоступным всем остальным (404); публичную карточку покатушки (`GET /rides/{id}`) это не открывает."
+            },
+            "RideParticipationConflict": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/ErrorBody"
+                    },
+                    "current": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RideParticipation"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "null, если план уже недоступен человеку."
+                    }
+                },
+                "required": [
+                    "error",
+                    "current"
+                ],
+                "additionalProperties": false,
+                "description": "Ответ 409 на ответ об участии: дата или условия изменились. Ответ НЕ принят; `current` — состояние как оно есть сейчас, его и показывают человеку, чтобы он решил заново."
+            },
+            "Nearby": {
+                "type": "object",
+                "properties": {
+                    "available": {
+                        "type": "boolean",
+                        "description": "false — оператор выключил возможность: ничего не читается и не сохраняется, выключить можно по-прежнему."
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "source": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "manual",
+                                    "device"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Откуда действующий район: `manual` — выбран вручную, `device` — подтверждён телефоном; null, если района нет."
+                    },
+                    "area": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "label": {
+                                        "description": "Название района, которое дал человек; у районов с телефона null.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "center": {
+                                        "minItems": 2,
+                                        "maxItems": 2,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "number"
+                                        },
+                                        "description": "[долгота, широта] центра ячейки сетки, не точка, где был человек."
+                                    },
+                                    "radiusM": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "label",
+                                    "center",
+                                    "radiusM"
+                                ],
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "observedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Когда район подтверждён или выбран."
+                    },
+                    "expiresAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Конец срока района с телефона; у выбранного вручную null."
+                    },
+                    "expired": {
+                        "type": "boolean",
+                        "description": "Срок района с телефона вышел: он не используется и скоро будет удалён."
+                    },
+                    "horizonDays": {
+                        "type": "integer",
+                        "description": "На сколько дней вперёд искать поездки."
+                    },
+                    "filters": {
+                        "type": "object",
+                        "properties": {
+                            "purposes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Назначения поездок (`purpose` плана). Пустой список — любые."
+                            },
+                            "paces": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Темп (`pace`). Пустой список — любые."
+                            },
+                            "surfaces": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Покрытие (`surface`). Пустой список — любые."
+                            }
+                        },
+                        "required": [
+                            "purposes",
+                            "paces",
+                            "surfaces"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "limits": {
+                        "type": "object",
+                        "properties": {
+                            "minRadiusM": {
+                                "type": "integer"
+                            },
+                            "maxRadiusM": {
+                                "type": "integer",
+                                "description": "Предел оператора."
+                            },
+                            "radiusStepM": {
+                                "type": "integer"
+                            },
+                            "deviceTtlHours": {
+                                "type": "integer"
+                            },
+                            "cell": {
+                                "type": "object",
+                                "properties": {
+                                    "latStep": {
+                                        "type": "number"
+                                    },
+                                    "lngStep": {
+                                        "type": "number"
+                                    }
+                                },
+                                "required": [
+                                    "latStep",
+                                    "lngStep"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Размер ячейки в градусах. Телефон приводит положение к центру ячейки до отправки: центр = (⌊значение / шаг⌋ + 0.5) × шаг, с точностью до 5 знаков. Точную точку не отправляйте: сервер её не округляет, а отказывает (400)."
+                            }
+                        },
+                        "required": [
+                            "minRadiusM",
+                            "maxRadiusM",
+                            "radiusStepM",
+                            "deviceTtlHours",
+                            "cell"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "available",
+                    "enabled",
+                    "source",
+                    "area",
+                    "observedAt",
+                    "expiresAt",
+                    "expired",
+                    "horizonDays",
+                    "filters",
+                    "limits"
+                ],
+                "additionalProperties": false,
+                "description": "Район «поездки рядом» и его настройки. Это отдельное согласие: пока `enabled` не включён, район не используется, а сохранённый район его не включает. Район хранится один, последний, и только как центр ячейки сетки (`limits.cell`); истории мест нет. Район с телефона живёт `limits.deviceTtlHours` часов от подтверждения и ничем, кроме нового подтверждения, не продлевается; вручную выбранный живёт до удаления."
+            },
+            "NearbyOffer": {
+                "type": "object",
+                "properties": {
+                    "ride": {
+                        "$ref": "#/components/schemas/RideSummary"
+                    },
+                    "reasons": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "nearby",
+                                "intent"
+                            ]
+                        },
+                        "description": "Почему предложено: `nearby` — в выбранном вами районе, `intent` — совпадает со временем вашего намерения."
+                    }
+                },
+                "required": [
+                    "ride",
+                    "reasons"
+                ],
+                "additionalProperties": false,
+                "description": "Одна покатушка в выбранном вами районе. Покатушка — та же карточка списка, что и везде (публичная): ни места встречи, ни расстояния до вас здесь нет, а автор не узнаёт, кто смотрит."
+            },
+            "NearbyOffers": {
+                "type": "object",
+                "properties": {
+                    "state": {
+                        "type": "string",
+                        "enum": [
+                            "ready",
+                            "off",
+                            "unavailable",
+                            "no_area",
+                            "expired"
+                        ],
+                        "description": "`ready` — список подобран; `off` — поиск рядом выключен; `no_area` — района нет; `expired` — срок района с телефона вышел (обновите его с телефона или выберите вручную); `unavailable` — оператор выключил возможность. Кроме `ready` список пуст."
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NearbyOffer"
+                        }
+                    }
+                },
+                "required": [
+                    "state",
+                    "items"
+                ],
+                "additionalProperties": false,
+                "description": "Текущие предложения в выбранном районе — короткий список по запросу, ближайшие даты первыми, без курсора. Это чтение, а не рассылка: всё, что уже есть в каталоге, показывается здесь, а не приходит новостью."
+            },
+            "NearbyAreaRequest": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "type": "string",
+                        "enum": [
+                            "manual",
+                            "device"
+                        ]
+                    },
+                    "center": {
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "description": "[долгота, широта]."
+                    },
+                    "radiusM": {
+                        "type": "integer",
+                        "minimum": 5000,
+                        "description": "От 5 км до предела оператора (`limits.maxRadiusM`), кратно километру."
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "replaceSource": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "source",
+                    "center",
+                    "radiusM"
+                ],
+                "additionalProperties": false,
+                "description": "Сохранить район. `source: device` — только с токена приложения и только центром ячейки сетки; `manual` — любая точка района (сервер приведёт её к ячейке). Если действует район другого источника, замена требует `replaceSource: true` (иначе 409): два устройства не затирают район молча. Заголовок `If-Match` с `ETag` из чтения обязателен (428, 412 при устаревшей версии). Сохранение района не включает возможность."
+            },
+            "NearbySettingsPatch": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "horizonDays": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 30
+                    },
+                    "filters": {
+                        "type": "object",
+                        "properties": {
+                            "purposes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Назначения поездок (`purpose` плана). Пустой список — любые."
+                            },
+                            "paces": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Темп (`pace`). Пустой список — любые."
+                            },
+                            "surfaces": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Покрытие (`surface`). Пустой список — любые."
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Меняется только указанное. `enabled: true` — согласие на поиск поездок рядом; оно не включает push и публикацию намерений (это отдельные согласия). Выключить можно всегда. `If-Match` необязателен."
             },
             "CreateCommentRequest": {
                 "type": "object",
@@ -14151,6 +17116,16 @@
                 "in": "path",
                 "required": true,
                 "description": "Идентификатор уведомления из списка.",
+                "schema": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "RideIntentId": {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "description": "Идентификатор намерения покататься (UUID).",
                 "schema": {
                     "type": "string",
                     "format": "uuid"

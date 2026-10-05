@@ -46,6 +46,8 @@ class DestinationSerializationTest {
             Destination.Search(people = true),
             Destination.Devices,
             Destination.NotificationSettings,
+            Destination.NearbySettings,
+            Destination.NearbyOffers,
             Destination.About,
             Destination.Licenses,
         )

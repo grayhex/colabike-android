@@ -90,6 +90,12 @@ sealed interface Destination : NavKey {
     /** What the account sends to this person and when; opened from the profile. */
     @Serializable data object NotificationSettings : Destination
 
+    /** The private area of "rides near me" and the kinds of rides to hear about. */
+    @Serializable data object NearbySettings : Destination
+
+    /** The public rides on now in that area, on request. */
+    @Serializable data object NearbyOffers : Destination
+
     @Serializable data object About : Destination
 
     @Serializable data object Licenses : Destination
@@ -104,6 +110,8 @@ fun Destination.requiredFeature(): Feature? =
     when (this) {
         Destination.Rides,
         is Destination.Ride,
+        Destination.NearbySettings,
+        Destination.NearbyOffers,
         is Destination.BikeRides -> Feature.Rides
         Destination.Messages,
         is Destination.Conversation,
