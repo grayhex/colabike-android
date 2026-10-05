@@ -1,4 +1,3 @@
 Shared notification examples of the backend (grayhex/cola), docs/contracts/notifications/v1.
-Pinned to commit a90f767 (pull request #346, issue #341, slices N1.2 and N1.3, not merged yet: re-pin
-to the merge commit when it lands). Do not edit by hand: refresh by copying the four files from the
-backend at a newer commit and review the diff.
+Pinned to commit 84da7a5 (merge of pull request #346, issue #341, slices N1.2 and N1.3). Do not edit by
+hand: refresh by copying the files from the backend at a newer commit and review the diff.
