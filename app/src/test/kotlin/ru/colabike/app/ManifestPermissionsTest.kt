@@ -76,6 +76,28 @@ class ManifestPermissionsTest {
     }
 
     @Test
+    fun `the one service the app exports is where RuStore delivers, and it answers one action`() {
+        val info =
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_SERVICES,
+            )
+        val exported =
+            info.services.orEmpty().filter { it.exported && it.name.startsWith("ru.colabike.app.") }
+
+        assertThat(exported.map { it.name }).containsExactly("ru.colabike.app.push.ColaPushService")
+        val resolved =
+            context.packageManager.queryIntentServices(
+                android.content
+                    .Intent("ru.rustore.sdk.pushclient.MESSAGING_EVENT")
+                    .setPackage(context.packageName),
+                0,
+            )
+        assertThat(resolved.map { it.serviceInfo.name })
+            .containsExactly("ru.colabike.app.push.ColaPushService")
+    }
+
+    @Test
     fun `no component of the SDKs runs a service in the foreground or opens a preview`() {
         val info =
             context.packageManager.getPackageInfo(

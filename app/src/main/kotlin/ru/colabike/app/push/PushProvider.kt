@@ -20,7 +20,22 @@ sealed interface PushAvailability {
  * [NoPushProvider]: the app and its inbox work the same, and push is simply not offered.
  */
 interface PushProvider {
+    /** The project at the provider this build belongs to; empty for a build that has none. */
+    val projectId: String
+        get() = ""
+
+    /**
+     * Whether the provider can deliver here. Before [start] this is what the phone itself can tell
+     * (is the provider's application there); after it, what the provider's library says.
+     */
     suspend fun availability(): PushAvailability
+
+    /**
+     * Starts the provider's library. Called only once the person has said yes to push (or the phone
+     * is already registered, so that a message can arrive): a library that is not started does
+     * nothing, and so a person who never turns push on has none of its work. Safe to repeat.
+     */
+    fun start() {}
 
     /** The phone's token at the provider, or null when there is none. Never logged. */
     suspend fun token(): String?

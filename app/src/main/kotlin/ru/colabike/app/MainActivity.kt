@@ -71,6 +71,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // The person may have been to the system's settings, or the server may have been without
+        // a registration since the last time: a whole, fresh one is left alone without a request.
+        graph.pushRegistrar.request(force = false)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handle(intent)

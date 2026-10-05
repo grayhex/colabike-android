@@ -30,6 +30,7 @@ fun NotificationSettingsRoute(dependencies: AppDependencies, onBack: () -> Unit)
             people = dependencies.people,
             device = dependencies.deviceNotifications,
             clock = dependencies.clock,
+            pushSync = dependencies.pushSync,
         )
     }
     val state by viewModel.state.collectAsStateWithLifecycle()

@@ -325,6 +325,8 @@ class PendingNavigationTest {
                 Destination.Comments("bike", uuid, "", uuid),
                 Destination.Comments("ride", uuid, "", null),
                 Destination.Comments("component", uuid, "", uuid),
+                Destination.Conversation("colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c"),
+                Destination.Messages,
                 Destination.Devices,
                 Destination.Notifications,
             )
@@ -353,7 +355,9 @@ class PendingNavigationTest {
                 Destination.Comments("galaxy", uuid, "", null),
                 Destination.Comments("bike", uuid, "", "../x"),
                 Destination.Comments("bike", "nope", "", null),
-                Destination.Messages,
+                Destination.Conversation("../me"),
+                Destination.Conversation("no colon"),
+                Destination.Conversation("colabike:" + "x".repeat(200)),
             )
             .forEach { place ->
                 pending().clear()
@@ -365,7 +369,16 @@ class PendingNavigationTest {
 
     @Test
     fun `a stored value that was tampered with is dropped`() {
-        listOf("ride:../x", "comments:bike:$uuid", "comments:galaxy:$uuid:", "devices-x", "x:y")
+        listOf(
+                "ride:../x",
+                "comments:bike:$uuid",
+                "comments:galaxy:$uuid:",
+                "chat:../me",
+                "chat:",
+                "messages-x",
+                "devices-x",
+                "x:y",
+            )
             .forEach { value ->
                 preferences
                     .edit()

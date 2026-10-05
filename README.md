@@ -68,6 +68,7 @@ Android хранит снимок OpenAPI-контракта и еженедел
 | **Auth** | opaque access/refresh tokens, Android Keystore, PKCE |
 | **Images** | Coil |
 | **Tests** | JUnit, MockWebServer, Robolectric, Roborazzi, instrumented smoke |
+| **Push** | RuStore Push SDK, started only after the person turns push on ([ADR 0017](docs/adr/0017-push-registration-and-rustore.md)) |
 | **Distribution** | RuStore later; Google Play is not a target |
 
 Новый UI — Compose only. WebView не используется для интерфейса приложения; внешний вход открывается в системном браузере / Custom Tabs.

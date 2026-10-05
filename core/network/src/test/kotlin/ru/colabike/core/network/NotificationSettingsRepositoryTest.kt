@@ -81,6 +81,7 @@ class NotificationSettingsRepositoryTest {
                 NotificationCategory.Market,
                 NotificationCategory.Plans,
                 NotificationCategory.Intents,
+                NotificationCategory.Chat,
             )
             .inOrder()
         val market = loaded.categories.first { it.category == NotificationCategory.Market }

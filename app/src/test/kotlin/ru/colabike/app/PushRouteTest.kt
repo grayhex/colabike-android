@@ -55,6 +55,39 @@ class PushRouteTest {
     }
 
     @Test
+    fun `a message opens its conversation, and the list of them when none is named`() {
+        val cid = "colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c"
+
+        assertThat(PushTarget("chat", null, null, null, null, cid).destination("chat_message"))
+            .isEqualTo(Destination.Conversation(cid))
+        assertThat(PushTarget("chat", null, null, null, null, null).destination("chat_message"))
+            .isEqualTo(Destination.Messages)
+    }
+
+    @Test
+    fun `the conversation of a message goes through the Intent and comes back`() {
+        val cid = "colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c"
+        val tap = PushTap(event, "chat_message", PushTarget("chat", null, null, null, null, cid))
+
+        val back = PushTap.from(tap.intent(context))
+
+        assertThat(back).isEqualTo(tap)
+        assertThat(back?.destination()).isEqualTo(Destination.Conversation(cid))
+    }
+
+    @Test
+    fun `a conversation that is not a cid is not believed`() {
+        val cid = "colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c"
+        val good =
+            PushTap(event, "chat_message", PushTarget("chat", null, null, null, null, cid))
+                .intent(context)
+
+        listOf("../me", "no colon", "colabike:dm x", "a:" + "b".repeat(200)).forEach { bad ->
+            assertThat(PushTap.from(Intent(good).putExtra("ref", bad))).isNull()
+        }
+    }
+
+    @Test
     fun `a tap goes through the Intent and comes back whole`() {
         val tap =
             PushTap(

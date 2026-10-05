@@ -110,7 +110,7 @@
     <string name="about_title">О приложении</string>
     <string name="about_version">Версия %1$s</string>
     <string name="about_build">Сборка %1$d · контракт API %2$s</string>
-    <string name="about_tagline">Нативное приложение сообщества ColaBike для Android. Без сервисов Google Play и без аналитики.</string>
+    <string name="about_tagline">Нативное приложение сообщества ColaBike для Android. Без сервисов Google Play и без аналитики в самом приложении; push, если его включить, доставляет RuStore.</string>
     <string name="about_help">Справка</string>
     <string name="about_support">Поддержка</string>
     <string name="about_site">О проекте на сайте</string>
@@ -394,6 +394,7 @@
     <string name="notifications_category_market">Объявления</string>
     <string name="notifications_category_plans">Планы друзей</string>
     <string name="notifications_category_intents">Намерения друзей</string>
+    <string name="notifications_category_chat">Сообщения</string>
     <string name="notifications_category_reactions">Подписки и лайки</string>
     <string name="notifications_category_site">ColaBike</string>
     <string name="notifications_category_other">Другое</string>

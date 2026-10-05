@@ -25,6 +25,7 @@ data class PushTap(val eventId: String, val eventType: String, val target: PushT
             target.commentId?.let { putExtra(COMMENT, it) }
             target.occurrenceAt?.let { putExtra(OCCURRENCE, it.toString()) }
             target.agreementRevision?.let { putExtra(REVISION, it) }
+            target.ref?.let { putExtra(REF, it) }
         }
 
     /**
@@ -41,6 +42,7 @@ data class PushTap(val eventId: String, val eventType: String, val target: PushT
         private const val COMMENT = "comment"
         private const val OCCURRENCE = "occurrence"
         private const val REVISION = "revision"
+        private const val REF = "ref"
         private val UUID =
             Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
@@ -65,10 +67,12 @@ data class PushTap(val eventId: String, val eventType: String, val target: PushT
             val revision =
                 if (intent.hasExtra(REVISION)) intent.getIntExtra(REVISION, 0).takeIf { it >= 1 }
                 else null
+            val ref =
+                intent.getStringExtra(REF)?.also { if (!PushEnvelopes.CID.matches(it)) return null }
             return PushTap(
                 event.lowercase(),
                 eventType,
-                PushTarget(type, id?.lowercase(), comment?.lowercase(), occurrence, revision),
+                PushTarget(type, id?.lowercase(), comment?.lowercase(), occurrence, revision, ref),
             )
         }
     }
@@ -76,11 +80,14 @@ data class PushTap(val eventId: String, val eventType: String, val target: PushT
 
 /**
  * Where a target leads. An object the app has a screen for opens it (a comment's notification opens
- * the discussion at that comment); a sign-in used again opens the devices; anything else, a type
- * the app does not know included, opens the inbox, where the notification is listed with its text.
- * The name of an object is not in a push, so the discussion has none to show in its bar.
+ * the discussion at that comment, a message its conversation); a sign-in used again opens the
+ * devices; anything else, a type the app does not know included, opens the inbox, where the
+ * notification is listed with its text. The name of an object is not in a push, so the discussion
+ * has none to show in its bar.
  */
 fun PushTarget.destination(eventType: String): Destination {
+    // A message has no object, only a conversation; the list of conversations if it is not named.
+    if (type == "chat") return ref?.let { Destination.Conversation(it) } ?: Destination.Messages
     val id = id ?: return Destination.Notifications
     return when (type) {
         "bike" ->

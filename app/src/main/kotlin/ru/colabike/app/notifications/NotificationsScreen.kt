@@ -281,6 +281,7 @@ private fun NotificationCategory.label(): Int =
         NotificationCategory.Plans -> R.string.notifications_category_plans
         NotificationCategory.Intents -> R.string.notifications_category_intents
         NotificationCategory.Market -> R.string.notifications_category_market
+        NotificationCategory.Chat -> R.string.notifications_category_chat
         NotificationCategory.Reactions -> R.string.notifications_category_reactions
         NotificationCategory.Site -> R.string.notifications_category_site
         NotificationCategory.Other -> R.string.notifications_category_other

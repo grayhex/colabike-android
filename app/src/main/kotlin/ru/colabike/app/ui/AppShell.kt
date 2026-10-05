@@ -765,6 +765,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 screens = dependencies.chatScreens,
                                                 site = dependencies.links,
                                                 cid = ChannelCid(key.cid),
+                                                visible = dependencies.visibleConversation,
                                                 onBack = { navigator.back() },
                                             )
                                         }

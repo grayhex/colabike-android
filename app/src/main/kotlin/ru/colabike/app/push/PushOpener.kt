@@ -14,7 +14,9 @@ import ru.colabike.core.model.NotificationsRepository
  * What a tap on a notification does. The destination goes to the app's pending navigation: the
  * shell takes it when it is on screen, after sign-in if need be. Opening a notification is what
  * reads it, so the mark goes to the server once the session is known; a session that is not there
- * (signed out, a failure) leaves it unread, and the tap is not retried in the dark.
+ * (signed out, a failure) leaves it unread, and the tap is not retried in the dark. A message of a
+ * chat has no line in the inbox (its id is the message's, and the chat keeps what is unread), so
+ * there is nothing to mark.
  */
 class PushOpener(
     private val pending: PendingNavigation,
@@ -25,6 +27,7 @@ class PushOpener(
 ) {
     fun opened(tap: PushTap) {
         pending.offer(tap.destination())
+        if (tap.target.type == "chat") return
         scope.launch {
             val state =
                 withTimeoutOrNull(waitForSessionMs) {

@@ -40,11 +40,13 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.app.R
 import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.app.links.SiteLinks
+import ru.colabike.app.push.VisibleConversation
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaFilterChip
@@ -194,8 +196,14 @@ fun ConversationRoute(
     screens: ChatScreens,
     site: SiteLinks,
     cid: ChannelCid,
+    visible: VisibleConversation,
     onBack: () -> Unit,
 ) {
+    // In front only while the screen is resumed: in the background a message is worth a ring.
+    LifecycleResumeEffect(cid) {
+        visible.show(cid.value)
+        onPauseOrDispose { visible.hide(cid.value) }
+    }
     ChatGate(
         session,
         title = stringResource(R.string.chat_title),
