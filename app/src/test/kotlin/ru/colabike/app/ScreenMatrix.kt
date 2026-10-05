@@ -25,6 +25,7 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import java.io.File
+import java.time.Instant
 import ru.colabike.app.config.LaunchFrame
 import ru.colabike.app.config.LaunchPlan
 import ru.colabike.app.config.OnboardingScreen
@@ -37,6 +38,7 @@ import ru.colabike.app.ui.UiText
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
+import ru.colabike.core.model.AgreementChange
 import ru.colabike.core.model.AppNotice
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.Compatibility
@@ -57,6 +59,9 @@ import ru.colabike.core.model.NoticeKind
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.OnboardingItem
 import ru.colabike.core.model.Page
+import ru.colabike.core.model.ParticipationResponse
+import ru.colabike.core.model.ParticipationState
+import ru.colabike.core.model.RequestedDateStatus
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.ServiceLinks
 import ru.colabike.core.model.UpdateMode
@@ -104,6 +109,14 @@ enum class Screen(val file: String) {
     Rides("rides"),
     RidePlan("ride_plan"),
     RideCompleted("ride_completed"),
+
+    /**
+     * The person's part in a ride's date, opened from a notification: an invitation, terms that
+     * changed after an answer, and a cancelled date.
+     */
+    Participation("participation"),
+    ParticipationChanged("participation_changed"),
+    ParticipationCancelled("participation_cancelled"),
 
     /**
      * "I want to ride": the community's list, the person's own, someone else's page, an own page
@@ -302,6 +315,49 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                         AppShell(
                             FakeDependencies(
                                 deviceNotifications = FakeDeviceNotifications(deniedPhone)
+                            )
+                        )
+                    Screen.Participation,
+                    Screen.ParticipationChanged,
+                    Screen.ParticipationCancelled ->
+                        AppShell(
+                            FakeDependencies(
+                                participation =
+                                    FakeParticipation(
+                                        when (screen) {
+                                            Screen.ParticipationChanged ->
+                                                sampleParticipation(
+                                                    state = ParticipationState.Reconfirm,
+                                                    previous = ParticipationResponse.Accepted,
+                                                    changed = true,
+                                                    revision = 4,
+                                                    changes =
+                                                        setOf(
+                                                            AgreementChange.Start,
+                                                            AgreementChange.Place,
+                                                        ),
+                                                )
+                                            Screen.ParticipationCancelled ->
+                                                sampleParticipation(
+                                                    requested = RequestedDateStatus.Cancelled,
+                                                    allowed = setOf(ParticipationResponse.Declined),
+                                                    meetingHidden = true,
+                                                    state = ParticipationState.None,
+                                                    scheduledAt =
+                                                        Instant.parse("2026-10-17T07:00:00Z"),
+                                                )
+                                            else -> sampleParticipation()
+                                        }
+                                    ),
+                                pending =
+                                    FakePending().apply {
+                                        offer(
+                                            Destination.Participation(
+                                                "b2000000-0000-4000-8000-0000000000b2",
+                                                "2026-10-10T07:00:00Z",
+                                            )
+                                        )
+                                    },
                             )
                         )
                     Screen.Intents,

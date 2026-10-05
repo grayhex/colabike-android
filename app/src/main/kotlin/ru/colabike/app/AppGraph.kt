@@ -68,6 +68,7 @@ import ru.colabike.core.model.MarketRepository
 import ru.colabike.core.model.NearbyRepository
 import ru.colabike.core.model.NotificationSettingsRepository
 import ru.colabike.core.model.NotificationsRepository
+import ru.colabike.core.model.ParticipationRepository
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.RidesRepository
 import ru.colabike.core.network.ApiConfig
@@ -90,6 +91,7 @@ import ru.colabike.core.network.NetworkMarketRepository
 import ru.colabike.core.network.NetworkNearbyRepository
 import ru.colabike.core.network.NetworkNotificationSettingsRepository
 import ru.colabike.core.network.NetworkNotificationsRepository
+import ru.colabike.core.network.NetworkParticipationRepository
 import ru.colabike.core.network.NetworkPeopleRepository
 import ru.colabike.core.network.NetworkPushDeviceRepository
 import ru.colabike.core.network.NetworkRidesRepository
@@ -110,6 +112,9 @@ interface AppDependencies {
 
     /** This phone's side of notifications: the permission, the channels, the provider. */
     val deviceNotifications: DeviceNotifications
+
+    /** The person's part in a plan and its dates: the terms, the answer (docs/adr/0020). */
+    val participation: ParticipationRepository
 
     /** "I want to ride": intentions of the community and the person's own (docs/adr/0019). */
     val intents: IntentsRepository
@@ -219,6 +224,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
         NetworkNotificationsRepository(api.personal, media)
     override val notificationSettings: NotificationSettingsRepository =
         NetworkNotificationSettingsRepository(api.personal, media)
+    override val participation: ParticipationRepository =
+        NetworkParticipationRepository(api.planning, media)
     override val intents: IntentsRepository =
         NetworkIntentsRepository(api.planning, api::planningWithKey, media)
     override val nearby: NearbyRepository = NetworkNearbyRepository(api.planning, media)

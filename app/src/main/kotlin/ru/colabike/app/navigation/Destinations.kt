@@ -37,6 +37,13 @@ sealed interface Destination : NavKey {
     /** A ride or a plan; [id] is its UUID. */
     @Serializable data class Ride(val id: String) : Destination
 
+    /**
+     * The person's part in one date of a plan: [rideId], and the date a notification named as an
+     * ISO instant ([occurrenceAt]), so that the page is that date and not "the nearest Saturday".
+     */
+    @Serializable
+    data class Participation(val rideId: String, val occurrenceAt: String? = null) : Destination
+
     /** "I want to ride": the community's intentions and the person's own. */
     @Serializable data object Intents : Destination
 
@@ -124,6 +131,7 @@ fun Destination.requiredFeature(): Feature? =
         Destination.Intents,
         is Destination.Intent,
         is Destination.IntentEditor,
+        is Destination.Participation,
         is Destination.BikeRides -> Feature.Rides
         Destination.Messages,
         is Destination.Conversation,

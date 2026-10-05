@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -85,11 +86,13 @@ import ru.colabike.core.model.RideStatus
 import ru.colabike.core.model.RidesRepository
 
 /** Where a ride leads. Callbacks, so the screen never touches navigation itself. */
-class RideActions(
+data class RideActions(
     val onBack: () -> Unit,
     val onOpenBike: (BikeId) -> Unit,
     val onOpenAuthor: (ref: String) -> Unit,
     val onOpenComments: (id: RideId, title: String) -> Unit,
+    /** The terms of a plan and the viewer's answer; null for a guest and where it is off. */
+    val onOpenParticipation: ((RideId) -> Unit)? = null,
 )
 
 @Composable
@@ -107,7 +110,10 @@ fun RideRoute(
     val authState by auth.state.collectAsStateWithLifecycle()
     RideScreen(
         state = state,
-        actions = actions,
+        // "My answer" is a member's: a guest is not offered a page that would only say "sign in".
+        actions =
+            if (authState is AuthState.SignedIn) actions
+            else actions.copy(onOpenParticipation = null),
         onRetry = viewModel::load,
         // A private ride answers a guest "not found" exactly as a missing one does.
         onSignIn = if (authState is AuthState.SignedIn) null else LocalSignInRequest.current,
@@ -353,6 +359,17 @@ private fun Ride(
                     ),
                     style = MaterialTheme.typography.bodyLarge,
                 )
+            }
+            if (planned) {
+                actions.onOpenParticipation?.let { open ->
+                    ColaListItem(
+                        title = stringResource(R.string.ride_participation),
+                        supporting = stringResource(R.string.ride_participation_hint),
+                        icon = ColaIcons.Calendar,
+                        onClick = { open(summary.id) },
+                        modifier = Modifier.testTag("ride:participation"),
+                    )
+                }
             }
             if (ride.description.isNotBlank()) {
                 Text(ride.description, style = MaterialTheme.typography.bodyLarge)

@@ -95,6 +95,7 @@ import ru.colabike.app.notifications.NotificationsEntry
 import ru.colabike.app.notifications.NotificationsRoute
 import ru.colabike.app.notifications.badge
 import ru.colabike.app.notifications.settings.NotificationSettingsRoute
+import ru.colabike.app.participation.ParticipationRoute
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListRoute
 import ru.colabike.app.people.PersonActions
@@ -455,9 +456,26 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         navigator.reselects(Destination.Rides)
                                                     },
                                                 commentChanges = dependencies.comments.countChanges,
+                                                participationChanges =
+                                                    dependencies.participation.changes,
                                                 onOpenIntents = {
                                                     navigator.open(Destination.Intents)
                                                 },
+                                            )
+                                        }
+                                        entry<Destination.Participation> { key ->
+                                            ParticipationRoute(
+                                                dependencies,
+                                                rideId = key.rideId,
+                                                occurrenceAt = key.occurrenceAt,
+                                                onBack = { navigator.back() },
+                                                onOpenRide = { id ->
+                                                    navigator.open(Destination.Ride(id))
+                                                },
+                                                onOpenSettings = {
+                                                    navigator.open(Destination.NotificationSettings)
+                                                },
+                                                onOpenRides = { navigator.open(Destination.Rides) },
                                             )
                                         }
                                         entry<Destination.Intents> {
@@ -537,6 +555,11 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                                     id.value,
                                                                     title,
                                                                 )
+                                                            )
+                                                        },
+                                                        onOpenParticipation = { id ->
+                                                            navigator.open(
+                                                                Destination.Participation(id.value)
                                                             )
                                                         },
                                                     ),

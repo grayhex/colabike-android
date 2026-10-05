@@ -153,6 +153,7 @@ class Navigator(
                 Destination.Intents,
                 is Destination.Intent,
                 is Destination.IntentEditor,
+                is Destination.Participation,
                 is Destination.BikeRides -> TopLevel.Rides.root
                 is Destination.Conversation -> TopLevel.Messages.root
                 is Destination.Bike,

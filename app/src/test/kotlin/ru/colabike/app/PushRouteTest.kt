@@ -57,6 +57,24 @@ class PushRouteTest {
     }
 
     @Test
+    fun `a ride's date opens the person's part in that date, an undated ride opens the ride`() {
+        val date = Instant.parse("2026-10-10T07:00:00Z")
+        val dated = PushTarget("ride", id, null, date, 3)
+
+        listOf("ride_invite", "ride_changed", "ride_cancelled", "ride_response", "ride_reminder")
+            .forEach {
+                assertThat(dated.destination(it))
+                    .isEqualTo(Destination.Participation(id, "2026-10-10T07:00:00Z"))
+            }
+        assertThat(dated.destination("plan_nearby"))
+            .isEqualTo(Destination.Participation(id, "2026-10-10T07:00:00Z"))
+        // No date: the ride's page. A comment on it: the discussion, whatever the date.
+        assertThat(target("ride").destination("ride_invite")).isEqualTo(Destination.Ride(id))
+        assertThat(PushTarget("ride", id, comment, date, 3).destination("ride_reply"))
+            .isEqualTo(Destination.Comments("ride", id, "", comment))
+    }
+
+    @Test
     fun `a message opens its conversation, and the list of them when none is named`() {
         val cid = "colabike:dm_3f1c0a9e7d5b4c2a8e6f1d0b9a7c5e3f2b4d6a8c"
 

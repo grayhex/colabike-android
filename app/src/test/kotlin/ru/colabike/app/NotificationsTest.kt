@@ -175,7 +175,7 @@ class NotificationRouteTest {
     }
 
     @Test
-    fun `a ride's invitation, change, cancellation, answer, reminder and offer open the ride`() {
+    fun `a ride's invitation, change, cancellation, answer, reminder and offer open that date`() {
         listOf(
                 "ride_invite",
                 "ride_changed",
@@ -197,9 +197,23 @@ class NotificationRouteTest {
                         )
                     }
 
+                // The date the notification is about, not "the nearest Saturday".
                 assertThat(ride.route(site))
-                    .isEqualTo(NotificationRoute.InApp(Destination.Ride(id)))
+                    .isEqualTo(
+                        NotificationRoute.InApp(
+                            Destination.Participation(id, "2026-10-10T07:00:00Z")
+                        )
+                    )
             }
+    }
+
+    @Test
+    fun `a ride without a date, or a comment on it, opens the ride and the discussion as before`() {
+        val undated = notification(1, kind = "ride_invite", type = "ride", path = "/r/x")
+        val liked = notification(2, kind = "ride_like", type = "ride", path = "/r/x")
+
+        assertThat(undated.route(site)).isEqualTo(NotificationRoute.InApp(Destination.Ride(id)))
+        assertThat(liked.route(site)).isEqualTo(NotificationRoute.InApp(Destination.Ride(id)))
     }
 }
 

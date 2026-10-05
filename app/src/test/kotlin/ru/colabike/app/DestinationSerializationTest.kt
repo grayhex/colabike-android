@@ -46,6 +46,11 @@ class DestinationSerializationTest {
             Destination.Search(people = true),
             Destination.Devices,
             Destination.NotificationSettings,
+            Destination.Participation("b2000000-0000-4000-8000-0000000000b2"),
+            Destination.Participation(
+                "b2000000-0000-4000-8000-0000000000b2",
+                "2026-10-10T07:00:00Z",
+            ),
             Destination.Intents,
             Destination.Intent("b3000000-0000-4000-8000-000000000001"),
             Destination.IntentEditor(),
