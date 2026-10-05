@@ -46,6 +46,7 @@ import ru.colabike.core.model.AccountChannels
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
+import ru.colabike.core.model.AgreementChange
 import ru.colabike.core.model.AnalysisChannel
 import ru.colabike.core.model.AnalysisPoint
 import ru.colabike.core.model.AppConfig
@@ -140,6 +141,10 @@ import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.OnboardingConfig
 import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Page
+import ru.colabike.core.model.ParticipationOutcome
+import ru.colabike.core.model.ParticipationRepository
+import ru.colabike.core.model.ParticipationResponse
+import ru.colabike.core.model.ParticipationState
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.PersonSummary
@@ -150,11 +155,16 @@ import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.QuietHours
 import ru.colabike.core.model.Range
 import ru.colabike.core.model.Relationship
+import ru.colabike.core.model.RequestedDate
+import ru.colabike.core.model.RequestedDateStatus
+import ru.colabike.core.model.RideAgreement
 import ru.colabike.core.model.RideAnalysis
 import ru.colabike.core.model.RideDetail
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.RideIntent
+import ru.colabike.core.model.RideParticipation
 import ru.colabike.core.model.RidePassport
+import ru.colabike.core.model.RideRecurrence
 import ru.colabike.core.model.RideRole
 import ru.colabike.core.model.RideRoute
 import ru.colabike.core.model.RideStatus
@@ -168,6 +178,7 @@ import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UpcomingRide
 import ru.colabike.core.model.UserId
+import ru.colabike.core.model.ViewerRole
 
 val account =
     Account(
@@ -2022,6 +2033,119 @@ class FakeIntents(
     }
 }
 
+/** A plan's date as the server reads it for an invited person, ahead of the fixed test clock. */
+fun sampleParticipation(
+    state: ParticipationState = ParticipationState.Invited,
+    response: ParticipationResponse? = null,
+    previous: ParticipationResponse? = null,
+    changed: Boolean = false,
+    allowed: Set<ParticipationResponse> =
+        setOf(
+            ParticipationResponse.Accepted,
+            ParticipationResponse.Maybe,
+            ParticipationResponse.Declined,
+        ),
+    status: RideStatus = RideStatus.Planned,
+    requested: RequestedDateStatus? = RequestedDateStatus.Current,
+    revision: Int = 3,
+    changes: Set<AgreementChange> = emptySet(),
+    role: ViewerRole = ViewerRole.Invitee,
+    meetingHidden: Boolean = false,
+    closed: Boolean = false,
+    scheduledAt: Instant? = Instant.parse("2026-10-10T07:00:00Z"),
+) =
+    RideParticipation(
+        rideId = "b2000000-0000-4000-8000-0000000000b2",
+        title = "Воскресный выезд за город",
+        status = status,
+        description = "Спокойно, без гонки.",
+        features = emptyList(),
+        author = PreviewData.rider,
+        timeZone = java.time.ZoneId.of("Europe/Moscow"),
+        recurrence = RideRecurrence.Weekly,
+        scheduledAt = scheduledAt,
+        expectedEndAt = Instant.parse("2026-10-10T10:00:00Z"),
+        requested = requested?.let { RequestedDate(Instant.parse("2026-10-10T07:00:00Z"), it) },
+        agreement = RideAgreement(revision, changes, Instant.parse("2026-10-05T08:00:00Z")),
+        recruitmentClosed = closed,
+        meetingPoint = if (meetingHidden) null else "У входа в парк",
+        meetingHidden = meetingHidden,
+        passport = RidePassport(areaLabel = "Парк Горького"),
+        going = 4,
+        maybe = 2,
+        role = role,
+        state = state,
+        response = response,
+        previousResponse = previous,
+        changedAfterAnswer = changed,
+        allowed = allowed,
+    )
+
+/**
+ * The part of a person in a plan as a server keeps it: an answer changes the state, "going" and
+ * "maybe" are taken only for the edition of terms in force, and [conflictWith] makes the next
+ * answer a refusal that carries the plan as it is then.
+ */
+class FakeParticipation(
+    var current: RideParticipation? = sampleParticipation(),
+    var loadError: DataError? = null,
+) : ParticipationRepository {
+    val asked = mutableListOf<Instant?>()
+    val answers = mutableListOf<Triple<ParticipationResponse, Instant, Int?>>()
+    var conflictWith: RideParticipation? = null
+    var conflictToGone = false
+    var failNext: DataError? = null
+    var gate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+    private val mutableChanges = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    override val changes: SharedFlow<String> = mutableChanges
+
+    override suspend fun get(rideId: String, occurrenceAt: Instant?): RideParticipation {
+        asked += occurrenceAt
+        loadError?.let { throw it }
+        return current ?: throw DataError.NotFound()
+    }
+
+    override suspend fun respond(
+        rideId: String,
+        response: ParticipationResponse,
+        occurrenceAt: Instant,
+        expectedRevision: Int?,
+    ): ParticipationOutcome {
+        answers += Triple(response, occurrenceAt, expectedRevision)
+        gate?.await()
+        failNext?.let {
+            failNext = null
+            throw it
+        }
+        if (conflictToGone) {
+            conflictToGone = false
+            current = null
+            return ParticipationOutcome.Changed(null)
+        }
+        conflictWith?.let {
+            conflictWith = null
+            current = it
+            return ParticipationOutcome.Changed(it)
+        }
+        val base = current ?: throw DataError.NotFound()
+        val next =
+            base.copy(
+                state =
+                    when (response) {
+                        ParticipationResponse.Accepted -> ParticipationState.Accepted
+                        ParticipationResponse.Maybe -> ParticipationState.Maybe
+                        ParticipationResponse.Declined -> ParticipationState.Declined
+                    },
+                response = response,
+                previousResponse = null,
+                changedAfterAnswer = false,
+            )
+        current = next
+        mutableChanges.tryEmit(rideId)
+        return ParticipationOutcome.Saved(next)
+    }
+}
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -2033,6 +2157,7 @@ class FakeDependencies(
     override val notifications: FakeNotifications = FakeNotifications(),
     override val notificationSettings: FakeNotificationSettings = FakeNotificationSettings(),
     override val deviceNotifications: FakeDeviceNotifications = FakeDeviceNotifications(),
+    override val participation: FakeParticipation = FakeParticipation(),
     override val intents: FakeIntents = FakeIntents(),
     override val nearby: FakeNearby = FakeNearby(),
     override val coarseLocation: FakeCoarseLocation = FakeCoarseLocation(),

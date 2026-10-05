@@ -87,6 +87,9 @@ import ru.colabike.app.notifications.settings.NotificationSettingsActions
 import ru.colabike.app.notifications.settings.NotificationSettingsScreen
 import ru.colabike.app.notifications.settings.NotificationSettingsUiState
 import ru.colabike.app.notifications.settings.SettingsProblem
+import ru.colabike.app.participation.ParticipationActions
+import ru.colabike.app.participation.ParticipationScreen
+import ru.colabike.app.participation.ParticipationUiState
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListScreen
 import ru.colabike.app.people.PeopleListUiState
@@ -116,6 +119,7 @@ import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.AgreementChange
 import ru.colabike.core.model.AppNotification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeQuery
@@ -144,6 +148,8 @@ import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationFilter
 import ru.colabike.core.model.NotificationSettingsChange
 import ru.colabike.core.model.OwnRide
+import ru.colabike.core.model.ParticipationResponse
+import ru.colabike.core.model.ParticipationState
 import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RideRole
 import ru.colabike.core.model.RideStatus
@@ -216,6 +222,8 @@ enum class ScreenState(val file: String) {
     NearbyFailed("nearby_failed"),
 
     /** "I want to ride": nothing yet, a page that is gone, and a form that cannot be saved. */
+    ParticipationUnavailable("participation_unavailable"),
+    ParticipationMeanwhile("participation_meanwhile"),
     IntentsEmpty("intents_empty"),
     IntentUnavailable("intent_unavailable"),
     IntentEditorSaving("intent_editor_saving"),
@@ -739,6 +747,22 @@ private fun Content(state: ScreenState) {
                         ),
                 ),
                 NotificationSettingsActions(),
+            )
+        ScreenState.ParticipationUnavailable ->
+            ParticipationScreen(ParticipationUiState.Unavailable, ParticipationActions())
+        ScreenState.ParticipationMeanwhile ->
+            ParticipationScreen(
+                ParticipationUiState.Loaded(
+                    sampleParticipation(
+                        state = ParticipationState.Reconfirm,
+                        previous = ParticipationResponse.Maybe,
+                        changed = true,
+                        revision = 5,
+                        changes = setOf(AgreementChange.Route),
+                    ),
+                    changedMeanwhile = true,
+                ),
+                ParticipationActions(),
             )
         ScreenState.IntentsEmpty ->
             IntentsScreen(

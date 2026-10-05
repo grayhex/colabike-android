@@ -78,6 +78,18 @@ data class PushTap(val eventId: String, val eventType: String, val target: PushT
     }
 }
 
+/** The events about one date of a plan: they open the person's part in that date. */
+private val DATED_RIDE_EVENTS =
+    setOf(
+        "ride_invite",
+        "ride_changed",
+        "ride_cancelled",
+        "ride_response",
+        "ride_reminder",
+        "plan_published",
+        "plan_nearby",
+    )
+
 /**
  * Where a target leads. An object the app has a screen for opens it (a comment's notification opens
  * the discussion at that comment, a message its conversation); a sign-in used again opens the
@@ -94,8 +106,13 @@ fun PushTarget.destination(eventType: String): Destination {
             if (commentId != null) Destination.Comments("bike", id, "", commentId)
             else Destination.Bike(id)
         "ride" ->
-            if (commentId != null) Destination.Comments("ride", id, "", commentId)
-            else Destination.Ride(id)
+            when {
+                commentId != null -> Destination.Comments("ride", id, "", commentId)
+                // The date the push is about, not "the nearest Saturday".
+                occurrenceAt != null && eventType in DATED_RIDE_EVENTS ->
+                    Destination.Participation(id, occurrenceAt.toString())
+                else -> Destination.Ride(id)
+            }
         "journal" -> Destination.Journal(id)
         "component" ->
             if (commentId != null) Destination.Comments("component", id, "", commentId)

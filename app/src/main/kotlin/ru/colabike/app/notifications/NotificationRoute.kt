@@ -16,6 +16,18 @@ sealed interface NotificationRoute {
     data object Nowhere : NotificationRoute
 }
 
+/** The kinds about one date of a plan: they open the person's part in that date. */
+private val DATED_RIDE_KINDS =
+    setOf(
+        "ride_invite",
+        "ride_changed",
+        "ride_cancelled",
+        "ride_response",
+        "ride_reminder",
+        "plan_published",
+        "plan_nearby",
+    )
+
 private val UUID =
     Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
@@ -70,7 +82,13 @@ fun AppNotification.route(site: SiteLinks): NotificationRoute {
                 else
                     when (target.type) {
                         "bike" -> Destination.Bike(id)
-                        "ride" -> Destination.Ride(id)
+                        // A ride's date: the part of the person in exactly that date, not in
+                        // "the nearest Saturday". Without a date the ride's own page opens.
+                        "ride" ->
+                            target.occurrenceAt
+                                ?.takeIf { kind in DATED_RIDE_KINDS }
+                                ?.let { Destination.Participation(id, it.toString()) }
+                                ?: Destination.Ride(id)
                         else -> Destination.Journal(id)
                     }
             "market" -> Destination.Listing(id)

@@ -51,6 +51,18 @@ class RidesViewModelTest {
     }
 
     @Test
+    fun `an answer taken on a plan makes the list read again`() = runTest {
+        val changes = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 4)
+        val vm = RidesViewModel(repository, debounceMs = 400, participationChanges = changes)
+        assertThat(repository.upcomingCalls).hasSize(1)
+
+        changes.tryEmit("r2")
+
+        assertThat(repository.upcomingCalls).hasSize(2)
+        assertThat(vm.ids()).containsExactly("r2")
+    }
+
+    @Test
     fun `each segment is its own list and none is mixed with another`() = runTest {
         val vm = vm()
 

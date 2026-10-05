@@ -82,10 +82,18 @@ fun RidesRoute(
     onOpen: (RideId) -> Unit,
     scrollToTop: Flow<Unit> = emptyFlow(),
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
+    /** Plans whose part of the viewer changed (an answer was taken): the lists read again. */
+    participationChanges: Flow<String> = emptyFlow(),
     /** "I want to ride"; null where the section has no such entry. */
     onOpenIntents: (() -> Unit)? = null,
 ) {
-    val viewModel = viewModel { RidesViewModel(repository, commentChanges = commentChanges) }
+    val viewModel = viewModel {
+        RidesViewModel(
+            repository,
+            commentChanges = commentChanges,
+            participationChanges = participationChanges,
+        )
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val authState by auth.state.collectAsStateWithLifecycle()
     RidesScreen(

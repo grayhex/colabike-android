@@ -82,6 +82,7 @@ class RidesViewModel(
     private val repository: RidesRepository,
     private val debounceMs: Long = DEBOUNCE_MS,
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
+    participationChanges: Flow<String> = emptyFlow(),
 ) : ViewModel() {
     private val segment = MutableStateFlow(RideSegment.Upcoming)
     private val typed = MutableStateFlow("")
@@ -118,6 +119,9 @@ class RidesViewModel(
                 pager.edit { row -> row.withComments(change) }
             }
         }
+        // An answer taken on a plan's page changes the viewer's part in it (a role, a count, a
+        // reminder): the list shows what the server now says, not what it said before.
+        viewModelScope.launch { participationChanges.collect { pager.refresh() } }
     }
 
     fun select(value: RideSegment) {
