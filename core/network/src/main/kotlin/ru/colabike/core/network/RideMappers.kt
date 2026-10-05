@@ -20,6 +20,7 @@ import ru.colabike.core.model.OwnRide
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.Range
 import ru.colabike.core.model.RideAnalysis
+import ru.colabike.core.model.RideAreaPoint
 import ru.colabike.core.model.RideDetail
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.RideMetrics
@@ -175,9 +176,19 @@ internal fun RideDto.toModel(media: MediaUrls): RideDetail =
 
 private fun RideRangeDto.toModel() = Range(min, max)
 
-private fun RidePassportDto.toModel(): RidePassport =
+internal fun RidePassportDto.toModel(): RidePassport =
     RidePassport(
         areaLabel = area?.label?.takeIf { it.isNotBlank() },
+        area =
+            area?.let { a ->
+                val center = a.center
+                val radius = a.radiusM
+                if (center != null && center.size == 2 && radius != null) {
+                    RideAreaPoint(center[0], center[1], radius)
+                } else {
+                    null
+                }
+            },
         purpose = purpose?.takeIf { it.isNotBlank() },
         pace = pace?.takeIf { it.isNotBlank() },
         surface = surface?.takeIf { it.isNotBlank() },

@@ -91,6 +91,12 @@ import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.FollowChange
 import ru.colabike.core.model.FollowState
 import ru.colabike.core.model.GeoPoint
+import ru.colabike.core.model.IntentDraft
+import ru.colabike.core.model.IntentReadiness
+import ru.colabike.core.model.IntentStatus
+import ru.colabike.core.model.IntentVisibility
+import ru.colabike.core.model.IntentWindow
+import ru.colabike.core.model.IntentsRepository
 import ru.colabike.core.model.JournalEntry
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.JournalRepository
@@ -147,6 +153,7 @@ import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RideAnalysis
 import ru.colabike.core.model.RideDetail
 import ru.colabike.core.model.RideId
+import ru.colabike.core.model.RideIntent
 import ru.colabike.core.model.RidePassport
 import ru.colabike.core.model.RideRole
 import ru.colabike.core.model.RideRoute
@@ -1882,6 +1889,139 @@ class FakeCoarseLocation(
     }
 }
 
+/** A window ahead of the fixed test clock (2026-10-03), in Moscow's zone. */
+fun sampleIntent(
+    n: Int,
+    own: Boolean = false,
+    status: IntentStatus = IntentStatus.Active,
+    visibility: IntentVisibility = IntentVisibility.Community,
+    readiness: IntentReadiness = IntentReadiness.Ready,
+    area: String = "Парк Горького",
+    version: String? = "\"v$n\"",
+) =
+    RideIntent(
+        id = "b3000000-0000-4000-8000-00000000000$n",
+        own = own,
+        readiness = readiness,
+        timeZone = java.time.ZoneId.of("Europe/Moscow"),
+        passport =
+            RidePassport(areaLabel = area, purpose = "leisure", pace = "relaxed", surface = null),
+        windows =
+            listOf(
+                IntentWindow(
+                    Instant.parse("2026-10-10T07:00:00Z"),
+                    Instant.parse("2026-10-10T10:00:00Z"),
+                )
+            ),
+        meetNewPeople = true,
+        visibility = visibility,
+        status = status,
+        allowSuggestions = if (own) true else null,
+        author = if (own) PreviewData.rider.copy(name = "Вы") else PreviewData.rider,
+        createdAt = Instant.parse("2026-10-03T08:00:00Z"),
+        updatedAt = Instant.parse("2026-10-03T08:30:00Z"),
+        version = version,
+    )
+
+/**
+ * Intentions as a server would keep them: the lists by segment, an intention by id, and a create
+ * that is the same intention for the same key. [failNext] makes the next write fail.
+ */
+class FakeIntents(
+    var community: List<RideIntent> =
+        listOf(sampleIntent(1), sampleIntent(2, area = "Лосиный остров")),
+    var mine: List<RideIntent> = emptyList(),
+    var loadError: DataError? = null,
+) : IntentsRepository {
+    val created = mutableListOf<Pair<IntentDraft, String>>()
+    val replaced = mutableListOf<Triple<String, IntentDraft, String?>>()
+    val cancelled = mutableListOf<String>()
+    val deleted = mutableListOf<String>()
+    var getCalls = 0
+    var failNext: DataError? = null
+    private val byKey = mutableMapOf<String, RideIntent>()
+    private var counter = 50
+
+    private fun fail() {
+        failNext?.let {
+            failNext = null
+            throw it
+        }
+    }
+
+    override suspend fun own(cursor: String?, limit: Int): Page<RideIntent> {
+        loadError?.let { throw it }
+        return Page(mine, null)
+    }
+
+    override suspend fun community(cursor: String?, limit: Int): Page<RideIntent> {
+        loadError?.let { throw it }
+        return Page(community, null)
+    }
+
+    override suspend fun get(id: String): RideIntent {
+        getCalls++
+        loadError?.let { throw it }
+        return (mine + community).firstOrNull { it.id == id } ?: throw DataError.NotFound()
+    }
+
+    override suspend fun create(draft: IntentDraft, key: String): RideIntent {
+        created += draft to key
+        fail()
+        // The same key is the same intention.
+        byKey[key]?.let {
+            return it
+        }
+        counter++
+        val made =
+            sampleIntent(
+                    counter % 10,
+                    own = true,
+                    visibility = draft.visibility,
+                    version = "\"n$counter\"",
+                )
+                .copy(
+                    id = "b3000000-0000-4000-8000-0000000000$counter",
+                    readiness = draft.readiness,
+                    passport = draft.passport,
+                    timeZone = draft.timeZone,
+                )
+        byKey[key] = made
+        mine = listOf(made) + mine
+        return made
+    }
+
+    override suspend fun replace(id: String, draft: IntentDraft, version: String?): RideIntent {
+        replaced += Triple(id, draft, version)
+        fail()
+        val current = mine.firstOrNull { it.id == id } ?: throw DataError.NotFound()
+        val next =
+            current.copy(
+                readiness = draft.readiness,
+                passport = draft.passport,
+                visibility = draft.visibility,
+                version = "\"${current.version}+\"",
+            )
+        mine = mine.map { if (it.id == id) next else it }
+        return next
+    }
+
+    override suspend fun cancel(id: String): RideIntent {
+        cancelled += id
+        fail()
+        val current = mine.firstOrNull { it.id == id } ?: throw DataError.NotFound()
+        val next = current.copy(status = IntentStatus.Cancelled)
+        mine = mine.map { if (it.id == id) next else it }
+        return next
+    }
+
+    override suspend fun delete(id: String) {
+        deleted += id
+        fail()
+        mine = mine.filterNot { it.id == id }
+    }
+}
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -1893,6 +2033,7 @@ class FakeDependencies(
     override val notifications: FakeNotifications = FakeNotifications(),
     override val notificationSettings: FakeNotificationSettings = FakeNotificationSettings(),
     override val deviceNotifications: FakeDeviceNotifications = FakeDeviceNotifications(),
+    override val intents: FakeIntents = FakeIntents(),
     override val nearby: FakeNearby = FakeNearby(),
     override val coarseLocation: FakeCoarseLocation = FakeCoarseLocation(),
     override val components: FakeComponents = FakeComponents(),

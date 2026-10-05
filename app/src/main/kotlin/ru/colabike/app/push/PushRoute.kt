@@ -102,6 +102,8 @@ fun PushTarget.destination(eventType: String): Destination {
             else Destination.Component(id)
         "profile" -> Destination.Person(id)
         "market" -> Destination.Listing(id)
+        // A friend's intention: its page, which says plainly if it is no longer there.
+        "intent" -> Destination.Intent(id)
         "account" ->
             if (eventType == "session_reuse") Destination.Devices else Destination.Notifications
         else -> Destination.Notifications

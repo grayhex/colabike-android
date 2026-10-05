@@ -62,6 +62,7 @@ import ru.colabike.core.model.ComponentsRepository
 import ru.colabike.core.model.ConfigAssets
 import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedRepository
+import ru.colabike.core.model.IntentsRepository
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.MarketRepository
 import ru.colabike.core.model.NearbyRepository
@@ -83,6 +84,7 @@ import ru.colabike.core.network.NetworkChatRepository
 import ru.colabike.core.network.NetworkCommentsRepository
 import ru.colabike.core.network.NetworkComponentsRepository
 import ru.colabike.core.network.NetworkFeedRepository
+import ru.colabike.core.network.NetworkIntentsRepository
 import ru.colabike.core.network.NetworkJournalRepository
 import ru.colabike.core.network.NetworkMarketRepository
 import ru.colabike.core.network.NetworkNearbyRepository
@@ -108,6 +110,9 @@ interface AppDependencies {
 
     /** This phone's side of notifications: the permission, the channels, the provider. */
     val deviceNotifications: DeviceNotifications
+
+    /** "I want to ride": intentions of the community and the person's own (docs/adr/0019). */
+    val intents: IntentsRepository
 
     /** The private area of "rides near me" and the rides on now in it (docs/adr/0018). */
     val nearby: NearbyRepository
@@ -214,6 +219,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
         NetworkNotificationsRepository(api.personal, media)
     override val notificationSettings: NotificationSettingsRepository =
         NetworkNotificationSettingsRepository(api.personal, media)
+    override val intents: IntentsRepository =
+        NetworkIntentsRepository(api.planning, api::planningWithKey, media)
     override val nearby: NearbyRepository = NetworkNearbyRepository(api.planning, media)
     override val coarseLocation: CoarseLocation = AndroidCoarseLocation(context)
     override val components: ComponentsRepository =

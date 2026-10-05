@@ -34,6 +34,8 @@ class PushRouteTest {
         assertThat(target("profile").destination("follow")).isEqualTo(Destination.Person(id))
         assertThat(target("market").destination("market_expiring"))
             .isEqualTo(Destination.Listing(id))
+        assertThat(target("intent").destination("intent_published"))
+            .isEqualTo(Destination.Intent(id))
 
         assertThat(target("bike", comment = comment).destination("reply"))
             .isEqualTo(Destination.Comments("bike", id, "", comment))

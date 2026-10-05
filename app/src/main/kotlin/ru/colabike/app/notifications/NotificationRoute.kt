@@ -74,6 +74,8 @@ fun AppNotification.route(site: SiteLinks): NotificationRoute {
                         else -> Destination.Journal(id)
                     }
             "market" -> Destination.Listing(id)
+            // A friend's published intention: its page, which says plainly if it is gone.
+            "intent" -> Destination.Intent(id)
             "component" ->
                 if (comment != null) Destination.Comments("component", id, target.name, comment)
                 else Destination.Component(id)

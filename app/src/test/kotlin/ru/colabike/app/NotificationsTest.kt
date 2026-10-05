@@ -166,6 +166,15 @@ class NotificationRouteTest {
     }
 
     @Test
+    fun `a friend's intention opens its page`() {
+        val intent =
+            notification(1, kind = "intent_published", type = "intent", path = "/ride-intents")
+                .copy(target = notification(1).target.copy(type = "intent", name = "Намерение"))
+
+        assertThat(intent.route(site)).isEqualTo(NotificationRoute.InApp(Destination.Intent(id)))
+    }
+
+    @Test
     fun `a ride's invitation, change, cancellation, answer, reminder and offer open the ride`() {
         listOf(
                 "ride_invite",

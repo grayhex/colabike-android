@@ -58,6 +58,21 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
                 .build(),
         )
 
+    /**
+     * Planning with an `Idempotency-Key` on every request made through it: the key is the identity
+     * of the intention a create makes, and the contract does not declare it as a parameter.
+     */
+    fun planningWithKey(key: String): PlanningApi =
+        PlanningApi(
+            config.apiBaseUrl,
+            client
+                .newBuilder()
+                .addInterceptor { chain ->
+                    chain.proceed(chain.request().newBuilder().header(IDEMPOTENCY_KEY, key).build())
+                }
+                .build(),
+        )
+
     /** The chat bridge with an `Idempotency-Key` on every request made through it. */
     fun chatWithKey(key: String): ChatApi =
         ChatApi(

@@ -3,11 +3,6 @@ package ru.colabike.core.network
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import ru.colabike.api.apis.PlanningApi
-import ru.colabike.api.infrastructure.ClientError
-import ru.colabike.api.infrastructure.ClientException
-import ru.colabike.api.infrastructure.ServerError
-import ru.colabike.api.infrastructure.ServerException
-import ru.colabike.api.infrastructure.Success
 import ru.colabike.api.models.Nearby as NearbyDto
 import ru.colabike.api.models.NearbyAreaRequest
 import ru.colabike.api.models.NearbyOffer as OfferDto
@@ -92,34 +87,12 @@ class NetworkNearbyRepository(
     override suspend fun offers(limit: Int): NearbyOffers =
         apiCall(dispatcher) { api.listNearbyOffers(limit) }.toModel(media)
 
-    /** The state and the version the answer carries; a 2xx without a body is not an answer. */
     private fun answer(
         response: ru.colabike.api.infrastructure.ApiResponse<NearbyDto?>
-    ): NearbySettings =
-        when (response) {
-            is Success -> {
-                val dto = response.data ?: throw IllegalArgumentException("empty nearby")
-                dto.toModel(
-                    response.headers.entries
-                        .firstOrNull { it.key.equals("ETag", ignoreCase = true) }
-                        ?.value
-                        ?.firstOrNull()
-                )
-            }
-            is ClientError<*> ->
-                throw ClientException(
-                    "Client error : ${response.statusCode} ${response.message.orEmpty()}",
-                    response.statusCode,
-                    response,
-                )
-            is ServerError<*> ->
-                throw ServerException(
-                    "Server error : ${response.statusCode} ${response.message.orEmpty()}",
-                    response.statusCode,
-                    response,
-                )
-            else -> throw UnsupportedOperationException("unexpected answer")
-        }
+    ): NearbySettings {
+        val (dto, tag) = response.valueAndTag()
+        return dto.toModel(tag)
+    }
 }
 
 internal fun NearbyDto.toModel(version: String?): NearbySettings =
