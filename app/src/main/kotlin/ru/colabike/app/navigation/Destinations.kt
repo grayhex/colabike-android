@@ -87,6 +87,9 @@ sealed interface Destination : NavKey {
     /** Where the account is signed in; opened from the profile. */
     @Serializable data object Devices : Destination
 
+    /** What the account sends to this person and when; opened from the profile. */
+    @Serializable data object NotificationSettings : Destination
+
     @Serializable data object About : Destination
 
     @Serializable data object Licenses : Destination

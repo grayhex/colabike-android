@@ -104,6 +104,14 @@ enum class Screen(val file: String) {
     /** The inbox, opened by the bell of the first screen. */
     Notifications("notifications"),
 
+    /**
+     * Profile → Notifications: the account's part as it opens, an account that has set most things
+     * (a chosen circle, quiet hours, a pause, mutes), and the phone's part after a refusal.
+     */
+    NotificationSettings("notification_settings"),
+    NotificationSettingsBusy("notification_settings_busy"),
+    NotificationSettingsPhone("notification_settings_phone"),
+
     /** The component catalog, a model's page, and the credits of its photos further down. */
     Components("components"),
     Component("component"),
@@ -254,6 +262,20 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                                 )
                                         )
                                     }
+                            )
+                        )
+                    Screen.NotificationSettingsBusy ->
+                        AppShell(
+                            FakeDependencies(
+                                notificationSettings =
+                                    FakeNotificationSettings(busyNotificationSettings),
+                                deviceNotifications = FakeDeviceNotifications(readyPhone),
+                            )
+                        )
+                    Screen.NotificationSettingsPhone ->
+                        AppShell(
+                            FakeDependencies(
+                                deviceNotifications = FakeDeviceNotifications(deniedPhone)
                             )
                         )
                     Screen.FeatureOff ->
@@ -434,6 +456,19 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         }
         Screen.Notifications ->
             onNode(hasContentDescription("Уведомления", substring = true)).performClick()
+        Screen.NotificationSettings,
+        Screen.NotificationSettingsBusy,
+        Screen.NotificationSettingsPhone -> {
+            section("Профиль").performClick()
+            onNodeWithText("Что, когда и от кого присылать").performScrollTo().performClick()
+            when (screen) {
+                Screen.NotificationSettingsBusy ->
+                    onNodeWithTag("notif-settings:mute:ride-1").performScrollTo()
+                Screen.NotificationSettingsPhone ->
+                    onNodeWithTag("notif-settings:os-off").performScrollTo()
+                else -> Unit
+            }
+        }
         Screen.Components -> onNodeWithContentDescription("Каталог компонентов").performClick()
         Screen.Component,
         Screen.ComponentCredits -> {

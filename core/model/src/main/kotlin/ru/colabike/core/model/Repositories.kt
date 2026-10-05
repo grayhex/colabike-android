@@ -168,3 +168,16 @@ interface NotificationsRepository {
         const val READ_ALL_LIMIT = 10_000
     }
 }
+
+/** The settings of the signed-in person's notifications, one object for the site and the app. */
+interface NotificationSettingsRepository {
+    /** The settings as the server has them now. */
+    suspend fun settings(): NotificationSettings
+
+    /**
+     * Applies [change] and returns the settings as they are afterwards. A refusal (no connected
+     * channel, a mail that is not verified, a quiet window without a time zone) is a
+     * [DataError.Rejected] with the server's code; nothing is changed then.
+     */
+    suspend fun change(change: NotificationSettingsChange): NotificationSettings
+}

@@ -89,6 +89,7 @@ import ru.colabike.app.notifications.NotificationBadgeViewModel
 import ru.colabike.app.notifications.NotificationsEntry
 import ru.colabike.app.notifications.NotificationsRoute
 import ru.colabike.app.notifications.badge
+import ru.colabike.app.notifications.settings.NotificationSettingsRoute
 import ru.colabike.app.people.PeopleListKind
 import ru.colabike.app.people.PeopleListRoute
 import ru.colabike.app.people.PersonActions
@@ -713,6 +714,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onOpenDevices = {
                                                     navigator.open(Destination.Devices)
                                                 },
+                                                onOpenNotifications = {
+                                                    navigator.open(Destination.NotificationSettings)
+                                                },
                                                 onOpenAbout = { navigator.open(Destination.About) },
                                                 onOpenPublicProfile = { id ->
                                                     navigator.open(Destination.Person(id))
@@ -800,6 +804,12 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             DevicesRoute(
                                                 dependencies.sessions,
                                                 dependencies.clock,
+                                                onBack = { navigator.back() },
+                                            )
+                                        }
+                                        entry<Destination.NotificationSettings> {
+                                            NotificationSettingsRoute(
+                                                dependencies,
                                                 onBack = { navigator.back() },
                                             )
                                         }

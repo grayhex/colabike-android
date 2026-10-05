@@ -3,6 +3,8 @@ package ru.colabike.app
 import android.content.Context
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +25,11 @@ import ru.colabike.app.messages.ChatGateway
 import ru.colabike.app.messages.ChatScreens
 import ru.colabike.app.messages.ChatSession
 import ru.colabike.app.navigation.Destination
+import ru.colabike.app.notifications.settings.DeviceNotifications
+import ru.colabike.app.notifications.settings.DeviceNotificationsState
+import ru.colabike.app.notifications.settings.OsPermission
+import ru.colabike.app.push.PushAvailability
+import ru.colabike.app.push.PushChannel
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.rides.map.SketchRouteMaps
 import ru.colabike.app.settings.AppSettings
@@ -30,6 +37,7 @@ import ru.colabike.app.settings.ThemeMode
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.model.Account
+import ru.colabike.core.model.AccountChannels
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
@@ -46,12 +54,15 @@ import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.CategorySetting
 import ru.colabike.core.model.ChannelCid
+import ru.colabike.core.model.ChannelFlag
 import ru.colabike.core.model.ChatChannelKind
 import ru.colabike.core.model.ChatCredentials
 import ru.colabike.core.model.ChatPeople
 import ru.colabike.core.model.ChatRepository
 import ru.colabike.core.model.ChatUser
+import ru.colabike.core.model.CircleMode
 import ru.colabike.core.model.Comment
 import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.CommentTarget
@@ -92,11 +103,16 @@ import ru.colabike.core.model.ListingState
 import ru.colabike.core.model.ListingStatus
 import ru.colabike.core.model.MarketQuery
 import ru.colabike.core.model.MarketRepository
+import ru.colabike.core.model.MuteKind
 import ru.colabike.core.model.NotificationCategory
 import ru.colabike.core.model.NotificationCount
 import ru.colabike.core.model.NotificationFilter
+import ru.colabike.core.model.NotificationMute
 import ru.colabike.core.model.NotificationPage
 import ru.colabike.core.model.NotificationReadResult
+import ru.colabike.core.model.NotificationSettings
+import ru.colabike.core.model.NotificationSettingsChange
+import ru.colabike.core.model.NotificationSettingsRepository
 import ru.colabike.core.model.NotificationTarget
 import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.OnboardingConfig
@@ -109,6 +125,7 @@ import ru.colabike.core.model.Photo
 import ru.colabike.core.model.PhotoSource
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
+import ru.colabike.core.model.QuietHours
 import ru.colabike.core.model.Range
 import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RideAnalysis
@@ -1503,6 +1520,196 @@ class FakeConfigAssets(val kept: MutableMap<String, java.io.File> = mutableMapOf
 /** A switch for [FeatureAvailability]: everything on, except the named ones. */
 fun featuresOff(vararg off: Feature) = FeatureAvailability(off.associate { it.key to false })
 
+/** An account that has chosen nothing yet and a server that can carry no push (the state today). */
+val defaultNotificationSettings =
+    NotificationSettings(
+        channels =
+            AccountChannels(
+                emailAvailable = true,
+                emailVerified = true,
+                emailEnabled = false,
+                pushAvailable = false,
+                pushEnabled = false,
+            ),
+        categories =
+            listOf(
+                CategorySetting(
+                    NotificationCategory.Rides,
+                    "rides",
+                    "Покатушки и приглашения",
+                    ChannelFlag(supported = true, enabled = false),
+                    ChannelFlag(supported = true, enabled = true),
+                ),
+                CategorySetting(
+                    NotificationCategory.Discussions,
+                    "discussions",
+                    "Комментарии и ответы",
+                    ChannelFlag(supported = true, enabled = false),
+                    ChannelFlag(supported = true, enabled = true),
+                ),
+                CategorySetting(
+                    NotificationCategory.Market,
+                    "market",
+                    "Окончание срока объявлений",
+                    ChannelFlag(supported = true, enabled = false),
+                    ChannelFlag(supported = false, enabled = false),
+                ),
+                CategorySetting(
+                    NotificationCategory.Plans,
+                    "plans",
+                    "Новые планы друзей",
+                    ChannelFlag(supported = false, enabled = false),
+                    ChannelFlag(supported = true, enabled = true),
+                ),
+                CategorySetting(
+                    NotificationCategory.Intents,
+                    "intents",
+                    "Намерения друзей",
+                    ChannelFlag(supported = false, enabled = false),
+                    ChannelFlag(supported = true, enabled = true),
+                ),
+            ),
+        reminders = true,
+        timeZone = null,
+        quietHours = QuietHours(false, LocalTime.of(22, 0), LocalTime.of(7, 0), false),
+        pausedUntil = null,
+        circleMode = CircleMode.Friends,
+        circleMembers = emptyList(),
+        considering = false,
+        mutes = emptyList(),
+        updatedAt = null,
+    )
+
+/**
+ * The settings of the account as a server would keep them: a change is applied to what is held and
+ * the result returned. [failChange] makes the next change fail, [gate] holds it on its way.
+ */
+class FakeNotificationSettings(
+    var current: NotificationSettings = defaultNotificationSettings,
+    var loadError: DataError? = null,
+) : NotificationSettingsRepository {
+    val changes = mutableListOf<NotificationSettingsChange>()
+    var failChange: DataError? = null
+    var gate: CompletableDeferred<Unit>? = null
+
+    override suspend fun settings(): NotificationSettings {
+        loadError?.let { throw it }
+        return current
+    }
+
+    override suspend fun change(change: NotificationSettingsChange): NotificationSettings {
+        changes += change
+        gate?.await()
+        failChange?.let {
+            failChange = null
+            throw it
+        }
+        val c = current
+        current =
+            c.copy(
+                channels =
+                    c.channels.copy(
+                        emailEnabled = change.emailEnabled ?: c.channels.emailEnabled,
+                        pushEnabled = change.pushEnabled ?: c.channels.pushEnabled,
+                    ),
+                categories =
+                    c.categories.map { cat ->
+                        cat.copy(
+                            push =
+                                cat.push.copy(
+                                    enabled = change.categoryPush[cat.key] ?: cat.push.enabled
+                                ),
+                            email =
+                                cat.email.copy(
+                                    enabled = change.categoryEmail[cat.key] ?: cat.email.enabled
+                                ),
+                        )
+                    },
+                reminders = change.reminders ?: c.reminders,
+                timeZone = change.timeZone ?: c.timeZone,
+                quietHours =
+                    c.quietHours.copy(
+                        enabled = change.quietEnabled ?: c.quietHours.enabled,
+                        from = change.quietFrom ?: c.quietHours.from,
+                        to = change.quietTo ?: c.quietHours.to,
+                        allowCancellations =
+                            change.quietAllowCancellations ?: c.quietHours.allowCancellations,
+                    ),
+                pausedUntil = if (change.resume) null else change.pauseUntil ?: c.pausedUntil,
+                circleMode = change.circleMode ?: c.circleMode,
+                circleMembers =
+                    c.circleMembers.filterNot { it.id.value in change.circleRemove } +
+                        change.circleAdd.map { id ->
+                            Person(UserId(id), "added-$id", "Добавленный", null)
+                        },
+                considering = change.considering ?: c.considering,
+                mutes = c.mutes.filterNot { m -> change.muteRemove.any { it.id == m.id } },
+                updatedAt = Instant.parse("2026-10-03T20:00:00Z"),
+            )
+        return current
+    }
+}
+
+/** A phone that has been asked for nothing: the state of a fresh install on Android 13+. */
+val freshPhone =
+    DeviceNotificationsState(
+        permission = OsPermission.NotAsked,
+        appEnabled = false,
+        channelsOff = emptyList(),
+        provider = PushAvailability.NotConfigured,
+    )
+
+/** A phone whose person refused the system's question. */
+val deniedPhone =
+    DeviceNotificationsState(
+        permission = OsPermission.Denied,
+        appEnabled = false,
+        channelsOff = emptyList(),
+        provider = PushAvailability.NoDistributor,
+    )
+
+/** A phone that shows the app's notifications. */
+val readyPhone =
+    DeviceNotificationsState(
+        permission = OsPermission.Granted,
+        appEnabled = true,
+        channelsOff = emptyList(),
+        provider = PushAvailability.Available,
+    )
+
+/** An account that has set most things: a chosen circle, quiet hours, a pause, mutes. */
+val busyNotificationSettings =
+    defaultNotificationSettings.copy(
+        channels = defaultNotificationSettings.channels.copy(emailEnabled = true),
+        timeZone = ZoneId.of("Europe/Moscow"),
+        quietHours = QuietHours(true, LocalTime.of(22, 0), LocalTime.of(7, 0), true),
+        pausedUntil = Instant.parse("2026-10-04T08:00:00Z"),
+        circleMode = CircleMode.Selected,
+        circleMembers = listOf(rider),
+        considering = true,
+        mutes =
+            listOf(
+                NotificationMute(MuteKind.Ride, "ride-1", "Воскресный выезд за город"),
+                NotificationMute(MuteKind.Author, "u-quiet", null),
+            ),
+    )
+
+class FakeDeviceNotifications(var state: DeviceNotificationsState = freshPhone) :
+    DeviceNotifications {
+    var asked = 0
+
+    override suspend fun state(): DeviceNotificationsState = state
+
+    override fun markAsked() {
+        asked++
+    }
+
+    override fun settingsIntent(): android.content.Intent = android.content.Intent("test.SETTINGS")
+
+    override fun channelIntent(channel: PushChannel): android.content.Intent =
+        android.content.Intent("test.CHANNEL")
+}
+
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
@@ -1512,6 +1719,8 @@ class FakeDependencies(
     override val comments: FakeComments = FakeComments(),
     override val rides: FakeRides = FakeRides(),
     override val notifications: FakeNotifications = FakeNotifications(),
+    override val notificationSettings: FakeNotificationSettings = FakeNotificationSettings(),
+    override val deviceNotifications: FakeDeviceNotifications = FakeDeviceNotifications(),
     override val components: FakeComponents = FakeComponents(),
     override val market: FakeMarket = FakeMarket(),
     override val appConfig: FakeAppConfig = FakeAppConfig(),

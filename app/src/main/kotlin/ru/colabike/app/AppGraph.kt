@@ -23,6 +23,8 @@ import ru.colabike.app.messages.ChatScreens
 import ru.colabike.app.messages.ChatSession
 import ru.colabike.app.messages.StreamChatGateway
 import ru.colabike.app.messages.StreamChatScreens
+import ru.colabike.app.notifications.settings.AndroidDeviceNotifications
+import ru.colabike.app.notifications.settings.DeviceNotifications
 import ru.colabike.app.push.DeliveryLedger
 import ru.colabike.app.push.NoPushBinding
 import ru.colabike.app.push.NoPushProvider
@@ -53,6 +55,7 @@ import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedRepository
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.MarketRepository
+import ru.colabike.core.model.NotificationSettingsRepository
 import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.RidesRepository
@@ -72,6 +75,7 @@ import ru.colabike.core.network.NetworkComponentsRepository
 import ru.colabike.core.network.NetworkFeedRepository
 import ru.colabike.core.network.NetworkJournalRepository
 import ru.colabike.core.network.NetworkMarketRepository
+import ru.colabike.core.network.NetworkNotificationSettingsRepository
 import ru.colabike.core.network.NetworkNotificationsRepository
 import ru.colabike.core.network.NetworkPeopleRepository
 import ru.colabike.core.network.NetworkRidesRepository
@@ -86,6 +90,12 @@ interface AppDependencies {
     val comments: CommentsRepository
     val rides: RidesRepository
     val notifications: NotificationsRepository
+
+    /** The account's notification settings: the same object the site shows. */
+    val notificationSettings: NotificationSettingsRepository
+
+    /** This phone's side of notifications: the permission, the channels, the provider. */
+    val deviceNotifications: DeviceNotifications
 
     /** The public component catalog: models, their photos and filters. */
     val components: ComponentsRepository
@@ -178,6 +188,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val rides: RidesRepository = NetworkRidesRepository(api.rides, api.personal, media)
     override val notifications: NotificationsRepository =
         NetworkNotificationsRepository(api.personal, media)
+    override val notificationSettings: NotificationSettingsRepository =
+        NetworkNotificationSettingsRepository(api.personal, media)
     override val components: ComponentsRepository =
         NetworkComponentsRepository(api.components, media)
     override val market: MarketRepository = NetworkMarketRepository(api.market, api.personal, media)
@@ -241,6 +253,12 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     // Push: the pieces that do not need a provider. The transport (its SDK) will call the handler;
     // until a provider is configured nothing arrives, and with no binding nothing would be shown.
     val pushProvider: PushProvider = NoPushProvider
+    override val deviceNotifications: DeviceNotifications =
+        AndroidDeviceNotifications(
+            context,
+            pushProvider,
+            context.getSharedPreferences("device-notifications", Context.MODE_PRIVATE),
+        )
     val pushHandler =
         PushHandler(
             binding = NoPushBinding,

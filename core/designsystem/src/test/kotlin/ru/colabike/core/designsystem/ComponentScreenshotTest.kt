@@ -27,6 +27,8 @@ import ru.colabike.core.designsystem.component.ColaListItem
 import ru.colabike.core.designsystem.component.ColaNavItem
 import ru.colabike.core.designsystem.component.ColaNavigationBar
 import ru.colabike.core.designsystem.component.ColaNavigationRail
+import ru.colabike.core.designsystem.component.ColaRadioRow
+import ru.colabike.core.designsystem.component.ColaSwitchRow
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ComponentCard
 import ru.colabike.core.designsystem.component.EmptyState
@@ -435,4 +437,52 @@ class ComponentScreenshotTest {
     @Test fun likesDark() = likes(dark = true, name = "likes_dark")
 
     @Test fun likesLargeText() = likes(dark = false, fontScale = 2f, name = "likes_font_200")
+
+    private fun choices(dark: Boolean, fontScale: Float = 1f, name: String) =
+        compose.snapshot(name, dark, fontScale) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                ColaSwitchRow(
+                    title = "Тихие часы",
+                    supporting = "С 22:00 до 07:00 письма и push ждут утра",
+                    checked = true,
+                    onCheckedChange = {},
+                )
+                ColaSwitchRow(
+                    title = "Напоминания о покатушке",
+                    checked = false,
+                    onCheckedChange = {},
+                )
+                ColaSwitchRow(
+                    title = "Push-уведомления",
+                    supporting = "Сервер пока не принимает устройства",
+                    checked = false,
+                    onCheckedChange = {},
+                    enabled = false,
+                )
+                ColaSwitchRow(
+                    title = "Только показывает состояние",
+                    checked = true,
+                    onCheckedChange = null,
+                )
+                ColaRadioRow(
+                    title = "Друзья",
+                    supporting = "Взаимные подписки — по умолчанию",
+                    selected = true,
+                    onSelect = {},
+                )
+                ColaRadioRow(title = "Все, на кого я подписан", selected = false, onSelect = {})
+                ColaRadioRow(
+                    title = "Выбранные люди",
+                    selected = false,
+                    onSelect = {},
+                    enabled = false,
+                )
+            }
+        }
+
+    @Test fun choicesLight() = choices(dark = false, name = "choices_light")
+
+    @Test fun choicesDark() = choices(dark = true, name = "choices_dark")
+
+    @Test fun choicesLargeText() = choices(dark = false, fontScale = 2f, name = "choices_font_200")
 }

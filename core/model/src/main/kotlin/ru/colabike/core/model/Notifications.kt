@@ -49,6 +49,12 @@ enum class NotificationCategory(val key: String) {
     /** Comments and replies. */
     Discussions("discussions"),
 
+    /** New plans of the people the person has chosen to hear about. */
+    Plans("plans"),
+
+    /** Intents to ride of those people. */
+    Intents("intents"),
+
     /** The end of a listing's term. */
     Market("market"),
 
