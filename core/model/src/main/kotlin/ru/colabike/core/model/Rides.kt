@@ -95,11 +95,21 @@ data class UpcomingRide(
 data class Range(val min: Double, val max: Double)
 
 /**
+ * A plan's rough area: the centre (to a hundredth of a degree, not a point) and the radius. It is
+ * not printed: a place does not belong in a log, even a rough one.
+ */
+data class RideAreaPoint(val longitude: Double, val latitude: Double, val radiusM: Int) {
+    override fun toString() = "RideAreaPoint(radiusM=$radiusM)"
+}
+
+/**
  * The organizer's expectations of a plan. Every field is optional; the words (purpose, pace,
  * surface, difficulty, regroup) are an open set: an unknown one is shown as it is.
  */
 data class RidePassport(
     val areaLabel: String? = null,
+    /** The rough area on the map, if the author gave one; kept so that an edit sends it back. */
+    val area: RideAreaPoint? = null,
     val purpose: String? = null,
     val pace: String? = null,
     val surface: String? = null,

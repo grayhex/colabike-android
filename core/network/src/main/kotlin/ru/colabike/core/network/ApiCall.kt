@@ -6,11 +6,13 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
+import ru.colabike.api.infrastructure.ApiResponse
 import ru.colabike.api.infrastructure.ClientError
 import ru.colabike.api.infrastructure.ClientException
 import ru.colabike.api.infrastructure.Serializer
 import ru.colabike.api.infrastructure.ServerError
 import ru.colabike.api.infrastructure.ServerException
+import ru.colabike.api.infrastructure.Success
 import ru.colabike.api.models.Error
 import ru.colabike.core.model.DataError
 
@@ -90,3 +92,34 @@ private const val RETRY_AFTER = "retry-after"
 
 /** 401 codes after which only signing in again helps (token_expired is refreshed earlier). */
 private val SIGNED_OUT_CODES = setOf("invalid_token", "unauthorized", "token_expired")
+
+/**
+ * The body and the `ETag` of an answer read with `…WithHttpInfo`, or the failure it was: a 2xx
+ * without a body is not an answer. The tag is the server's version of what was read; the next
+ * change names it in `If-Match`.
+ */
+internal fun <T : Any> ApiResponse<T?>.valueAndTag(): Pair<T, String?> =
+    when (this) {
+        is Success -> {
+            val value = data ?: throw IllegalArgumentException("empty answer")
+            val tag =
+                headers.entries
+                    .firstOrNull { it.key.equals("ETag", ignoreCase = true) }
+                    ?.value
+                    ?.firstOrNull()
+            value to tag
+        }
+        is ClientError<*> ->
+            throw ClientException(
+                "Client error : $statusCode ${message.orEmpty()}",
+                statusCode,
+                this,
+            )
+        is ServerError<*> ->
+            throw ServerException(
+                "Server error : $statusCode ${message.orEmpty()}",
+                statusCode,
+                this,
+            )
+        else -> throw UnsupportedOperationException("unexpected answer")
+    }

@@ -82,6 +82,8 @@ fun RidesRoute(
     onOpen: (RideId) -> Unit,
     scrollToTop: Flow<Unit> = emptyFlow(),
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
+    /** "I want to ride"; null where the section has no such entry. */
+    onOpenIntents: (() -> Unit)? = null,
 ) {
     val viewModel = viewModel { RidesViewModel(repository, commentChanges = commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -98,6 +100,7 @@ fun RidesRoute(
         onLoadMore = viewModel::loadMore,
         onOpen = onOpen,
         scrollToTop = scrollToTop,
+        onOpenIntents = onOpenIntents,
     )
 }
 
@@ -146,6 +149,7 @@ fun RidesScreen(
     onLoadMore: () -> Unit,
     onOpen: (RideId) -> Unit,
     scrollToTop: Flow<Unit> = emptyFlow(),
+    onOpenIntents: (() -> Unit)? = null,
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -171,6 +175,15 @@ fun RidesScreen(
                             label = stringResource(segment.label()),
                         )
                     }
+                // Not a list of the section but a place of its own: "I want to ride" is a member's.
+                if (personal && onOpenIntents != null) {
+                    ColaFilterChip(
+                        selected = false,
+                        onClick = onOpenIntents,
+                        label = stringResource(R.string.rides_intents),
+                        modifier = Modifier.testTag("rides:intents"),
+                    )
+                }
             }
             if (!state.segment.personal) {
                 SearchField(state.typed, onSearchText, onClearSearch)

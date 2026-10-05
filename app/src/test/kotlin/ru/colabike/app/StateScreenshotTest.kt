@@ -45,6 +45,17 @@ import ru.colabike.app.devices.DevicesUiState
 import ru.colabike.app.feed.FeedActions
 import ru.colabike.app.feed.FeedScreen
 import ru.colabike.app.feed.FeedUiState
+import ru.colabike.app.intents.IntentActions
+import ru.colabike.app.intents.IntentEditorActions
+import ru.colabike.app.intents.IntentEditorScreen
+import ru.colabike.app.intents.IntentEditorUiState
+import ru.colabike.app.intents.IntentForm
+import ru.colabike.app.intents.IntentScreen
+import ru.colabike.app.intents.IntentSegment
+import ru.colabike.app.intents.IntentUiState
+import ru.colabike.app.intents.IntentsActions
+import ru.colabike.app.intents.IntentsScreen
+import ru.colabike.app.intents.IntentsUiState
 import ru.colabike.app.journal.JournalActions
 import ru.colabike.app.journal.JournalListScreen
 import ru.colabike.app.journal.JournalScreen
@@ -63,6 +74,7 @@ import ru.colabike.app.messages.ChatStatusScreen
 import ru.colabike.app.messages.GuestMessages
 import ru.colabike.app.messages.NewConversationScreen
 import ru.colabike.app.messages.NewConversationUiState
+import ru.colabike.app.messages.WriteState
 import ru.colabike.app.nearby.NearbyActions
 import ru.colabike.app.nearby.NearbyOffersActions
 import ru.colabike.app.nearby.NearbyOffersScreen
@@ -113,6 +125,9 @@ import ru.colabike.core.model.ComponentQuery
 import ru.colabike.core.model.ComponentSort
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.FeedFilter
+import ru.colabike.core.model.IntentReadiness
+import ru.colabike.core.model.IntentVisibility
+import ru.colabike.core.model.IntentWindowDraft
 import ru.colabike.core.model.JournalStatus
 import ru.colabike.core.model.JournalSummary
 import ru.colabike.core.model.Listing
@@ -199,6 +214,11 @@ enum class ScreenState(val file: String) {
 
     /** Rides near me: unreadable, a phone's area whose term passed, and the offers' empty lists. */
     NearbyFailed("nearby_failed"),
+
+    /** "I want to ride": nothing yet, a page that is gone, and a form that cannot be saved. */
+    IntentsEmpty("intents_empty"),
+    IntentUnavailable("intent_unavailable"),
+    IntentEditorSaving("intent_editor_saving"),
     NearbyExpired("nearby_expired"),
     NearbyOffersNoArea("nearby_offers_no_area"),
     NearbyOffersNone("nearby_offers_none"),
@@ -719,6 +739,40 @@ private fun Content(state: ScreenState) {
                         ),
                 ),
                 NotificationSettingsActions(),
+            )
+        ScreenState.IntentsEmpty ->
+            IntentsScreen(
+                IntentsUiState(IntentSegment.Mine, PagedState(loading = false)),
+                IntentsActions(),
+            )
+        ScreenState.IntentUnavailable ->
+            IntentScreen(IntentUiState.Unavailable, WriteState.Idle, IntentActions())
+        ScreenState.IntentEditorSaving ->
+            IntentEditorScreen(
+                IntentEditorUiState.Editing(
+                    form =
+                        IntentForm(
+                            readiness = IntentReadiness.Considering,
+                            timeZone = java.time.ZoneId.of("Europe/Moscow"),
+                            windows =
+                                listOf(
+                                    IntentWindowDraft(
+                                        java.time.LocalDateTime.of(2026, 10, 10, 10, 0),
+                                        java.time.LocalDateTime.of(2026, 10, 10, 13, 0),
+                                    )
+                                ),
+                            areaLabel = "Парк Горького",
+                            purpose = "leisure",
+                            pace = null,
+                            surface = null,
+                            meetNewPeople = false,
+                            visibility = IntentVisibility.Community,
+                            allowSuggestions = true,
+                        ),
+                    problem = UiText.Res(R.string.intent_too_many),
+                ),
+                editing = false,
+                actions = IntentEditorActions(),
             )
         ScreenState.NearbyFailed ->
             NearbyScreen(NearbyUiState.Failed(UiText.Res(R.string.error_offline)), NearbyActions())

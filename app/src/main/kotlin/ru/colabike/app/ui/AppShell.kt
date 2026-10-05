@@ -64,6 +64,9 @@ import ru.colabike.app.config.rememberUpdateState
 import ru.colabike.app.devices.DevicesRoute
 import ru.colabike.app.feed.FeedActions
 import ru.colabike.app.feed.FeedRoute
+import ru.colabike.app.intents.IntentEditorRoute
+import ru.colabike.app.intents.IntentRoute
+import ru.colabike.app.intents.IntentsRoute
 import ru.colabike.app.journal.JournalActions
 import ru.colabike.app.journal.JournalListRoute
 import ru.colabike.app.journal.JournalRoute
@@ -452,6 +455,64 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         navigator.reselects(Destination.Rides)
                                                     },
                                                 commentChanges = dependencies.comments.countChanges,
+                                                onOpenIntents = {
+                                                    navigator.open(Destination.Intents)
+                                                },
+                                            )
+                                        }
+                                        entry<Destination.Intents> {
+                                            IntentsRoute(
+                                                dependencies,
+                                                onBack = { navigator.back() },
+                                                onOpen = { id ->
+                                                    navigator.open(Destination.Intent(id))
+                                                },
+                                                onCreate = {
+                                                    navigator.open(Destination.IntentEditor())
+                                                },
+                                            )
+                                        }
+                                        entry<Destination.Intent> { key ->
+                                            IntentRoute(
+                                                dependencies,
+                                                id = key.id,
+                                                chat =
+                                                    if (features.isEnabled(Feature.Chat)) {
+                                                        dependencies.chat
+                                                    } else null,
+                                                onBack = { navigator.back() },
+                                                onOpenAuthor = { ref ->
+                                                    navigator.open(Destination.Person(ref))
+                                                },
+                                                onOpenConversation = { cid ->
+                                                    navigator.open(
+                                                        Destination.Conversation(cid.value)
+                                                    )
+                                                },
+                                                onEdit = {
+                                                    navigator.open(Destination.IntentEditor(key.id))
+                                                },
+                                                onOpenIntents = {
+                                                    navigator.open(Destination.Intents)
+                                                },
+                                            )
+                                        }
+                                        entry<Destination.IntentEditor> { key ->
+                                            IntentEditorRoute(
+                                                dependencies,
+                                                id = key.id,
+                                                onBack = { navigator.back() },
+                                                onSaved = { id ->
+                                                    // Back to the list (or the page being changed),
+                                                    // then the page.
+                                                    navigator.back()
+                                                    if (key.id == null) {
+                                                        navigator.open(Destination.Intent(id))
+                                                    }
+                                                },
+                                                onOpenIntents = {
+                                                    navigator.open(Destination.Intents)
+                                                },
                                             )
                                         }
                                         entry<Destination.Ride> { key ->

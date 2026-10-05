@@ -42,6 +42,9 @@ import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.Compatibility
 import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedItem
+import ru.colabike.core.model.IntentReadiness
+import ru.colabike.core.model.IntentStatus
+import ru.colabike.core.model.IntentVisibility
 import ru.colabike.core.model.LaunchFill
 import ru.colabike.core.model.ListingBikeLink
 import ru.colabike.core.model.ListingCatalogLink
@@ -101,6 +104,16 @@ enum class Screen(val file: String) {
     Rides("rides"),
     RidePlan("ride_plan"),
     RideCompleted("ride_completed"),
+
+    /**
+     * "I want to ride": the community's list, the person's own, someone else's page, an own page
+     * with its actions, and the form with its findings shown.
+     */
+    Intents("intents"),
+    IntentsMine("intents_mine"),
+    Intent("intent"),
+    IntentOwn("intent_own"),
+    IntentEditor("intent_editor"),
 
     /** The same ride further down: the route and the charts of its series; and the route's map. */
     RideCompletedAnalysis("ride_completed_analysis"),
@@ -289,6 +302,41 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                         AppShell(
                             FakeDependencies(
                                 deviceNotifications = FakeDeviceNotifications(deniedPhone)
+                            )
+                        )
+                    Screen.Intents,
+                    Screen.IntentsMine,
+                    Screen.Intent,
+                    Screen.IntentOwn,
+                    Screen.IntentEditor ->
+                        AppShell(
+                            FakeDependencies(
+                                intents =
+                                    FakeIntents(
+                                        community =
+                                            listOf(
+                                                sampleIntent(1),
+                                                sampleIntent(
+                                                    2,
+                                                    area = "Лосиный остров",
+                                                    readiness = IntentReadiness.Considering,
+                                                ),
+                                            ),
+                                        mine =
+                                            listOf(
+                                                sampleIntent(
+                                                    3,
+                                                    own = true,
+                                                    visibility = IntentVisibility.Private,
+                                                ),
+                                                sampleIntent(
+                                                    4,
+                                                    own = true,
+                                                    status = IntentStatus.Cancelled,
+                                                    area = "Измайловский парк",
+                                                ),
+                                            ),
+                                    )
                             )
                         )
                     Screen.Nearby,
@@ -510,6 +558,29 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                     onNodeWithTag("notif-settings:mute:ride-1").performScrollTo()
                 Screen.NotificationSettingsPhone ->
                     onNodeWithTag("notif-settings:os-off").performScrollTo()
+                else -> Unit
+            }
+        }
+        Screen.Intents,
+        Screen.IntentsMine,
+        Screen.Intent,
+        Screen.IntentOwn,
+        Screen.IntentEditor -> {
+            section("Покатушки").performClick()
+            onNodeWithTag("rides:intents").performClick()
+            when (screen) {
+                Screen.IntentsMine -> onNodeWithTag("intents:segment:mine").performClick()
+                Screen.Intent ->
+                    onNodeWithTag("intent:b3000000-0000-4000-8000-000000000001").performClick()
+                Screen.IntentOwn -> {
+                    onNodeWithTag("intents:segment:mine").performClick()
+                    onNodeWithTag("intent:b3000000-0000-4000-8000-000000000003").performClick()
+                }
+                Screen.IntentEditor -> {
+                    onNodeWithTag("intents:create").performClick()
+                    // The findings are shown once the person tried to save without an area.
+                    onNodeWithTag("intent-editor:save").performScrollTo().performClick()
+                }
                 else -> Unit
             }
         }

@@ -150,6 +150,9 @@ class Navigator(
         val section =
             when (destination) {
                 is Destination.Ride,
+                Destination.Intents,
+                is Destination.Intent,
+                is Destination.IntentEditor,
                 is Destination.BikeRides -> TopLevel.Rides.root
                 is Destination.Conversation -> TopLevel.Messages.root
                 is Destination.Bike,
