@@ -58,6 +58,12 @@ enum class NotificationCategory(val key: String) {
     /** The end of a listing's term. */
     Market("market"),
 
+    /**
+     * A message of a conversation. It is pushed and never recorded in the inbox (the messenger
+     * keeps what is unread), so it can be switched but not filtered by.
+     */
+    Chat("chat"),
+
     /** Follows and likes. */
     Reactions("reactions"),
 
@@ -71,8 +77,8 @@ enum class NotificationCategory(val key: String) {
         fun of(key: String): NotificationCategory =
             entries.firstOrNull { it != Other && it.key == key } ?: Other
 
-        /** The categories that can be asked for. */
-        val Filterable: List<NotificationCategory> = entries.filter { it != Other }
+        /** The categories that can be asked for: the inbox has no line for a chat message. */
+        val Filterable: List<NotificationCategory> = entries.filter { it != Other && it != Chat }
     }
 }
 

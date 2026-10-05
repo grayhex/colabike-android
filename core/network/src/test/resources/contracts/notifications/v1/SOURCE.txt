@@ -1,3 +1,4 @@
 Shared notification examples of the backend (grayhex/cola), docs/contracts/notifications/v1.
-Pinned to commit 84da7a5 (merge of pull request #346, issue #341, slices N1.2 and N1.3). Do not edit by
-hand: refresh by copying the files from the backend at a newer commit and review the diff.
+Pinned to commit 7ed82f0 (merge of pull request #350: the chat message and its category on top of the
+push registry of #342, issue #341 policy fields from pull request #346). Do not edit by hand: refresh by
+copying the files from the backend at a newer commit and review the diff.

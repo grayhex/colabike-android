@@ -25,8 +25,11 @@ class PushEnvelopeTest {
             )
             .jsonObject
 
-    /** Before the expiry of every example (they last a week from 2026-10-04). */
-    private val now = Instant.parse("2026-10-05T00:00:00Z")
+    /**
+     * After the creation and before the expiry of every example (a message of a chat lasts 12
+     * hours).
+     */
+    private val now = Instant.parse("2026-10-04T10:00:00Z")
     private val binding = 4
 
     private fun cases(kind: String) = payload[kind]!!.jsonArray.map { it.jsonObject }
