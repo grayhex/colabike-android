@@ -236,7 +236,7 @@ internal fun windowsLine(intent: RideIntent): String {
 }
 
 @Composable
-internal fun IntentFacts(intent: RideIntent): List<String> {
+internal fun intentFacts(intent: RideIntent): List<String> {
     val facts = mutableListOf<String>()
     facts += stringResource(intent.readinessLabel())
     intent.passport.areaLabel?.let { facts += it }
@@ -248,7 +248,7 @@ internal fun IntentFacts(intent: RideIntent): List<String> {
 @Composable
 fun IntentCard(intent: RideIntent, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val who = intent.author.displayName
-    val facts = IntentFacts(intent)
+    val facts = intentFacts(intent)
     val windows = windowsLine(intent)
     val status = stringResource(intent.statusLabel())
     val description =
