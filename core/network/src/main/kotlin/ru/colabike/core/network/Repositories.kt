@@ -11,7 +11,11 @@ import ru.colabike.api.apis.BikesApi
 import ru.colabike.api.apis.SearchApi
 import ru.colabike.api.apis.SessionsApi
 import ru.colabike.api.apis.UsersApi
+import ru.colabike.api.models.DeleteAccountRequest
+import ru.colabike.api.models.DeleteAccountRequestReauth
 import ru.colabike.core.model.Account
+import ru.colabike.core.model.AccountDeletion
+import ru.colabike.core.model.AccountDeletionRepository
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
@@ -23,6 +27,7 @@ import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.DeletionProof
 import ru.colabike.core.model.FollowChange
 import ru.colabike.core.model.FollowState
 import ru.colabike.core.model.LikeChange
@@ -123,6 +128,40 @@ class NetworkAccountRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : AccountRepository {
     override suspend fun me(): Account = apiCall(dispatcher) { api.getMe() }.toAccount(media)
+}
+
+/**
+ * Deleting the account (cola docs/modules/api-v1.md, "Аккаунт: удаление"). [api] is the client with
+ * the Bearer interceptor. The confirmation word is the server's contract, not a screen's choice.
+ */
+class NetworkAccountDeletionRepository(
+    private val api: AccountApi,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : AccountDeletionRepository {
+    override suspend fun deletion(): AccountDeletion =
+        apiCall(dispatcher) { api.getAccountDeletion() }.toModel()
+
+    override suspend fun delete(proof: DeletionProof) {
+        val request =
+            when (proof) {
+                is DeletionProof.Password ->
+                    DeleteAccountRequest(confirm = CONFIRMATION_WORD, password = proof.value)
+                is DeletionProof.Provider ->
+                    DeleteAccountRequest(
+                        confirm = CONFIRMATION_WORD,
+                        reauth =
+                            DeleteAccountRequestReauth(
+                                code = proof.code,
+                                codeVerifier = proof.verifier,
+                            ),
+                    )
+            }
+        apiCall(dispatcher) { api.deleteAccount(request) }
+    }
+
+    private companion object {
+        const val CONFIRMATION_WORD = "УДАЛИТЬ"
+    }
 }
 
 /**

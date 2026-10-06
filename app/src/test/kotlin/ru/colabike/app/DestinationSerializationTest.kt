@@ -45,6 +45,7 @@ class DestinationSerializationTest {
             Destination.SavedJournal,
             Destination.Search(people = true),
             Destination.Devices,
+            Destination.DeleteAccount,
             Destination.NotificationSettings,
             Destination.Participation("b2000000-0000-4000-8000-0000000000b2"),
             Destination.Participation(

@@ -53,6 +53,7 @@ import ru.colabike.app.AppDependencies
 import ru.colabike.app.R
 import ru.colabike.app.about.AboutRoute
 import ru.colabike.app.about.LicensesRoute
+import ru.colabike.app.account.DeleteAccountRoute
 import ru.colabike.app.bikes.BikeDetailRoute
 import ru.colabike.app.bikes.BikesRoute
 import ru.colabike.app.comments.CommentsRoute
@@ -804,6 +805,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                     navigator.open(Destination.NotificationSettings)
                                                 },
                                                 onOpenAbout = { navigator.open(Destination.About) },
+                                                onDeleteAccount = {
+                                                    navigator.open(Destination.DeleteAccount)
+                                                },
                                                 onOpenPublicProfile = { id ->
                                                     navigator.open(Destination.Person(id))
                                                 },
@@ -891,6 +895,13 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             DevicesRoute(
                                                 dependencies.sessions,
                                                 dependencies.clock,
+                                                onBack = { navigator.back() },
+                                            )
+                                        }
+                                        entry<Destination.DeleteAccount> {
+                                            DeleteAccountRoute(
+                                                dependencies.accountDeletion,
+                                                dependencies.auth,
                                                 onBack = { navigator.back() },
                                             )
                                         }

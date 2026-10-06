@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.YandexFailure
+import ru.colabike.app.auth.YandexReauth
 import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.config.AppConfigSource
 import ru.colabike.app.config.AppConfigState
@@ -43,6 +44,8 @@ import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.model.Account
 import ru.colabike.core.model.AccountChannels
+import ru.colabike.core.model.AccountDeletion
+import ru.colabike.core.model.AccountDeletionRepository
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
@@ -84,6 +87,7 @@ import ru.colabike.core.model.ComponentQuery
 import ru.colabike.core.model.ComponentsRepository
 import ru.colabike.core.model.ConfigAssets
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.DeletionProof
 import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeatureAvailability
 import ru.colabike.core.model.FeedFilter
@@ -1070,6 +1074,31 @@ class FakeAccount(var result: () -> Account = { account }) : AccountRepository {
     }
 }
 
+class FakeAccountDeletion(
+    var terms: AccountDeletion = AccountDeletion(AccountDeletion.Method.Password, true, null)
+) : AccountDeletionRepository {
+    var nextError: DataError? = null
+    val proofs = mutableListOf<DeletionProof>()
+    var termsCalls = 0
+
+    override suspend fun deletion(): AccountDeletion {
+        termsCalls++
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+        return terms
+    }
+
+    override suspend fun delete(proof: DeletionProof) {
+        proofs += proof
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+}
+
 class FakeAuth(
     initial: AuthState = AuthState.SignedIn(account),
     override val yandexEnabled: Boolean = true,
@@ -1089,8 +1118,23 @@ class FakeAuth(
 
     override fun startYandex(context: Context) = Unit
 
+    var reauthStarts = 0
+    val reauths = MutableSharedFlow<YandexReauth>(extraBufferCapacity = 4)
+    override val yandexReauth: Flow<YandexReauth> = reauths
+
+    override fun startYandexReauth(context: Context) {
+        reauthStarts++
+    }
+
     override suspend fun signOut() {
         signOuts++
+        state.value = AuthState.SignedOut
+    }
+
+    var deletedAccounts = 0
+
+    override suspend fun accountDeleted() {
+        deletedAccounts++
         state.value = AuthState.SignedOut
     }
 }
@@ -2149,6 +2193,7 @@ class FakeParticipation(
 class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
+    override val accountDeletion: FakeAccountDeletion = FakeAccountDeletion(),
     override val people: FakePeople = FakePeople(),
     override val feed: FakeFeed = FakeFeed(),
     override val journal: FakeJournal = FakeJournal(),

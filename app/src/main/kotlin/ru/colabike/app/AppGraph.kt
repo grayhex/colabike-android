@@ -53,6 +53,7 @@ import ru.colabike.core.auth.EncryptedFileStore
 import ru.colabike.core.auth.KeystoreTokenCipher
 import ru.colabike.core.auth.YandexSignIn
 import ru.colabike.core.auth.signOuts
+import ru.colabike.core.model.AccountDeletionRepository
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikesRepository
@@ -77,6 +78,7 @@ import ru.colabike.core.network.ColaBikeApi
 import ru.colabike.core.network.FileConfigAssets
 import ru.colabike.core.network.HttpClients
 import ru.colabike.core.network.MediaUrls
+import ru.colabike.core.network.NetworkAccountDeletionRepository
 import ru.colabike.core.network.NetworkAccountRepository
 import ru.colabike.core.network.NetworkAccountSessionsRepository
 import ru.colabike.core.network.NetworkAppConfigRepository
@@ -100,6 +102,9 @@ import ru.colabike.core.network.NetworkRidesRepository
 interface AppDependencies {
     val bikes: BikesRepository
     val account: AccountRepository
+
+    /** Deleting the account: how it is confirmed, and the deletion (docs/adr/0021). */
+    val accountDeletion: AccountDeletionRepository
     val people: PeopleRepository
     val feed: FeedRepository
     val journal: JournalRepository
@@ -213,6 +218,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
 
     override val bikes: BikesRepository = NetworkBikesRepository(api.bikes, api.search, media)
     override val account: AccountRepository = NetworkAccountRepository(api.account, media)
+    override val accountDeletion: AccountDeletionRepository =
+        NetworkAccountDeletionRepository(api.account)
     override val people: PeopleRepository = NetworkPeopleRepository(api.users, api.search, media)
     override val feed: FeedRepository = NetworkFeedRepository(api.personal, media)
     private val journalRepository = NetworkJournalRepository(api.journal, api.personal, media)
