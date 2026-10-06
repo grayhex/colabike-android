@@ -20,6 +20,10 @@
             "description": "Текущий пользователь и удаление его аккаунта."
         },
         {
+            "name": "Safety",
+            "description": "Блокировка людей и жалобы на объекты: то, что требуют магазины приложений от сервисов с пользовательским контентом."
+        },
+        {
             "name": "Sessions",
             "description": "Вход устройства, обновление токенов и список сессий."
         },
@@ -13141,6 +13145,488 @@
                 }
             }
         },
+        "/users/{ref}/block": {
+            "put": {
+                "operationId": "blockUser",
+                "tags": [
+                    "Safety"
+                ],
+                "summary": "Заблокировать человека",
+                "description": "Идемпотентный переключатель: `PUT` ставит блокировку, `DELETE` снимает, повтор ничего не меняет, ответ — итоговое состояние. Блокировка обрывает подписки **в обе стороны** (подписки не возвращаются после разблокировки), закрывает подписку и личные сообщения между двумя людьми, убирает человека из поиска и из выдачи людей для диалога, прекращает уведомления и push между ними и ставит блокировку в Stream Chat отдельной надёжной задачей (сбой Stream не отменяет блокировку). Заблокированный человек ни о чём не узнаёт: его попытки подписаться или написать отвечают так же, как для недоступного профиля. Свой список — `GET /me/blocked`; в `Relationship` человек помечен `blockedByMe`.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/UserRef"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Итоговое состояние блокировки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlockResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Нельзя заблокировать себя, параметры не нужны либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Человек недоступен: неизвестный `{ref}` или заблокирован сайтом.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "unblockUser",
+                "tags": [
+                    "Safety"
+                ],
+                "summary": "Снять блокировку с человека",
+                "description": "Парная операция к `PUT`: идемпотентна, ответ — итоговое состояние. Подписки, оборванные блокировкой, не возвращаются.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/UserRef"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Итоговое состояние блокировки.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlockResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Нельзя заблокировать себя, параметры не нужны либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Человек недоступен: неизвестный `{ref}` или заблокирован сайтом.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/me/blocked": {
+            "get": {
+                "operationId": "listBlockedUsers",
+                "tags": [
+                    "Safety"
+                ],
+                "summary": "Заблокированные мной",
+                "description": "Люди, которых заблокировал зритель: новые блокировки сверху (время блокировки, затем id), курсор, без общего количества. Люди, заблокированные сайтом, в списке не появляются. Каждый человек — `UserSummary`, `relationship.blockedByMe` у них `true`.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Limit"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Cursor"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Страница заблокированных.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserPage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный параметр, неверный курсор либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/reports": {
+            "post": {
+                "operationId": "createReport",
+                "tags": [
+                    "Safety"
+                ],
+                "summary": "Пожаловаться на объект",
+                "description": "Жалоба идёт в ту же очередь модерации, что и кнопки «Пожаловаться» на сайте. Объект задан `entityType` и `targetId`; недоступный или удалённый объект — 404, жалоба на собственный контент — 400. Повторная жалоба того же человека на тот же объект — успех с `created: false`: модератор получает её один раз. Жалобы на сообщения мессенджера идут не сюда, а через жалобу Stream Chat (`flag`) в самом чате. Бюджет — 10 жалоб за окно, общий с сайтом.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateReportRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Жалоба принята.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReportReceipt"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверное тело или причина, жалоба на собственный контент либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Объект недоступен или удалён.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 2048 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
         "/me/nearby": {
             "get": {
                 "operationId": "getNearby",
@@ -14813,13 +15299,18 @@
                     "friends": {
                         "type": "boolean",
                         "description": "Подписки взаимны."
+                    },
+                    "blockedByMe": {
+                        "type": "boolean",
+                        "description": "Зритель заблокировал человека (PUT /users/{ref}/block). Кто заблокировал зрителя, он не узнаёт."
                     }
                 },
                 "required": [
                     "isSelf",
                     "following",
                     "followedBy",
-                    "friends"
+                    "friends",
+                    "blockedByMe"
                 ],
                 "additionalProperties": false,
                 "description": "Отношения вошедшего зрителя с человеком. Для гостя вместо них null."
@@ -20484,6 +20975,73 @@
                 ],
                 "additionalProperties": false,
                 "description": "Явное подтверждение необратимого удаления. `confirm` — слово `УДАЛИТЬ`. Нужен ровно один способ подтвердить личность: `password` у аккаунта с паролем либо `reauth` (одноразовый код ColaBike и `codeVerifier` нового нативного входа через Яндекс ID) у аккаунта без пароля. Токена доступа одного недостаточно."
+            },
+            "BlockResult": {
+                "type": "object",
+                "properties": {
+                    "blocked": {
+                        "type": "boolean",
+                        "description": "Человек заблокирован зрителем. Блокировка обрывает подписки в обе стороны и закрывает личные сообщения."
+                    }
+                },
+                "required": [
+                    "blocked"
+                ],
+                "additionalProperties": false,
+                "description": "Итоговое состояние блокировки человека зрителем."
+            },
+            "CreateReportRequest": {
+                "type": "object",
+                "properties": {
+                    "entityType": {
+                        "type": "string",
+                        "enum": [
+                            "profile",
+                            "bike",
+                            "comment",
+                            "ride",
+                            "ride_comment",
+                            "journal",
+                            "journal_comment",
+                            "component_comment",
+                            "component_photo"
+                        ]
+                    },
+                    "targetId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "enum": [
+                            "spam",
+                            "abuse",
+                            "inappropriate",
+                            "copyright",
+                            "other"
+                        ]
+                    }
+                },
+                "required": [
+                    "entityType",
+                    "targetId",
+                    "reason"
+                ],
+                "additionalProperties": false,
+                "description": "Жалоба на объект. `entityType` и `targetId` — то, на что жалуются: профиль (`profile`, id человека), велосипед, комментарий велосипеда (`comment`), покатушка, комментарий покатушки, запись журнала, её комментарий, комментарий или фото компонента."
+            },
+            "ReportReceipt": {
+                "type": "object",
+                "properties": {
+                    "created": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "created"
+                ],
+                "additionalProperties": false,
+                "description": "Жалоба принята. Повторная жалоба того же человека на тот же объект — тоже успех: `created: false`, модератор получает её один раз."
             }
         },
         "parameters": {

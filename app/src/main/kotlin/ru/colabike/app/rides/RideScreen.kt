@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,6 +62,7 @@ import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.rides.map.RouteSketch
 import ru.colabike.app.rides.map.SketchRouteMaps
+import ru.colabike.app.safety.ReportMenu
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
@@ -77,6 +79,8 @@ import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.Range
+import ru.colabike.core.model.ReportKind
+import ru.colabike.core.model.ReportTarget
 import ru.colabike.core.model.RideDetail
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.RidePassport
@@ -84,6 +88,7 @@ import ru.colabike.core.model.RideRecurrence
 import ru.colabike.core.model.RideRoute
 import ru.colabike.core.model.RideStatus
 import ru.colabike.core.model.RidesRepository
+import ru.colabike.core.model.SafetyRepository
 
 /** Where a ride leads. Callbacks, so the screen never touches navigation itself. */
 data class RideActions(
@@ -103,6 +108,7 @@ fun RideRoute(
     actions: RideActions,
     maps: RouteMaps,
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
+    safety: SafetyRepository? = null,
 ) {
     val viewModel = viewModel { RideViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -120,6 +126,14 @@ fun RideRoute(
         analysis = analysis,
         onLoadAnalysis = viewModel::loadAnalysis,
         maps = maps,
+        topActions = {
+            ReportMenu(
+                target = ReportTarget(ReportKind.Ride, id.value),
+                authorId = (state as? RideUiState.Loaded)?.ride?.summary?.author?.id,
+                safety = safety,
+                auth = auth,
+            )
+        },
     )
 }
 
@@ -141,6 +155,7 @@ fun RideScreen(
     analysis: AnalysisUiState = AnalysisUiState.NotAsked,
     onLoadAnalysis: () -> Unit = {},
     maps: RouteMaps = SketchRouteMaps,
+    topActions: @Composable RowScope.() -> Unit = {},
 ) {
     val loaded = state as? RideUiState.Loaded
     val route = loaded?.ride?.route
@@ -164,6 +179,7 @@ fun RideScreen(
                             }
                         ),
                     onBack = if (fullMap) ({ mapOpen = false }) else actions.onBack,
+                    actions = if (loaded != null && !fullMap) topActions else ({}),
                 )
             },
         ) { padding ->

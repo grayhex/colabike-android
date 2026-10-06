@@ -227,6 +227,7 @@ internal fun RelationshipDto.toModel(): Relationship =
         following = following,
         followedBy = followedBy,
         friends = friends,
+        blockedByMe = blockedByMe,
     )
 
 internal fun UserSummaryDto.toModel(media: MediaUrls): PersonSummary =

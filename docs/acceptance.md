@@ -29,6 +29,7 @@
 | Личные сообщения | `POST /chat/token`, `POST /chat/channels`, `GET /chat/people`; дальше SDK Stream Chat напрямую | `MessagesFlowTest`, `ChatSessionTest`, `NewConversationTest`, `WriteViewModelTest`, `ChatRepositoryTest` | нет: в CI SDK к провайдеру не подключается | **ждёт владельца**: два подтверждённых аккаунта, обмен, переподключение ([ADR 0011](adr/0011-messenger.md)) |
 | Выход и смена аккаунта | `DELETE /auth/sessions/current` | `SignOutsTest`, `SessionScopeTest`, `SessionStoresTest`, `DevicesTest` | `LiveSmokeTest` (выход) | вход вторым аккаунтом после первого |
 | Удаление аккаунта | `GET /account/deletion`, `POST /account/delete` | `DeleteAccountViewModelTest`, `DeleteAccountFlowTest`, `AccountDeletionRepositoryTest`, `AuthControllerTest` (возврат от браузера для подтверждения) | нет: разрушительные сценарии на production автоматически не запускаются | **ждёт владельца**: удалить тестовый аккаунт с паролем и тестовый аккаунт Яндекса (повторный вход в браузере) |
+| Жалобы и блокировка | `POST /reports`, `PUT`/`DELETE /users/{ref}/block`, `GET /me/blocked` | `SafetyFlowTest`, `ReportViewModelTest`, `BlockedViewModelTest`, `PersonBlockTest`, `SafetyRepositoryTest`, `ColaChatThemeTest` (жалоба на сообщение включена) | нет | **ждёт владельца**: два тестовых аккаунта: жалоба на профиль, велосипед и комментарий (приходит в очередь модерации), блокировка и снятие, жалоба на сообщение в чате (очередь Stream) |
 
 ## Устройства, окна, доступность
 

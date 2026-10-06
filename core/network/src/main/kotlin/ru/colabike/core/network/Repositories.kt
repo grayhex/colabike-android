@@ -8,9 +8,11 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import ru.colabike.api.apis.AccountApi
 import ru.colabike.api.apis.BikesApi
+import ru.colabike.api.apis.SafetyApi
 import ru.colabike.api.apis.SearchApi
 import ru.colabike.api.apis.SessionsApi
 import ru.colabike.api.apis.UsersApi
+import ru.colabike.api.models.CreateReportRequest
 import ru.colabike.api.models.DeleteAccountRequest
 import ru.colabike.api.models.DeleteAccountRequestReauth
 import ru.colabike.core.model.Account
@@ -26,6 +28,7 @@ import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.BlockChange
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.DeletionProof
 import ru.colabike.core.model.FollowChange
@@ -36,6 +39,10 @@ import ru.colabike.core.model.Page
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.PersonSummary
 import ru.colabike.core.model.Profile
+import ru.colabike.core.model.ReportKind
+import ru.colabike.core.model.ReportReason
+import ru.colabike.core.model.ReportTarget
+import ru.colabike.core.model.SafetyRepository
 import ru.colabike.core.model.UserId
 
 class NetworkBikesRepository(
@@ -128,6 +135,65 @@ class NetworkAccountRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : AccountRepository {
     override suspend fun me(): Account = apiCall(dispatcher) { api.getMe() }.toAccount(media)
+}
+
+/**
+ * Reporting and blocking (cola docs/modules/api-v1.md, "Безопасность: блокировки и жалобы"). [api]
+ * is the client with the Bearer interceptor.
+ */
+class NetworkSafetyRepository(
+    private val api: SafetyApi,
+    private val media: MediaUrls,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : SafetyRepository {
+    private val changes = MutableSharedFlow<BlockChange>(extraBufferCapacity = 16)
+    override val blockChanges: SharedFlow<BlockChange> = changes.asSharedFlow()
+
+    override suspend fun report(target: ReportTarget, reason: ReportReason): Boolean {
+        // A malformed id cannot name an object; the API would answer 404 as well.
+        val id =
+            runCatching { UUID.fromString(target.id) }.getOrNull() ?: throw DataError.NotFound()
+        val request =
+            CreateReportRequest(
+                entityType =
+                    when (target.kind) {
+                        ReportKind.Profile -> CreateReportRequest.EntityType.profile
+                        ReportKind.Bike -> CreateReportRequest.EntityType.bike
+                        ReportKind.BikeComment -> CreateReportRequest.EntityType.comment
+                        ReportKind.Ride -> CreateReportRequest.EntityType.ride
+                        ReportKind.RideComment -> CreateReportRequest.EntityType.ride_comment
+                        ReportKind.Journal -> CreateReportRequest.EntityType.journal
+                        ReportKind.JournalComment -> CreateReportRequest.EntityType.journal_comment
+                        ReportKind.ComponentComment ->
+                            CreateReportRequest.EntityType.component_comment
+                        ReportKind.ComponentPhoto -> CreateReportRequest.EntityType.component_photo
+                    },
+                targetId = id,
+                reason =
+                    when (reason) {
+                        ReportReason.Spam -> CreateReportRequest.Reason.spam
+                        ReportReason.Abuse -> CreateReportRequest.Reason.abuse
+                        ReportReason.Inappropriate -> CreateReportRequest.Reason.inappropriate
+                        ReportReason.Copyright -> CreateReportRequest.Reason.copyright
+                        ReportReason.Other -> CreateReportRequest.Reason.other
+                    },
+            )
+        return apiCall(dispatcher) { api.createReport(request) }.created
+    }
+
+    override suspend fun setBlocked(id: UserId, blocked: Boolean): Boolean {
+        val uuid =
+            runCatching { UUID.fromString(id.value) }.getOrNull() ?: throw DataError.NotFound()
+        val result =
+            apiCall(dispatcher) {
+                if (blocked) api.blockUser(uuid.toString()) else api.unblockUser(uuid.toString())
+            }
+        changes.tryEmit(BlockChange(id, result.blocked))
+        return result.blocked
+    }
+
+    override suspend fun blocked(cursor: String?, limit: Int): Page<PersonSummary> =
+        apiCall(dispatcher) { api.listBlockedUsers(limit.coerceIn(1, 50), cursor) }.toModel(media)
 }
 
 /**

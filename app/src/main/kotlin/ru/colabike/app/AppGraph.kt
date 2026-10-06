@@ -72,6 +72,7 @@ import ru.colabike.core.model.NotificationsRepository
 import ru.colabike.core.model.ParticipationRepository
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.RidesRepository
+import ru.colabike.core.model.SafetyRepository
 import ru.colabike.core.network.ApiConfig
 import ru.colabike.core.network.AppConfigCache
 import ru.colabike.core.network.ColaBikeApi
@@ -97,6 +98,7 @@ import ru.colabike.core.network.NetworkParticipationRepository
 import ru.colabike.core.network.NetworkPeopleRepository
 import ru.colabike.core.network.NetworkPushDeviceRepository
 import ru.colabike.core.network.NetworkRidesRepository
+import ru.colabike.core.network.NetworkSafetyRepository
 
 /** What screens get: repositories and auth actions, never HTTP clients (AGENTS.md). */
 interface AppDependencies {
@@ -105,6 +107,9 @@ interface AppDependencies {
 
     /** Deleting the account: how it is confirmed, and the deletion (docs/adr/0021). */
     val accountDeletion: AccountDeletionRepository
+
+    /** Reports and blocks (docs/adr/0021). */
+    val safety: SafetyRepository
     val people: PeopleRepository
     val feed: FeedRepository
     val journal: JournalRepository
@@ -220,6 +225,7 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val account: AccountRepository = NetworkAccountRepository(api.account, media)
     override val accountDeletion: AccountDeletionRepository =
         NetworkAccountDeletionRepository(api.account)
+    override val safety: SafetyRepository = NetworkSafetyRepository(api.safety, media)
     override val people: PeopleRepository = NetworkPeopleRepository(api.users, api.search, media)
     override val feed: FeedRepository = NetworkFeedRepository(api.personal, media)
     private val journalRepository = NetworkJournalRepository(api.journal, api.personal, media)

@@ -13,6 +13,7 @@ import ru.colabike.api.apis.MarketApi
 import ru.colabike.api.apis.PersonalApi
 import ru.colabike.api.apis.PlanningApi
 import ru.colabike.api.apis.RidesApi
+import ru.colabike.api.apis.SafetyApi
 import ru.colabike.api.apis.SearchApi
 import ru.colabike.api.apis.SessionsApi
 import ru.colabike.api.apis.UsersApi
@@ -31,6 +32,7 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
     val account = AccountApi(config.apiBaseUrl, client)
     val bikes = BikesApi(config.apiBaseUrl, client)
     val users = UsersApi(config.apiBaseUrl, client)
+    val safety = SafetyApi(config.apiBaseUrl, client)
     val search = SearchApi(config.apiBaseUrl, client)
     val journal = JournalApi(config.apiBaseUrl, client)
     val personal = PersonalApi(config.apiBaseUrl, client)

@@ -62,11 +62,15 @@ import ru.colabike.core.model.OnboardingItem
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.ParticipationResponse
 import ru.colabike.core.model.ParticipationState
+import ru.colabike.core.model.Person
+import ru.colabike.core.model.PersonSummary
+import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RequestedDateStatus
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.ServiceLinks
 import ru.colabike.core.model.UpdateMode
 import ru.colabike.core.model.UpdateState
+import ru.colabike.core.model.UserId
 
 /** Every screen of the app, as AGENTS.md requires it in screenshots. */
 enum class Screen(val file: String) {
@@ -91,6 +95,14 @@ enum class Screen(val file: String) {
     DeleteAccount("delete_account"),
     DeleteAccountYandex("delete_account_yandex"),
     DeleteAccountAdmin("delete_account_admin"),
+
+    /**
+     * Reporting and blocking (docs/adr/0021): the list of the blocked, a person the viewer blocked,
+     * and the question of a report opened from a bike.
+     */
+    Blocked("blocked"),
+    PersonBlocked("person_blocked"),
+    ReportDialog("report_dialog"),
     About("about"),
 
     /** The author of a bike: header, numbers, and bikes. */
@@ -218,6 +230,16 @@ private fun ComposeContentTestRule.openAuthor() {
     onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
     onNodeWithText("Тестовый Райдер").performScrollTo().performClick()
 }
+
+/** What the viewer is to a person they blocked. */
+private val blockedByMe =
+    Relationship(
+        isSelf = false,
+        following = false,
+        followedBy = false,
+        friends = false,
+        blockedByMe = true,
+    )
 
 /** The listings of the market in the pictures: the first is tied to the catalog and a bike. */
 private val marketListings =
@@ -518,6 +540,56 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                     )
                             )
                         )
+                    Screen.Blocked ->
+                        AppShell(
+                            FakeDependencies(
+                                safety =
+                                    FakeSafety(
+                                        listOf(
+                                            PersonSummary(PreviewData.rider, blockedByMe),
+                                            PersonSummary(
+                                                Person(
+                                                    UserId("u7"),
+                                                    "anna-gravel",
+                                                    "Анна Гравийная",
+                                                    null,
+                                                ),
+                                                blockedByMe,
+                                            ),
+                                        )
+                                    )
+                            )
+                        )
+                    Screen.PersonBlocked ->
+                        AppShell(
+                            FakeDependencies(
+                                bikes = FakeBikes(mapOf(null to Page(bikes(0, 6), "c1"))),
+                                people =
+                                    FakePeople(
+                                        profiles =
+                                            mapOf(
+                                                PreviewData.rider.id.value to
+                                                    profileOf(PreviewData.rider, blockedByMe)
+                                            )
+                                    ),
+                            )
+                        )
+                    Screen.ReportDialog ->
+                        AppShell(
+                            FakeDependencies(
+                                bikes = FakeBikes(mapOf(null to Page(bikes(0, 6), "c1"))),
+                                // Somebody else: the author of a bike reports nothing of their own.
+                                auth =
+                                    FakeAuth(
+                                        AuthState.SignedIn(
+                                            account.copy(
+                                                id = UserId("viewer-1"),
+                                                username = "viewer",
+                                            )
+                                        )
+                                    ),
+                            )
+                        )
                     Screen.ProfileGuest,
                     Screen.FeedGuest,
                     Screen.CommentsGuest,
@@ -598,6 +670,16 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.DeleteAccountAdmin -> {
             section("Профиль").performClick()
             onNodeWithText("Удалить аккаунт").performScrollTo().performClick()
+        }
+        Screen.Blocked -> {
+            section("Профиль").performClick()
+            onNodeWithText("Заблокированные").performScrollTo().performClick()
+        }
+        Screen.PersonBlocked -> openAuthor()
+        Screen.ReportDialog -> {
+            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            onNodeWithContentDescription("Ещё").performClick()
+            onNodeWithText("Пожаловаться").performClick()
         }
         Screen.About -> {
             section("Профиль").performClick()

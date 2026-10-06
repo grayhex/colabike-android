@@ -63,6 +63,7 @@ import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.BlockChange
 import ru.colabike.core.model.CategorySetting
 import ru.colabike.core.model.ChannelCid
 import ru.colabike.core.model.ChannelFlag
@@ -159,6 +160,8 @@ import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.QuietHours
 import ru.colabike.core.model.Range
 import ru.colabike.core.model.Relationship
+import ru.colabike.core.model.ReportReason
+import ru.colabike.core.model.ReportTarget
 import ru.colabike.core.model.RequestedDate
 import ru.colabike.core.model.RequestedDateStatus
 import ru.colabike.core.model.RideAgreement
@@ -174,6 +177,7 @@ import ru.colabike.core.model.RideRoute
 import ru.colabike.core.model.RideStatus
 import ru.colabike.core.model.RideSummary
 import ru.colabike.core.model.RidesRepository
+import ru.colabike.core.model.SafetyRepository
 import ru.colabike.core.model.SavedChange
 import ru.colabike.core.model.SavedListingChange
 import ru.colabike.core.model.SellerListings
@@ -1071,6 +1075,43 @@ class FakeAccount(var result: () -> Account = { account }) : AccountRepository {
     override suspend fun me(): Account {
         calls++
         return result()
+    }
+}
+
+class FakeSafety(var blockedPeople: List<PersonSummary> = emptyList()) : SafetyRepository {
+    val reports = mutableListOf<Pair<ReportTarget, ReportReason>>()
+    val blocks = mutableListOf<Pair<UserId, Boolean>>()
+    var nextError: DataError? = null
+    var created = true
+    private val changes = MutableSharedFlow<BlockChange>(extraBufferCapacity = 8)
+    override val blockChanges: SharedFlow<BlockChange> = changes
+
+    private fun fail() {
+        nextError?.let {
+            nextError = null
+            throw it
+        }
+    }
+
+    override suspend fun report(target: ReportTarget, reason: ReportReason): Boolean {
+        fail()
+        reports += target to reason
+        return created
+    }
+
+    override suspend fun setBlocked(id: UserId, blocked: Boolean): Boolean {
+        fail()
+        blocks += id to blocked
+        changes.tryEmit(BlockChange(id, blocked))
+        return blocked
+    }
+
+    override suspend fun blocked(cursor: String?, limit: Int): Page<PersonSummary> {
+        fail()
+        return Page(
+            blockedPeople.filterNot { p -> blocks.any { it.first == p.person.id && !it.second } },
+            null,
+        )
     }
 }
 
@@ -2194,6 +2235,7 @@ class FakeDependencies(
     override val bikes: FakeBikes = FakeBikes(),
     override val account: FakeAccount = FakeAccount(),
     override val accountDeletion: FakeAccountDeletion = FakeAccountDeletion(),
+    override val safety: FakeSafety = FakeSafety(),
     override val people: FakePeople = FakePeople(),
     override val feed: FakeFeed = FakeFeed(),
     override val journal: FakeJournal = FakeJournal(),

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -51,6 +52,7 @@ import ru.colabike.app.bikes.ComponentsCard
 import ru.colabike.app.bikes.orderComponents
 import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.app.markdown.MarkdownText
+import ru.colabike.app.safety.ReportMenu
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
@@ -68,6 +70,9 @@ import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalStatus
+import ru.colabike.core.model.ReportKind
+import ru.colabike.core.model.ReportTarget
+import ru.colabike.core.model.SafetyRepository
 
 /** Where an entry leads. Callbacks, so the screen never touches navigation itself. */
 class JournalActions(
@@ -85,6 +90,7 @@ fun JournalRoute(
     id: JournalId,
     actions: JournalActions,
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
+    safety: SafetyRepository? = null,
 ) {
     val viewModel = viewModel { JournalViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -101,6 +107,14 @@ fun JournalRoute(
         // A guest is asked to sign in first; the entry is not saved for them afterwards.
         onToggleSaved = if (signedIn) viewModel::toggleSaved else signIn,
         onOpenLink = opener::open,
+        topActions = {
+            ReportMenu(
+                target = ReportTarget(ReportKind.Journal, id.value),
+                authorId = (state as? JournalUiState.Loaded)?.entry?.summary?.author?.id,
+                safety = safety,
+                auth = auth,
+            )
+        },
     )
 }
 
@@ -117,6 +131,7 @@ fun JournalScreen(
     onSignIn: (() -> Unit)? = null,
     onToggleSaved: () -> Unit = {},
     onOpenLink: (String) -> Unit = {},
+    topActions: @Composable RowScope.() -> Unit = {},
 ) {
     val loaded = state as? JournalUiState.Loaded
     Scaffold(
@@ -127,6 +142,7 @@ fun JournalScreen(
                     loaded?.entry?.summary?.kind?.let { journalKindLabel(it) }
                         ?: stringResource(R.string.journal_title),
                 onBack = actions.onBack,
+                actions = if (loaded != null) topActions else ({}),
             )
         },
     ) { padding ->

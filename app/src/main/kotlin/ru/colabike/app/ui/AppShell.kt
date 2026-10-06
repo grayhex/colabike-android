@@ -106,6 +106,7 @@ import ru.colabike.app.rides.BikeRidesRoute
 import ru.colabike.app.rides.RideActions
 import ru.colabike.app.rides.RideRoute
 import ru.colabike.app.rides.RidesRoute
+import ru.colabike.app.safety.BlockedRoute
 import ru.colabike.app.search.SearchRoute
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.BrandMark
@@ -375,6 +376,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             JournalRoute(
                                                 repository = dependencies.journal,
                                                 auth = dependencies.auth,
+                                                safety = dependencies.safety,
                                                 id = JournalId(key.id),
                                                 actions =
                                                     JournalActions(
@@ -408,6 +410,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 repository = dependencies.comments,
                                                 drafts = dependencies.drafts,
                                                 auth = dependencies.auth,
+                                                safety = dependencies.safety,
                                                 target =
                                                     CommentTarget(commentKind(key.kind), key.id),
                                                 title = key.title,
@@ -538,6 +541,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             RideRoute(
                                                 repository = dependencies.rides,
                                                 auth = dependencies.auth,
+                                                safety = dependencies.safety,
                                                 id = RideId(key.id),
                                                 maps = dependencies.maps,
                                                 actions =
@@ -702,6 +706,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 repository = dependencies.bikes,
                                                 auth = dependencies.auth,
                                                 links = dependencies.links,
+                                                safety = dependencies.safety,
                                                 id = BikeId(key.id),
                                                 showBack = !besideList,
                                                 onBack = { navigator.back() },
@@ -736,6 +741,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 bikes = dependencies.bikes,
                                                 auth = dependencies.auth,
                                                 chat = dependencies.chat,
+                                                safety = dependencies.safety,
                                                 ref = key.ref,
                                                 actions =
                                                     PersonActions(
@@ -807,6 +813,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onOpenAbout = { navigator.open(Destination.About) },
                                                 onDeleteAccount = {
                                                     navigator.open(Destination.DeleteAccount)
+                                                },
+                                                onOpenBlocked = {
+                                                    navigator.open(Destination.Blocked)
                                                 },
                                                 onOpenPublicProfile = { id ->
                                                     navigator.open(Destination.Person(id))
@@ -896,6 +905,15 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 dependencies.sessions,
                                                 dependencies.clock,
                                                 onBack = { navigator.back() },
+                                            )
+                                        }
+                                        entry<Destination.Blocked> {
+                                            BlockedRoute(
+                                                dependencies.safety,
+                                                onBack = { navigator.back() },
+                                                onOpenPerson = { ref ->
+                                                    navigator.open(Destination.Person(ref))
+                                                },
                                             )
                                         }
                                         entry<Destination.DeleteAccount> {
