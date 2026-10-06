@@ -83,6 +83,11 @@ data class BikeComponent(
     val priceRub: Double? = null,
     /** The model from the component catalog, if the owner chose one: it has a page of its own. */
     val modelId: String? = null,
+    /**
+     * The server's version of the part (`ETag`), known only from the answer that made or changed
+     * it: a next change may name it in `If-Match`, and one with no version is applied as it is.
+     */
+    val version: String? = null,
 )
 
 /** The state of a like after a `PUT` or `DELETE`: what the server says, not what we hoped. */

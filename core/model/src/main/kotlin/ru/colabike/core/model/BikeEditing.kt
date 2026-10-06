@@ -285,4 +285,7 @@ sealed interface BikeChange {
     data class Saved(val bike: BikeDetail) : BikeChange
 
     data class Removed(val id: BikeId) : BikeChange
+
+    /** A part of this bike's build was made, changed or removed: read the bike again. */
+    data class Parts(val id: BikeId) : BikeChange
 }

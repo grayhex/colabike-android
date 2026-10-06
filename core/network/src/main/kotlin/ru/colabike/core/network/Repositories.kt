@@ -12,6 +12,7 @@ import ru.colabike.api.apis.SafetyApi
 import ru.colabike.api.apis.SearchApi
 import ru.colabike.api.apis.SessionsApi
 import ru.colabike.api.apis.UsersApi
+import ru.colabike.api.models.BikeGroupOrderRequest
 import ru.colabike.api.models.CreateReportRequest
 import ru.colabike.api.models.DeleteAccountRequest
 import ru.colabike.api.models.DeleteAccountRequestReauth
@@ -22,6 +23,7 @@ import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
 import ru.colabike.core.model.BikeChange
+import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeDraft
 import ru.colabike.core.model.BikeId
@@ -32,6 +34,8 @@ import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.BlockChange
+import ru.colabike.core.model.ComponentDraft
+import ru.colabike.core.model.ComponentPatch
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.DeletionProof
 import ru.colabike.core.model.FollowChange
@@ -134,6 +138,61 @@ class NetworkBikesRepository(
             .let { (dto, newTag) -> dto.toModel(media, newTag) }
             .also { saved.tryEmit(BikeChange.Saved(it)) }
     }
+
+    override suspend fun addComponent(
+        bike: BikeId,
+        draft: ComponentDraft,
+        key: String,
+    ): BikeComponent {
+        require(runCatching { UUID.fromString(key) }.isSuccess) { "Idempotency-Key must be a UUID" }
+        val uuid = uuidOrNotFound(bike.value)
+        val request = draft.toRequest()
+        return apiCall(dispatcher) {
+                api.createBikeComponentWithHttpInfo(uuid, UUID.fromString(key), request)
+                    .valueAndTag()
+            }
+            .let { (dto, tag) -> dto.toModel(tag) }
+            .also { saved.tryEmit(BikeChange.Parts(bike)) }
+    }
+
+    override suspend fun updateComponent(
+        bike: BikeId,
+        id: String,
+        patch: ComponentPatch,
+        version: String?,
+    ): BikeComponent {
+        val bikeUuid = uuidOrNotFound(bike.value)
+        val componentUuid = uuidOrNotFound(id)
+        val request = patch.toRequest()
+        val nulls = if (patch.clearPrice) setOf("price") else emptySet()
+        return apiCall(dispatcher) {
+                clearing(nulls)
+                    .updateBikeComponentWithHttpInfo(bikeUuid, componentUuid, request, version)
+                    .valueAndTag()
+            }
+            .let { (dto, tag) -> dto.toModel(tag) }
+            .also { saved.tryEmit(BikeChange.Parts(bike)) }
+    }
+
+    override suspend fun removeComponent(bike: BikeId, id: String) {
+        val bikeUuid = uuidOrNotFound(bike.value)
+        val componentUuid = uuidOrNotFound(id)
+        // The server answers 204 to a repeat as well: gone already is as good as removed now.
+        apiCall(dispatcher) { api.deleteBikeComponent(bikeUuid, componentUuid) }
+        saved.tryEmit(BikeChange.Parts(bike))
+    }
+
+    override suspend fun setGroupOrder(bike: BikeId, groups: List<String>): BikeDetail {
+        val uuid = uuidOrNotFound(bike.value)
+        return apiCall(dispatcher) {
+                api.setBikeGroupOrderWithHttpInfo(uuid, BikeGroupOrderRequest(groups)).valueAndTag()
+            }
+            .let { (dto, tag) -> dto.toModel(media, tag) }
+            .also { saved.tryEmit(BikeChange.Saved(it)) }
+    }
+
+    private fun uuidOrNotFound(value: String): UUID =
+        runCatching { UUID.fromString(value) }.getOrNull() ?: throw DataError.NotFound()
 
     override suspend fun delete(id: BikeId) {
         val uuid =

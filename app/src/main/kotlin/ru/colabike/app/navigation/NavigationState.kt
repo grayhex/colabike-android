@@ -158,6 +158,8 @@ class Navigator(
                 is Destination.Conversation -> TopLevel.Messages.root
                 is Destination.Bike,
                 is Destination.BikeEditor,
+                is Destination.BikeParts,
+                is Destination.BikePart,
                 is Destination.Person,
                 is Destination.Journal,
                 is Destination.Listing,

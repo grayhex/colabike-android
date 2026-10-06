@@ -155,6 +155,13 @@ enum class Screen(val file: String) {
     BikeEditorProblems("bike_editor_problems"),
     BikeEditorDelete("bike_editor_delete"),
 
+    /**
+     * The build of one's own bike: the parts, the order of groups; a part's form, with findings.
+     */
+    BikeParts("bike_parts"),
+    BikePartEditor("bike_part_editor"),
+    BikePartProblems("bike_part_problems"),
+
     /** The same ride further down: the route and the charts of its series; and the route's map. */
     RideCompletedAnalysis("ride_completed_analysis"),
     RideMap("ride_map"),
@@ -607,7 +614,10 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                 settings = FakeSettings(guest = true),
                             )
                         )
-                    Screen.BikeEditorDelete ->
+                    Screen.BikeEditorDelete,
+                    Screen.BikeParts,
+                    Screen.BikePartEditor,
+                    Screen.BikePartProblems ->
                         AppShell(
                             FakeDependencies(
                                 bikes =
@@ -758,6 +768,22 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
             onNodeWithTag("bike:edit").performClick()
             onNodeWithTag("bike-editor:delete").performScrollTo().performClick()
+        }
+        Screen.BikeParts,
+        Screen.BikePartEditor,
+        Screen.BikePartProblems -> {
+            onNodeWithContentDescription("Мой трейл", substring = true).performClick()
+            onNodeWithTag("bike:parts").performScrollTo().performClick()
+            when (screen) {
+                Screen.BikePartEditor ->
+                    onNodeWithTag("parts:part:c2").performScrollTo().performClick()
+                Screen.BikePartProblems -> {
+                    onNodeWithTag("parts:add").performClick()
+                    onNodeWithTag("part-editor:save").performScrollTo().performClick()
+                    onNodeWithTag("part-editor:save").performScrollTo()
+                }
+                else -> Unit
+            }
         }
         Screen.Intents,
         Screen.IntentsMine,

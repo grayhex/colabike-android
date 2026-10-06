@@ -95,6 +95,7 @@ fun BikeDetailRoute(
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
     safety: SafetyRepository? = null,
     onEdit: ((id: BikeId) -> Unit)? = null,
+    onEditParts: ((id: BikeId) -> Unit)? = null,
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -119,6 +120,14 @@ fun BikeDetailRoute(
         onOpenComments = onOpenComments,
         onOpenRides = onOpenRides,
         onOpenComponent = onOpenComponent,
+        // The build is changed by the owner on a screen of its own.
+        onEditParts =
+            if (
+                onEditParts != null &&
+                    (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
+            )
+                ({ onEditParts(id) })
+            else null,
         topActions = {
             // The owner changes the bike; everyone else may report it.
             if (
@@ -166,6 +175,7 @@ fun BikeDetailScreen(
     onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComponent: (modelId: String) -> Unit = {},
+    onEditParts: (() -> Unit)? = null,
     topActions: @Composable RowScope.() -> Unit = {},
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
@@ -228,6 +238,7 @@ fun BikeDetailScreen(
                         onOpenComments,
                         onOpenRides,
                         onOpenComponent,
+                        onEditParts,
                     )
             }
         }
@@ -249,6 +260,7 @@ private fun BikeContent(
     onOpenComments: (id: BikeId, name: String) -> Unit,
     onOpenRides: (id: BikeId, name: String) -> Unit,
     onOpenComponent: (modelId: String) -> Unit,
+    onEditParts: (() -> Unit)?,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -376,6 +388,15 @@ private fun BikeContent(
                             onOpenModel = onOpenComponent,
                         )
                     }
+                }
+                if (onEditParts != null) {
+                    ColaListItem(
+                        title = stringResource(R.string.parts_open),
+                        supporting = stringResource(R.string.parts_open_hint),
+                        icon = ColaIcons.Build,
+                        onClick = onEditParts,
+                        modifier = Modifier.testTag("bike:parts"),
+                    )
                 }
                 // Only a public bike has a discussion (the API answers 404 for the rest).
                 if (summary.isPublic) {

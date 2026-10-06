@@ -141,7 +141,7 @@ internal fun BikePhotoDto.toModel(media: MediaUrls): Photo? =
 internal fun AuthorDto.toModel(media: MediaUrls): Person =
     Person(UserId(id.toString()), username, name, media.resolve(avatarUrl))
 
-internal fun BikeComponentDto.toModel(): BikeComponent =
+internal fun BikeComponentDto.toModel(version: String? = null): BikeComponent =
     BikeComponent(
         id = id.toString(),
         // A section added after this release is shown with the "other" ones, not dropped.
@@ -156,6 +156,7 @@ internal fun BikeComponentDto.toModel(): BikeComponent =
         sortOrder = sortOrder,
         priceRub = price,
         modelId = modelId?.toString(),
+        version = version,
     )
 
 /**
