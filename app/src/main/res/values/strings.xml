@@ -133,7 +133,6 @@
     <string name="block_banner">Вы заблокировали этого человека</string>
     <string name="block_banner_hint">Он не видит блокировку и не может подписаться на вас или написать вам.</string>
     <string name="block_unblock">Разблокировать</string>
-    <string name="block_failed">Не удалось изменить блокировку</string>
     <string name="blocked_title">Заблокированные</string>
     <string name="blocked_intro">Эти люди не могут подписаться на вас и написать вам, а вы не видите их в поиске. Они об этом не знают.</string>
     <string name="blocked_empty_title">Никого не блокировали</string>
