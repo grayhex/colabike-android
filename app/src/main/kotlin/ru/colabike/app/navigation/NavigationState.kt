@@ -167,6 +167,7 @@ class Navigator(
                 is Destination.BikeParts,
                 is Destination.BikePart,
                 is Destination.BikePhotos,
+                is Destination.JournalEditor,
                 is Destination.Person,
                 is Destination.Journal,
                 is Destination.Listing,

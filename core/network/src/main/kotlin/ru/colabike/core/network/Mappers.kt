@@ -293,7 +293,7 @@ internal fun JournalSummaryDto.toModel(media: MediaUrls): JournalSummary =
 private fun JournalSummaryDto.Status.toModel() =
     if (this == JournalSummaryDto.Status.draft) JournalStatus.Draft else JournalStatus.Published
 
-internal fun JournalEntryDto.toModel(media: MediaUrls): JournalEntry =
+internal fun JournalEntryDto.toModel(media: MediaUrls, version: String? = null): JournalEntry =
     JournalEntry(
         summary =
             JournalSummary(
@@ -324,6 +324,12 @@ internal fun JournalEntryDto.toModel(media: MediaUrls): JournalEntry =
             photos.mapNotNull { photo ->
                 media.resolve(photo.url)?.let { Photo(photo.id.toString(), it) }
             },
+        version = version,
+        installationResult =
+            installationResult
+                ?.takeIf { it != JournalEntryDto.InstallationResult.unknown_default_open_api }
+                ?.value,
+        rideId = rideId?.toString(),
     )
 
 /** A component of the entry's snapshot is shown like a bike's own: same fields, same rules. */

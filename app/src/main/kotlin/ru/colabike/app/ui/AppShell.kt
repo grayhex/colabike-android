@@ -73,6 +73,7 @@ import ru.colabike.app.intents.IntentEditorRoute
 import ru.colabike.app.intents.IntentRoute
 import ru.colabike.app.intents.IntentsRoute
 import ru.colabike.app.journal.JournalActions
+import ru.colabike.app.journal.JournalEditorRoute
 import ru.colabike.app.journal.JournalListRoute
 import ru.colabike.app.journal.JournalRoute
 import ru.colabike.app.journal.JournalSource
@@ -390,6 +391,14 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         },
                                                         onOpenAuthor = { ref ->
                                                             navigator.open(Destination.Person(ref))
+                                                        },
+                                                        onEdit = { bike, id ->
+                                                            navigator.open(
+                                                                Destination.JournalEditor(
+                                                                    bike.value,
+                                                                    id.value,
+                                                                )
+                                                            )
                                                         },
                                                         onOpenComments = { id, title ->
                                                             navigator.open(
@@ -738,6 +747,35 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onOpenGarage = { navigator.toRoot() },
                                             )
                                         }
+                                        entry<Destination.JournalEditor> { key ->
+                                            JournalEditorRoute(
+                                                journal = dependencies.journal,
+                                                bikes = dependencies.bikes,
+                                                clock = dependencies.clock,
+                                                bikeId = key.bikeId,
+                                                id = key.id,
+                                                onBack = { navigator.back() },
+                                                onSaved = { id ->
+                                                    // Back to the entry being changed, or to where
+                                                    // a new one was begun; a new one is then shown.
+                                                    navigator.back()
+                                                    if (key.id == null)
+                                                        navigator.open(Destination.Journal(id))
+                                                },
+                                                onDeleted = {
+                                                    // The form goes, and so does the page of the
+                                                    // entry that no longer is.
+                                                    navigator.back()
+                                                    if (
+                                                        state.currentStack.lastOrNull() ==
+                                                            Destination.Journal(key.id.orEmpty())
+                                                    ) {
+                                                        navigator.back()
+                                                    }
+                                                },
+                                                onOpenGarage = { navigator.toRoot() },
+                                            )
+                                        }
                                         entry<Destination.BikePhotos> { key ->
                                             BikePhotosRoute(
                                                 repository = dependencies.bikes,
@@ -783,6 +821,11 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 },
                                                 onEditPhotos = { id ->
                                                     navigator.open(Destination.BikePhotos(id.value))
+                                                },
+                                                onNewJournalEntry = { id ->
+                                                    navigator.open(
+                                                        Destination.JournalEditor(id.value)
+                                                    )
                                                 },
                                                 id = BikeId(key.id),
                                                 showBack = !besideList,

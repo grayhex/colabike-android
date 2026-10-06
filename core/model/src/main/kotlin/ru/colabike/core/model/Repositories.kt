@@ -183,6 +183,27 @@ interface JournalRepository {
 
     /** Emitted after every change that went through. */
     val savedChanges: SharedFlow<SavedChange>
+
+    /**
+     * Writes an entry of the signed-in person's own [bike]. [key] (a UUID) is the identity of the
+     * intention: the same key after a lost answer is the same entry, never a second one. Publishing
+     * for everyone needs a confirmed address: [DataError.Rejected] with
+     * `email_verification_required`.
+     */
+    suspend fun create(bike: BikeId, draft: JournalDraft, key: String): JournalEntry
+
+    /**
+     * Changes the named fields of one's own entry. [version] is the one that was read
+     * ([JournalEntry.version]): an entry another device changed first is [DataError.Rejected] with
+     * status 412, never an overwrite. An empty [patch] sends nothing.
+     */
+    suspend fun update(id: JournalId, patch: JournalPatch, version: String?): JournalEntry
+
+    /** Deletes one's own entry with its comments, likes and photos; one already gone is gone. */
+    suspend fun delete(id: JournalId)
+
+    /** Every entry written, changed or deleted through this repository. */
+    val changes: SharedFlow<JournalChange>
 }
 
 /**

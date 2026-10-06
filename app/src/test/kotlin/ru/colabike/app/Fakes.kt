@@ -111,8 +111,11 @@ import ru.colabike.core.model.IntentStatus
 import ru.colabike.core.model.IntentVisibility
 import ru.colabike.core.model.IntentWindow
 import ru.colabike.core.model.IntentsRepository
+import ru.colabike.core.model.JournalChange
+import ru.colabike.core.model.JournalDraft
 import ru.colabike.core.model.JournalEntry
 import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.JournalPatch
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
 import ru.colabike.core.model.LaunchConfig
@@ -769,14 +772,118 @@ class FakeJournal(
     var nextError: DataError? = null
     var saveError: DataError? = null
     private val known = mutableMapOf<String, Boolean>()
-    private val changes = MutableSharedFlow<SavedChange>(extraBufferCapacity = 16)
-    override val savedChanges: SharedFlow<SavedChange> = changes
+    private val savedEmitter = MutableSharedFlow<SavedChange>(extraBufferCapacity = 16)
+    override val savedChanges: SharedFlow<SavedChange> = savedEmitter
+    private val writtenEmitter = MutableSharedFlow<JournalChange>(extraBufferCapacity = 16)
+    override val changes: SharedFlow<JournalChange> = writtenEmitter
 
     private fun fail() {
         nextError?.let {
             nextError = null
             throw it
         }
+    }
+
+    /**
+     * What the entry editor asked for, in order; a [writeError] queued is thrown by the next write.
+     */
+    val created = mutableListOf<Triple<BikeId, JournalDraft, String>>()
+    val updated = mutableListOf<Triple<JournalId, JournalPatch, String?>>()
+    val deleted = mutableListOf<JournalId>()
+    var writeError: DataError? = null
+
+    /** Holds a create until it is completed, to look at the form while it is being saved. */
+    var hold: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+
+    private fun failWrite() {
+        writeError?.let {
+            writeError = null
+            throw it
+        }
+    }
+
+    /** The entry as its author reads it: with a version, and with what the draft says. */
+    private fun JournalEntry.written(
+        draft: JournalDraft,
+        version: String,
+        id: JournalId,
+        bike: BikeId,
+    ) =
+        copy(
+            summary =
+                summary.copy(
+                    id = id,
+                    kind = draft.kind,
+                    title = draft.title.trim(),
+                    status = draft.status,
+                    isPublic = draft.isPublic,
+                    eventDate = draft.eventDate,
+                    mileageKm = draft.mileageKm,
+                    bike = summary.bike.copy(id = bike),
+                    excerpt = "",
+                ),
+            body = draft.body.trim(),
+            components =
+                components.filter { it.id in draft.componentIds } +
+                    draft.componentIds
+                        .filter { part -> components.none { it.id == part } }
+                        .map { BikeComponent(it, "build", "Деталь", "Деталь $it", "") },
+            version = version,
+            installationResult = draft.installationResult,
+        )
+
+    override suspend fun create(bike: BikeId, draft: JournalDraft, key: String): JournalEntry {
+        hold?.await()
+        failWrite()
+        created += Triple(bike, draft, key)
+        val id = JournalId("j-new-${created.size}")
+        val entry = journalEntry(0).written(draft, "\"e1\"", id, bike)
+        entries = entries + (id.value to entry)
+        pages = pages + (null to Page(listOf(entry.summary) + pages[null]?.items.orEmpty(), null))
+        writtenEmitter.tryEmit(JournalChange.Saved(entry))
+        return entry
+    }
+
+    override suspend fun update(
+        id: JournalId,
+        patch: JournalPatch,
+        version: String?,
+    ): JournalEntry {
+        failWrite()
+        updated += Triple(id, patch, version)
+        val before = entries[id.value] ?: throw DataError.NotFound()
+        val draft = before.toDraft()
+        val next =
+            draft.copy(
+                kind = patch.kind ?: draft.kind,
+                title = patch.title ?: draft.title,
+                body = patch.body ?: draft.body,
+                status = patch.status ?: draft.status,
+                isPublic = patch.isPublic ?: draft.isPublic,
+                eventDate = if (patch.clearEventDate) null else patch.eventDate ?: draft.eventDate,
+                mileageKm = if (patch.clearMileage) null else patch.mileageKm ?: draft.mileageKm,
+                installationResult =
+                    if (patch.clearInstallation) null
+                    else patch.installationResult ?: draft.installationResult,
+                componentIds = patch.componentIds ?: draft.componentIds,
+            )
+        val entry = before.written(next, "\"e${updated.size}\"", id, before.summary.bike.id)
+        entries = entries + (id.value to entry)
+        pages = pages.mapValues { (_, page) ->
+            Page(page.items.map { if (it.id == id) entry.summary else it }, page.nextCursor)
+        }
+        writtenEmitter.tryEmit(JournalChange.Saved(entry))
+        return entry
+    }
+
+    override suspend fun delete(id: JournalId) {
+        failWrite()
+        deleted += id
+        entries = entries - id.value
+        pages = pages.mapValues { (_, page) ->
+            Page(page.items.filterNot { it.id == id }, page.nextCursor)
+        }
+        writtenEmitter.tryEmit(JournalChange.Removed(id))
     }
 
     fun know(id: String, saved: Boolean) {
@@ -812,7 +919,7 @@ class FakeJournal(
             throw it
         }
         known[id.value] = saved
-        changes.tryEmit(SavedChange(id, saved))
+        savedEmitter.tryEmit(SavedChange(id, saved))
         return saved
     }
 }
