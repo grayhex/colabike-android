@@ -137,6 +137,41 @@ class AuthControllerTest {
     }
 
     @Test
+    fun `a return that comes while the session is still being read waits for it`() = runTest {
+        // The process was recreated while the browser was in front: the stored session is not read
+        // yet.
+        val session =
+            DeviceSession(
+                plainSessions = ColaBikeApi(config, HttpClients.base(config)).sessions,
+                store = Memory("cola_rt_stored"),
+                device = DeviceInfo("Test", "0.1.0"),
+                media = MediaUrls(config.siteUrl),
+            )
+        val auth =
+            AuthController(
+                session = session,
+                yandex = YandexSignIn(config.siteUrl, "https://colabike.test/app/auth", verifier),
+                yandexReady = { true },
+                revoke = {},
+                scope = this,
+            )
+        auth.beginReauth()
+        assertThat(auth.state.value).isEqualTo(AuthState.Restoring)
+
+        auth.yandexReauth.test {
+            auth.handleLink("https://colabike.test/app/auth?code=$code")
+            // Not taken for a sign-in (which would spend the code and open a second session).
+            expectNoEvents()
+
+            session.restore()
+
+            val proof = awaitItem() as YandexReauth.Proof
+            assertThat(proof.code).isEqualTo(code)
+        }
+        assertThat(auth.state.value).isInstanceOf(AuthState.SignedIn::class.java)
+    }
+
+    @Test
     fun `an address that is not the return is none of its business`() = runTest {
         val auth = controller(this, signedIn = false)
 

@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import ru.colabike.core.auth.AuthState
@@ -112,6 +113,16 @@ class AuthController(
      * [yandexReauth]; a stray one would only leave an error waiting for the next sign-in screen.
      */
     fun handleLink(link: String) {
+        // The process was recreated while the browser was in front: whether this is a sign-in or a
+        // confirmation depends on whether the stored session is there, which is not known until it
+        // has been read. The link waits for that, and is then handled once.
+        if (state.value is AuthState.Restoring) {
+            scope.launch {
+                state.first { it !is AuthState.Restoring }
+                handleLink(link)
+            }
+            return
+        }
         if (state.value is AuthState.SignedIn) {
             when (val result = yandex.handleReturn(link)) {
                 is YandexSignIn.Return.Code -> {
