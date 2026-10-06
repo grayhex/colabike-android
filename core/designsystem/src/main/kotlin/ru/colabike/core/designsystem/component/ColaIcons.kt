@@ -49,6 +49,9 @@ object ColaIcons {
     @DrawableRes val MoreVert = R.drawable.cola_ic_more_vert
     @DrawableRes val Flag = R.drawable.cola_ic_flag
     @DrawableRes val Block = R.drawable.cola_ic_block
+    @DrawableRes val Add = R.drawable.cola_ic_add
+    @DrawableRes val Edit = R.drawable.cola_ic_edit
+    @DrawableRes val Delete = R.drawable.cola_ic_delete
     @DrawableRes val Close = R.drawable.cola_ic_close
     @DrawableRes val Search = R.drawable.cola_ic_search
     @DrawableRes val Bookmark = R.drawable.cola_ic_bookmark

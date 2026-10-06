@@ -14,6 +14,8 @@ data class BikeClassification(
     val construction: String?,
     val electric: Boolean,
     val fatbike: Boolean,
+    /** What the bike is used for, at most three keys of the site's list. */
+    val uses: List<String> = emptyList(),
 )
 
 /** A bike as a list shows it. */
@@ -57,6 +59,14 @@ data class BikeDetail(
     val groupOrder: List<String>,
     val photos: List<Photo>,
     val components: List<BikeComponent>,
+    /**
+     * The server's version of the bike's own fields (`ETag`), known only to the owner: an edit
+     * names it in `If-Match`, so that a change made on another device is a conflict and not an
+     * overwrite.
+     */
+    val version: String? = null,
+    /** Which prices the owner shows to others; known only to the owner. */
+    val priceVisibility: PriceVisibility? = null,
 )
 
 data class BikeComponent(

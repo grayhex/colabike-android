@@ -55,9 +55,13 @@ import ru.colabike.core.model.AnalysisPoint
 import ru.colabike.core.model.AppConfig
 import ru.colabike.core.model.AppNotice
 import ru.colabike.core.model.AppNotification
+import ru.colabike.core.model.BikeChange
+import ru.colabike.core.model.BikeClassification
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
+import ru.colabike.core.model.BikeDraft
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.BikePatch
 import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSearch
@@ -187,6 +191,7 @@ import ru.colabike.core.model.SessionPlatform
 import ru.colabike.core.model.UpcomingRide
 import ru.colabike.core.model.UserId
 import ru.colabike.core.model.ViewerRole
+import ru.colabike.core.model.toDraft
 
 val account =
     Account(
@@ -248,8 +253,66 @@ class FakeBikes(
     /** What the server says to the next like; thrown if it is an error. */
     var likeError: DataError? = null
     val likes = mutableListOf<Pair<BikeId, Boolean>>()
-    private val changes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
-    override val likeChanges: SharedFlow<LikeChange> = changes
+    private val likeFlow = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
+    override val likeChanges: SharedFlow<LikeChange> = likeFlow
+    private val savedFlow = MutableSharedFlow<BikeChange>(extraBufferCapacity = 16)
+    override val changes: SharedFlow<BikeChange> = savedFlow
+
+    /** What the editor asked for, in order; a [writeError] queued is thrown by the next write. */
+    val created = mutableListOf<Pair<BikeDraft, String>>()
+    val updated = mutableListOf<Triple<BikeId, BikePatch, String?>>()
+    val deleted = mutableListOf<BikeId>()
+    var writeError: DataError? = null
+
+    private fun failWrite() {
+        writeError?.let {
+            writeError = null
+            throw it
+        }
+    }
+
+    /** Holds a create until it is completed, to look at the form while it is being saved. */
+    var hold: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+
+    override suspend fun create(draft: BikeDraft, key: String): BikeDetail {
+        hold?.await()
+        failWrite()
+        created += draft to key
+        val bike =
+            PreviewData.bikeDetail.fromDraft(BikeId("b-new-${created.size}"), draft, "\"v1\"")
+        details = details + (bike.summary.id.value to bike)
+        pages = pages + (null to Page(listOf(bike.summary) + pages[null]?.items.orEmpty(), null))
+        savedFlow.tryEmit(BikeChange.Saved(bike))
+        return bike
+    }
+
+    override suspend fun update(id: BikeId, patch: BikePatch, version: String?): BikeDetail {
+        failWrite()
+        updated += Triple(id, patch, version)
+        val before = bike(id)
+        val bike =
+            before.fromDraft(
+                id,
+                (before.toDraft().applying(patch)),
+                "\"v${updated.size + 1}\"",
+            )
+        details = details + (id.value to bike)
+        pages = pages.mapValues { (_, page) ->
+            Page(page.items.map { if (it.id == id) bike.summary else it }, page.nextCursor)
+        }
+        savedFlow.tryEmit(BikeChange.Saved(bike))
+        return bike
+    }
+
+    override suspend fun delete(id: BikeId) {
+        failWrite()
+        deleted += id
+        details = details - id.value
+        pages = pages.mapValues { (_, page) ->
+            Page(page.items.filterNot { it.id == id }, page.nextCursor)
+        }
+        savedFlow.tryEmit(BikeChange.Removed(id))
+    }
 
     /** Details by id; a bike without an entry gets a plain page made from its summary. */
     var details: Map<String, BikeDetail> = emptyMap()
@@ -310,10 +373,66 @@ class FakeBikes(
         }
         val current = pages.values.flatMap { it.items }.firstOrNull { it.id == id }?.likes ?: 0
         return LikeState(liked, (current + if (liked) 1 else -1).coerceAtLeast(0)).also {
-            changes.tryEmit(LikeChange(id, it))
+            likeFlow.tryEmit(LikeChange(id, it))
         }
     }
 }
+
+/** A saved bike as the server would answer it: the page of [this] with the draft's fields. */
+fun BikeDetail.fromDraft(id: BikeId, draft: BikeDraft, version: String): BikeDetail =
+    copy(
+        summary =
+            summary.copy(
+                id = id,
+                name = draft.name.trim(),
+                brand = draft.brand.trim(),
+                model = draft.model.trim(),
+                year = draft.year,
+                classification =
+                    BikeClassification(
+                        category = draft.classification.category,
+                        subtype = draft.classification.subtype,
+                        suspension = draft.classification.suspension,
+                        construction = draft.classification.construction,
+                        electric = draft.classification.electric,
+                        fatbike = draft.classification.fatbike,
+                        uses = draft.classification.uses,
+                    ),
+                isOwner = true,
+                isPublic = draft.isPublic,
+                isFormer = draft.isFormer,
+            ),
+        trim = draft.trim,
+        description = draft.description,
+        color = draft.color,
+        size = draft.size,
+        weightKg = draft.weightKg,
+        mileageKm = draft.mileageKm,
+        priceRub = draft.priceRub,
+        priceVisibility = draft.priceVisibility,
+        version = version,
+    )
+
+/** The draft with a patch applied, as the server applies it. */
+fun BikeDraft.applying(patch: BikePatch): BikeDraft =
+    copy(
+        name = patch.name ?: name,
+        brand = patch.brand ?: brand,
+        model = patch.model ?: model,
+        trim = patch.trim ?: trim,
+        year = patch.year ?: year,
+        classification = patch.classification ?: classification,
+        description = patch.description ?: description,
+        color = patch.color ?: color,
+        size = patch.size ?: size,
+        weightKg = if (patch.clearWeight) null else patch.weightKg ?: weightKg,
+        mileageKm = patch.mileageKm ?: mileageKm,
+        manufacturerUrl = patch.manufacturerUrl ?: manufacturerUrl,
+        priceRub = if (patch.clearPrice) null else patch.priceRub ?: priceRub,
+        priceVisibility = patch.priceVisibility ?: priceVisibility,
+        isFormer = patch.isFormer ?: isFormer,
+        isPublic = patch.isPublic ?: isPublic,
+    )
 
 val rider = Person(UserId("u-rider"), "test-rider", "Тестовый Райдер", null)
 

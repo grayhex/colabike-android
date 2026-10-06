@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -92,6 +94,7 @@ fun BikeDetailRoute(
     onOpenComponent: (modelId: String) -> Unit = {},
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
     safety: SafetyRepository? = null,
+    onEdit: ((id: BikeId) -> Unit)? = null,
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -117,6 +120,21 @@ fun BikeDetailRoute(
         onOpenRides = onOpenRides,
         onOpenComponent = onOpenComponent,
         topActions = {
+            // The owner changes the bike; everyone else may report it.
+            if (
+                onEdit != null &&
+                    (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
+            ) {
+                IconButton(
+                    onClick = { onEdit(id) },
+                    modifier = Modifier.testTag("bike:edit"),
+                ) {
+                    Icon(
+                        painterResource(ColaIcons.Edit),
+                        contentDescription = stringResource(R.string.bike_edit_open),
+                    )
+                }
+            }
             ReportMenu(
                 target = ReportTarget(ReportKind.Bike, id.value),
                 authorId = (state as? BikeDetailUiState.Loaded)?.bike?.summary?.author?.id,

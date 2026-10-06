@@ -80,6 +80,8 @@ class BikesViewModel(
                 }
             }
         }
+        // A bike made, changed or deleted in the editor changes the list: read it again.
+        viewModelScope.launch { repository.changes.collect { refresh() } }
         // A like given on the bike's page shows here without loading the list again.
         viewModelScope.launch {
             repository.likeChanges.collect { change ->

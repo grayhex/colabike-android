@@ -50,6 +50,7 @@ import ru.colabike.core.model.Page
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.PersonSummary
 import ru.colabike.core.model.Photo
+import ru.colabike.core.model.PriceVisibility
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ProfileCounts
 import ru.colabike.core.model.Relationship
@@ -90,9 +91,11 @@ internal fun ClassificationDto.toModel(): BikeClassification =
         construction = construction,
         electric = electric,
         fatbike = fatbike,
+        uses = uses,
     )
 
-internal fun BikeDto.toModel(media: MediaUrls): BikeDetail =
+/** [version] is the `ETag` the owner's answer came with; other readers get none. */
+internal fun BikeDto.toModel(media: MediaUrls, version: String? = null): BikeDetail =
     BikeDetail(
         summary =
             BikeSummary(
@@ -125,6 +128,11 @@ internal fun BikeDto.toModel(media: MediaUrls): BikeDetail =
         groupOrder = groupOrder,
         photos = photos.mapNotNull { it.toModel(media) },
         components = components.map { it.toModel() },
+        version = version,
+        priceVisibility =
+            priceVisibility?.let {
+                PriceVisibility(it.bike, it.components, it.accessories)
+            },
     )
 
 internal fun BikePhotoDto.toModel(media: MediaUrls): Photo? =

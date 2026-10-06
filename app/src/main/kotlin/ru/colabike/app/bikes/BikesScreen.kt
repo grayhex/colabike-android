@@ -78,6 +78,7 @@ fun BikesRoute(
     onSearch: () -> Unit = {},
     onOpenCatalog: (() -> Unit)? = null,
     onOpenMarket: (() -> Unit)? = null,
+    onCreate: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
 ) {
@@ -99,6 +100,8 @@ fun BikesRoute(
         onOpenSearch = onSearch,
         onOpenCatalog = onOpenCatalog,
         onOpenMarket = onOpenMarket,
+        // A new bike is the signed-in person's own: a guest has no garage to add it to.
+        onCreate = if (authState is AuthState.SignedIn) onCreate else null,
         scrollToTop = scrollToTop,
     )
 }
@@ -123,6 +126,7 @@ fun BikesScreen(
     onOpenSearch: (() -> Unit)? = null,
     onOpenCatalog: (() -> Unit)? = null,
     onOpenMarket: (() -> Unit)? = null,
+    onCreate: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
 ) {
     Scaffold(
@@ -131,6 +135,18 @@ fun BikesScreen(
             ColaTopBar(
                 title = stringResource(R.string.bikes_title),
                 actions = {
+                    // A new bike of one's own.
+                    if (onCreate != null) {
+                        IconButton(
+                            onClick = onCreate,
+                            modifier = Modifier.testTag("bikes:add"),
+                        ) {
+                            Icon(
+                                painterResource(ColaIcons.Add),
+                                contentDescription = stringResource(R.string.bike_add),
+                            )
+                        }
+                    }
                     // The wide search: builds by components and facets, and people.
                     if (onOpenSearch != null) {
                         IconButton(onClick = onOpenSearch) {

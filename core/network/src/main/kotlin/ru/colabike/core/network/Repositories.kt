@@ -21,8 +21,11 @@ import ru.colabike.core.model.AccountDeletionRepository
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.AccountSessionsRepository
+import ru.colabike.core.model.BikeChange
 import ru.colabike.core.model.BikeDetail
+import ru.colabike.core.model.BikeDraft
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.BikePatch
 import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeScope
 import ru.colabike.core.model.BikeSearch
@@ -50,9 +53,13 @@ class NetworkBikesRepository(
     private val searchApi: SearchApi,
     private val media: MediaUrls,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /** The bikes API whose `PATCH` body also names these fields as `null` (a weight, a price). */
+    private val clearing: (nulls: Set<String>) -> BikesApi = { api },
 ) : BikesRepository {
-    private val changes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
-    override val likeChanges: SharedFlow<LikeChange> = changes.asSharedFlow()
+    private val likes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
+    override val likeChanges: SharedFlow<LikeChange> = likes.asSharedFlow()
+    private val saved = MutableSharedFlow<BikeChange>(extraBufferCapacity = 16)
+    override val changes: SharedFlow<BikeChange> = saved.asSharedFlow()
 
     override suspend fun bikes(query: BikeQuery, cursor: String?, limit: Int): Page<BikeSummary> =
         apiCall(dispatcher) {
@@ -94,7 +101,50 @@ class NetworkBikesRepository(
         // A malformed id cannot name a bike; the API would answer 404 as well.
         val uuid =
             runCatching { UUID.fromString(id.value) }.getOrNull() ?: throw DataError.NotFound()
-        return apiCall(dispatcher) { api.getBike(uuid) }.toModel(media)
+        // The owner's answer carries the version an edit names in `If-Match`.
+        return apiCall(dispatcher) { api.getBikeWithHttpInfo(uuid).valueAndTag() }
+            .let { (dto, tag) -> dto.toModel(media, tag) }
+    }
+
+    override suspend fun create(draft: BikeDraft, key: String): BikeDetail {
+        // The key is a UUID by contract; a bad one is a bug here, not a request to send.
+        require(runCatching { UUID.fromString(key) }.isSuccess) { "Idempotency-Key must be a UUID" }
+        val request = draft.toRequest()
+        return apiCall(dispatcher) {
+                api.createBikeWithHttpInfo(UUID.fromString(key), request).valueAndTag()
+            }
+            .let { (dto, tag) -> dto.toModel(media, tag) }
+            .also { saved.tryEmit(BikeChange.Saved(it)) }
+    }
+
+    override suspend fun update(id: BikeId, patch: BikePatch, version: String?): BikeDetail {
+        val uuid =
+            runCatching { UUID.fromString(id.value) }.getOrNull() ?: throw DataError.NotFound()
+        // An edit applies to the version that was read; without one the server would answer 428.
+        val tag = version ?: throw DataError.Rejected(428, "precondition_required", "")
+        if (patch.isEmpty) return bike(id)
+        val nulls = buildSet {
+            if (patch.clearWeight) add("weight")
+            if (patch.clearPrice) add("price")
+        }
+        val request = patch.toRequest()
+        return apiCall(dispatcher) {
+                clearing(nulls).updateBikeWithHttpInfo(uuid, tag, request).valueAndTag()
+            }
+            .let { (dto, newTag) -> dto.toModel(media, newTag) }
+            .also { saved.tryEmit(BikeChange.Saved(it)) }
+    }
+
+    override suspend fun delete(id: BikeId) {
+        val uuid =
+            runCatching { UUID.fromString(id.value) }.getOrNull() ?: throw DataError.NotFound()
+        try {
+            apiCall(dispatcher) { api.deleteBike(uuid) }
+        } catch (_: DataError.NotFound) {
+            // Deleted elsewhere first: what was asked for has happened, and the lists that still
+            // show the bike are told as well.
+        }
+        saved.tryEmit(BikeChange.Removed(id))
     }
 
     override suspend fun setLiked(id: BikeId, liked: Boolean): LikeState {
@@ -102,7 +152,7 @@ class NetworkBikesRepository(
             runCatching { UUID.fromString(id.value) }.getOrNull() ?: throw DataError.NotFound()
         val answer = apiCall(dispatcher) { if (liked) api.likeBike(uuid) else api.unlikeBike(uuid) }
         return LikeState(liked = answer.liked, likes = answer.likes).also {
-            changes.tryEmit(LikeChange(id, it))
+            likes.tryEmit(LikeChange(id, it))
         }
     }
 

@@ -23,6 +23,27 @@ interface BikesRepository {
 
     /** Emitted after every like that went through, so lists and details agree without a reload. */
     val likeChanges: SharedFlow<LikeChange>
+
+    /**
+     * Makes a bike of the signed-in person. [key] (a UUID) is the identity of the intention: the
+     * same key after a lost answer is the same bike, never a second one. Publishing
+     * ([BikeDraft.isPublic]) needs a confirmed address: [DataError.Rejected] with
+     * `email_verification_required`.
+     */
+    suspend fun create(draft: BikeDraft, key: String): BikeDetail
+
+    /**
+     * Changes the named fields of one's own bike. [version] is the one that was read
+     * ([BikeDetail.version]): a bike another device changed first is [DataError.Rejected] with
+     * status 412, never an overwrite. An empty [patch] sends nothing.
+     */
+    suspend fun update(id: BikeId, patch: BikePatch, version: String?): BikeDetail
+
+    /** Deletes one's own bike; one with rides is [DataError.Rejected] with status 409. */
+    suspend fun delete(id: BikeId)
+
+    /** Every bike saved or deleted through this repository, for lists and pages to agree. */
+    val changes: SharedFlow<BikeChange>
 }
 
 /** The signed-in person. Implementations throw [DataError] on failure. */
