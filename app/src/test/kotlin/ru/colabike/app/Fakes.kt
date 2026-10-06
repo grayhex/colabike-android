@@ -280,6 +280,8 @@ class FakeBikes(
         created += draft to key
         val bike =
             PreviewData.bikeDetail.fromDraft(BikeId("b-new-${created.size}"), draft, "\"v1\"")
+        details = details + (bike.summary.id.value to bike)
+        pages = pages + (null to Page(listOf(bike.summary) + pages[null]?.items.orEmpty(), null))
         savedFlow.tryEmit(BikeChange.Saved(bike))
         return bike
     }
@@ -294,6 +296,10 @@ class FakeBikes(
                 (before.toDraft().applying(patch)),
                 "\"v${updated.size + 1}\"",
             )
+        details = details + (id.value to bike)
+        pages = pages.mapValues { (_, page) ->
+            Page(page.items.map { if (it.id == id) bike.summary else it }, page.nextCursor)
+        }
         savedFlow.tryEmit(BikeChange.Saved(bike))
         return bike
     }
@@ -301,6 +307,10 @@ class FakeBikes(
     override suspend fun delete(id: BikeId) {
         failWrite()
         deleted += id
+        details = details - id.value
+        pages = pages.mapValues { (_, page) ->
+            Page(page.items.filterNot { it.id == id }, page.nextCursor)
+        }
         savedFlow.tryEmit(BikeChange.Removed(id))
     }
 

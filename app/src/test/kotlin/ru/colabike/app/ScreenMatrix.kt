@@ -71,6 +71,7 @@ import ru.colabike.core.model.ServiceLinks
 import ru.colabike.core.model.UpdateMode
 import ru.colabike.core.model.UpdateState
 import ru.colabike.core.model.UserId
+import ru.colabike.core.model.toDraft
 
 /** Every screen of the app, as AGENTS.md requires it in screenshots. */
 enum class Screen(val file: String) {
@@ -148,6 +149,11 @@ enum class Screen(val file: String) {
     Intent("intent"),
     IntentOwn("intent_own"),
     IntentEditor("intent_editor"),
+
+    /** The form of a bike: empty, with its findings shown, and the question before a deletion. */
+    BikeEditorNew("bike_editor_new"),
+    BikeEditorProblems("bike_editor_problems"),
+    BikeEditorDelete("bike_editor_delete"),
 
     /** The same ride further down: the route and the charts of its series; and the route's map. */
     RideCompletedAnalysis("ride_completed_analysis"),
@@ -601,6 +607,14 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                 settings = FakeSettings(guest = true),
                             )
                         )
+                    Screen.BikeEditorDelete ->
+                        AppShell(
+                            FakeDependencies(
+                                bikes =
+                                    FakeBikes(mapOf(null to Page(listOf(ownBike.summary), null)))
+                                        .apply { details = mapOf("b-own" to ownBike) }
+                            )
+                        )
                     else ->
                         AppShell(
                             FakeDependencies(
@@ -732,6 +746,19 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                 else -> Unit
             }
         }
+        Screen.BikeEditorNew -> onNodeWithTag("bikes:add").performClick()
+        Screen.BikeEditorProblems -> {
+            onNodeWithTag("bikes:add").performClick()
+            // The findings are shown once the person tried to save an empty form.
+            onNodeWithTag("bike-editor:save").performScrollTo().performClick()
+            // The findings pushed the button down: bring it, and what is above it, back.
+            onNodeWithTag("bike-editor:save").performScrollTo()
+        }
+        Screen.BikeEditorDelete -> {
+            onNodeWithContentDescription("Мой трейл", substring = true).performClick()
+            onNodeWithTag("bike:edit").performClick()
+            onNodeWithTag("bike-editor:delete").performScrollTo().performClick()
+        }
         Screen.Intents,
         Screen.IntentsMine,
         Screen.Intent,
@@ -821,3 +848,11 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
     waitForIdle()
     captureWhenDrawn("src/test/screenshots/${screen.file}_${window}_${look.file}.png")
 }
+
+/** The viewer's own bike, for the screens that change or delete one. */
+private val ownBike =
+    PreviewData.bikeDetail.fromDraft(
+        BikeId("b-own"),
+        PreviewData.bikeDetail.toDraft().copy(name = "Мой трейл"),
+        "\"v1\"",
+    )

@@ -138,12 +138,14 @@ private fun Form(state: BikeEditorUiState.Editing, editing: Boolean, actions: Bi
                 Modifier.widthIn(max = ContentWidth).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.l),
             ) {
-                Outcome(state, actions)
                 MainCard(state, actions)
                 TypeCard(state, actions)
                 DetailsCard(state, actions)
                 PriceCard(state, actions)
                 AudienceCard(state, actions)
+                // Next to the button that was just pressed: at the top of a form this long the
+                // findings would be out of sight.
+                Outcome(state, actions)
                 Button(
                     onClick = actions.onSave,
                     enabled = !state.saving && !state.deleting,
