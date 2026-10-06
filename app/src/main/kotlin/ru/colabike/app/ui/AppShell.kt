@@ -55,6 +55,7 @@ import ru.colabike.app.about.AboutRoute
 import ru.colabike.app.about.LicensesRoute
 import ru.colabike.app.account.DeleteAccountRoute
 import ru.colabike.app.bikes.BikeDetailRoute
+import ru.colabike.app.bikes.BikeEditorRoute
 import ru.colabike.app.bikes.BikesRoute
 import ru.colabike.app.comments.CommentsRoute
 import ru.colabike.app.components.ComponentRoute
@@ -595,6 +596,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 commentChanges = dependencies.comments.countChanges,
                                                 onOpen = { id -> navigator.openBike(id.value) },
                                                 onSearch = { navigator.open(Destination.Search()) },
+                                                onCreate = {
+                                                    navigator.open(Destination.BikeEditor())
+                                                },
                                                 onOpenCatalog =
                                                     if (
                                                         features.isEnabled(Feature.ComponentCatalog)
@@ -689,6 +693,34 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 },
                                             )
                                         }
+                                        entry<Destination.BikeEditor> { key ->
+                                            BikeEditorRoute(
+                                                repository = dependencies.bikes,
+                                                id = key.id,
+                                                onBack = { navigator.back() },
+                                                onSaved = { id ->
+                                                    // Back to the page being changed, or to the
+                                                    // list a new bike was made from; a new bike
+                                                    // is then shown.
+                                                    navigator.back()
+                                                    if (key.id == null) navigator.openBike(id)
+                                                },
+                                                onDeleted = {
+                                                    // The form goes, and so does the page of the
+                                                    // bike that no longer is.
+                                                    navigator.back()
+                                                    if (
+                                                        state.currentStack.lastOrNull() ==
+                                                            Destination.Bike(key.id.orEmpty())
+                                                    ) {
+                                                        navigator.back()
+                                                    }
+                                                },
+                                                onOpenGarage = {
+                                                    navigator.back()
+                                                },
+                                            )
+                                        }
                                         entry<Destination.Bike>(
                                             metadata = ListDetailSceneStrategy.detailPane()
                                         ) { key ->
@@ -707,6 +739,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 auth = dependencies.auth,
                                                 links = dependencies.links,
                                                 safety = dependencies.safety,
+                                                onEdit = { id ->
+                                                    navigator.open(Destination.BikeEditor(id.value))
+                                                },
                                                 id = BikeId(key.id),
                                                 showBack = !besideList,
                                                 onBack = { navigator.back() },

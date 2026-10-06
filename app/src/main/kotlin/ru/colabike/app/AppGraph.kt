@@ -221,7 +221,8 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
 
     private val api = ColaBikeApi(config, httpClient)
 
-    override val bikes: BikesRepository = NetworkBikesRepository(api.bikes, api.search, media)
+    override val bikes: BikesRepository =
+        NetworkBikesRepository(api.bikes, api.search, media, clearing = api::bikesWithNulls)
     override val account: AccountRepository = NetworkAccountRepository(api.account, media)
     override val accountDeletion: AccountDeletionRepository =
         NetworkAccountDeletionRepository(api.account)

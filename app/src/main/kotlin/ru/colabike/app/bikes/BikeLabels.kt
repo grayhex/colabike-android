@@ -40,7 +40,7 @@ object BikeLabels {
             "trekking" to "Trekking",
             "touring" to "Touring",
             "cruiser" to "Cruiser",
-            "race" to "Race",
+            "bmx_race" to "Race",
             "freestyle" to "Freestyle",
             "street_park" to "Street / Park",
             "cargo" to "Cargo",
@@ -64,7 +64,34 @@ object BikeLabels {
             "recumbent" to "Recumbent",
         )
 
+    private val uses =
+        mapOf(
+            "racing" to "Racing",
+            "xc" to "XC",
+            "trail" to "Trail",
+            "enduro" to "Enduro",
+            "downhill" to "Downhill",
+            "gravel" to "Gravel",
+            "cyclocross" to "Cyclocross",
+            "road_racing" to "Road Racing",
+            "audax_endurance" to "Audax / Endurance",
+            "commuting" to "Commuting",
+            "touring" to "Touring",
+            "bikepacking" to "Bikepacking",
+            "cargo" to "Cargo",
+            "leisure" to "Leisure",
+        )
+
     fun category(key: String): String? = categoryNames[key]
+
+    /** The words of the editor's choices; a key the app does not know shows as itself. */
+    fun subtype(key: String): String = subtypes[key] ?: key
+
+    fun suspension(key: String): String = suspensions[key] ?: key
+
+    fun construction(key: String): String = constructions[key] ?: key
+
+    fun use(key: String): String = uses[key] ?: key
 
     /**
      * The few facts that say what the bike is, at most three, as the site's badges do: the family

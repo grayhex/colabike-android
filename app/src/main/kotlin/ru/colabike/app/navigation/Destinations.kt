@@ -32,6 +32,9 @@ sealed interface Destination : NavKey {
 
     @Serializable data class Bike(val id: String) : Destination
 
+    /** The form of a bike: a new one when [id] is null, else a change of that one. */
+    @Serializable data class BikeEditor(val id: String? = null) : Destination
+
     @Serializable data object Rides : Destination
 
     /** A ride or a plan; [id] is its UUID. */

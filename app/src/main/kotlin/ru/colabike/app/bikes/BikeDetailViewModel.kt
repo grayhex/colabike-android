@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
+import ru.colabike.core.model.BikeChange
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
@@ -63,6 +64,21 @@ class BikeDetailViewModel(
                                 )
                         )
                     }
+                }
+            }
+        }
+        // The bike saved in the editor is the page now; one deleted there is no longer here.
+        viewModelScope.launch {
+            repository.changes.collect { change ->
+                when {
+                    change is BikeChange.Saved && change.bike.summary.id == id ->
+                        mutableState.value = BikeDetailUiState.Loaded(change.bike)
+                    change is BikeChange.Removed && change.id == id ->
+                        mutableState.value =
+                            BikeDetailUiState.Failed(
+                                DataError.NotFound().toUiText(),
+                                notFound = true,
+                            )
                 }
             }
         }
