@@ -152,6 +152,43 @@ class BikePartEditorViewModelTest {
     }
 
     @Test
+    fun `a site's category typed in lower case is the site's category`() = runTest {
+        val vm = creating()
+
+        vm.setCategory("звонок")
+        vm.setName("Лёгкий звонок")
+        vm.save()
+
+        val draft = bikes.addedParts.single().second
+        assertThat(draft.category).isEqualTo("Звонок")
+        assertThat(draft.groupId).isEqualTo("equipment")
+        assertThat(draft.section).isEqualTo("accessories")
+    }
+
+    @Test
+    fun `a category left as it was keeps its spelling and its group`() = runTest {
+        bikes.details =
+            mapOf(
+                "b-own" to
+                    ownBike.copy(
+                        components =
+                            ownBike.components.map {
+                                if (it.id == "c2")
+                                    it.copy(category = "цепь", groupId = "drivetrain")
+                                else it
+                            }
+                    )
+            )
+        val vm = changing()
+
+        vm.setName("Другое имя")
+        vm.save()
+
+        assertThat(bikes.changedParts.single().second)
+            .isEqualTo(ComponentPatch(name = "Другое имя"))
+    }
+
+    @Test
     fun `a section the person chose is not changed by the category`() = runTest {
         val vm = creating()
 

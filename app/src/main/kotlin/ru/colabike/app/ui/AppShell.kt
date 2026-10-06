@@ -718,9 +718,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         navigator.back()
                                                     }
                                                 },
-                                                onOpenGarage = {
-                                                    navigator.back()
-                                                },
+                                                onOpenGarage = { navigator.toRoot() },
                                             )
                                         }
                                         entry<Destination.BikeParts> { key ->
@@ -736,7 +734,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         Destination.BikePart(key.bikeId, part)
                                                     )
                                                 },
-                                                onOpenGarage = { navigator.back() },
+                                                onOpenGarage = { navigator.toRoot() },
                                             )
                                         }
                                         entry<Destination.BikePart> { key ->
@@ -746,7 +744,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 componentId = key.id,
                                                 onBack = { navigator.back() },
                                                 onDone = { navigator.back() },
-                                                onOpenGarage = { navigator.back() },
+                                                onOpenGarage = { navigator.toRoot() },
                                             )
                                         }
                                         entry<Destination.Bike>(

@@ -79,6 +79,15 @@ class ComponentEditingTest {
     }
 
     @Test
+    fun `a category of the site is known in any case, and takes the site's spelling`() {
+        assertThat(ComponentCatalog.canonical(" звонок ")).isEqualTo("Звонок")
+        assertThat(ComponentCatalog.canonical("Что-то своё ")).isEqualTo("Что-то своё")
+        assertThat(ComponentCatalog.groupIdOf("звонок")).isEqualTo("equipment")
+        assertThat(ComponentCatalog.sectionOf("ЗВОНОК")).isEqualTo("accessories")
+        assertThat(ComponentCatalog.groupIdOf("цепь")).isEqualTo("drivetrain")
+    }
+
+    @Test
     fun `suggestions are the categories that hold the typed text, beginnings first`() {
         val found = ComponentCatalog.suggestions("пер")
 

@@ -56,13 +56,15 @@ data class PartForm(
                         problems += ComponentProblem.PriceInvalid
                         null
                     }
-        val group =
-            if (original != null && original.category == category.trim()) original.groupId
-            else ComponentCatalog.groupIdOf(category)
+        // A category left as it was stays as it was, with its group; one that was changed is the
+        // site's spelling when it is a site's category ("звонок" is "Звонок"), else as typed.
+        val unchanged = original != null && original.category == category.trim()
+        val group = if (unchanged) original!!.groupId else ComponentCatalog.groupIdOf(category)
         val draft =
             ComponentDraft(
                 section = section,
-                category = category,
+                category =
+                    if (unchanged) original!!.category else ComponentCatalog.canonical(category),
                 name = name,
                 notes = notes,
                 priceRub = parsedPrice,

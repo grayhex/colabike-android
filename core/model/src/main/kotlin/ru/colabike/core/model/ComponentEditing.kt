@@ -171,13 +171,24 @@ object ComponentCatalog {
 
     private val every: List<String> = groups.flatMap { it.categories }
 
-    /** The group a category belongs to; empty for a category of the person's own. */
-    fun groupIdOf(category: String): String =
-        groups.firstOrNull { category.trim() in it.categories }?.id.orEmpty()
+    /**
+     * The site's spelling of a category the person typed in any case ("звонок" is "Звонок"); the
+     * text as typed, trimmed, for a category of the person's own.
+     */
+    fun canonical(category: String): String {
+        val text = category.trim()
+        return every.firstOrNull { it.equals(text, ignoreCase = true) } ?: text
+    }
+
+    /** The group a category belongs to, in any case; empty for a category of the person's own. */
+    fun groupIdOf(category: String): String {
+        val known = canonical(category)
+        return groups.firstOrNull { known in it.categories }?.id.orEmpty()
+    }
 
     /** `accessories` for the site's equipment categories, `build` for the rest. */
     fun sectionOf(category: String): String =
-        if (category.trim() in accessoryCategories) SECTION_ACCESSORIES else SECTION_BUILD
+        if (canonical(category) in accessoryCategories) SECTION_ACCESSORIES else SECTION_BUILD
 
     /** The name of a group by its key, or null for a key (or a category) that is not the site's. */
     fun groupName(key: String): String? = groups.firstOrNull { it.id == key }?.name

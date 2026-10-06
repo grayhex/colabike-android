@@ -55,6 +55,21 @@ class NavigatorTest {
     }
 
     @Test
+    fun `to the root drops every screen opened above it and stays in the section`() {
+        navigator.openBike("b1")
+        navigator.open(Destination.BikeParts("b1"))
+        navigator.open(Destination.BikePart("b1"))
+
+        navigator.toRoot()
+
+        assertThat(state.currentStack).containsExactly(bikes)
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+        // At the root already, it does nothing (and the screen is not told to scroll).
+        navigator.toRoot()
+        assertThat(state.currentStack).containsExactly(bikes)
+    }
+
+    @Test
     fun `tapping the current section at its root asks the screen to scroll to the top`() = runTest {
         navigator.reselects(bikes).test {
             navigator.select(bikes)
