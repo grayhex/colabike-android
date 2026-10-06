@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -27,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -81,6 +83,8 @@ class JournalActions(
     val onOpenAuthor: (ref: String) -> Unit,
     val onOpenComments: (id: JournalId, title: String) -> Unit = { _, _ -> },
     val onOpenComponent: (modelId: String) -> Unit = {},
+    /** The author changes the entry: the bike it is about and the entry. */
+    val onEdit: (bike: BikeId, id: JournalId) -> Unit = { _, _ -> },
 )
 
 @Composable
@@ -108,6 +112,19 @@ fun JournalRoute(
         onToggleSaved = if (signedIn) viewModel::toggleSaved else signIn,
         onOpenLink = opener::open,
         topActions = {
+            // Only the author is given the version a change names: the others have nothing to edit.
+            val own = (state as? JournalUiState.Loaded)?.entry?.takeIf { it.version != null }
+            if (own != null) {
+                IconButton(
+                    onClick = { actions.onEdit(own.summary.bike.id, own.summary.id) },
+                    modifier = Modifier.testTag("journal:edit"),
+                ) {
+                    Icon(
+                        painterResource(ColaIcons.Edit),
+                        contentDescription = stringResource(R.string.journal_edit),
+                    )
+                }
+            }
             ReportMenu(
                 target = ReportTarget(ReportKind.Journal, id.value),
                 authorId = (state as? JournalUiState.Loaded)?.entry?.summary?.author?.id,
@@ -232,6 +249,16 @@ private fun Entry(
                     day?.let { PillBadge(it, icon = ColaIcons.Calendar) }
                     mileage?.let { PillBadge(it, icon = ColaIcons.Route) }
                 }
+            }
+            entry.installationResult?.let {
+                Text(
+                    stringResource(
+                        R.string.journal_install_named,
+                        stringResource(installLabel(it)),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.testTag("journal:installation"),
+                )
             }
             ColaListItem(
                 title = summary.bike.name,

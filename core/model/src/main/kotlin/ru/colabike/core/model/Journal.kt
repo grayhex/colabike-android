@@ -52,6 +52,15 @@ data class JournalEntry(
     val body: String,
     val components: List<BikeComponent>,
     val photos: List<Photo>,
+    /**
+     * The version an edit names (`ETag`): the server gives it to the author only, so a null here is
+     * also "not yours to change".
+     */
+    val version: String? = null,
+    /** How an installation went (`direct`, `modified`, `failed`); only an entry of kind `build`. */
+    val installationResult: String? = null,
+    /** The ride the entry is tied to; the server says it to the author only. */
+    val rideId: String? = null,
 )
 
 /** The state of "saved" after a `PUT` or `DELETE`, announced to every screen showing the entry. */

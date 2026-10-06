@@ -93,30 +93,33 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
      * the body is completed here, once, in one place.
      */
     fun bikesWithNulls(nulls: Set<String>): BikesApi =
-        BikesApi(
-            config.apiBaseUrl,
-            client
-                .newBuilder()
-                .addInterceptor { chain ->
-                    val request = chain.request()
-                    val body = request.body
-                    if (nulls.isEmpty() || body == null)
-                        return@addInterceptor chain.proceed(request)
-                    val sent = Buffer().also { body.writeTo(it) }.readUtf8()
-                    val whole = Json.parseToJsonElement(sent).jsonObject
-                    val completed = JsonObject(whole + nulls.associateWith { JsonNull })
-                    chain.proceed(
-                        request
-                            .newBuilder()
-                            .method(
-                                request.method,
-                                completed.toString().toRequestBody(body.contentType()),
-                            )
-                            .build()
-                    )
-                }
-                .build(),
-        )
+        BikesApi(config.apiBaseUrl, clientWithNulls(nulls))
+
+    /** The journal for a `PATCH` that names [nulls] as `null`: a date, a mileage taken away. */
+    fun journalWithNulls(nulls: Set<String>): JournalApi =
+        JournalApi(config.apiBaseUrl, clientWithNulls(nulls))
+
+    private fun clientWithNulls(nulls: Set<String>): OkHttpClient =
+        client
+            .newBuilder()
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val body = request.body
+                if (nulls.isEmpty() || body == null) return@addInterceptor chain.proceed(request)
+                val sent = Buffer().also { body.writeTo(it) }.readUtf8()
+                val whole = Json.parseToJsonElement(sent).jsonObject
+                val completed = JsonObject(whole + nulls.associateWith { JsonNull })
+                chain.proceed(
+                    request
+                        .newBuilder()
+                        .method(
+                            request.method,
+                            completed.toString().toRequestBody(body.contentType()),
+                        )
+                        .build()
+                )
+            }
+            .build()
 
     /**
      * Bikes for sending a picture: a call that may take minutes (the base client allows one, for a

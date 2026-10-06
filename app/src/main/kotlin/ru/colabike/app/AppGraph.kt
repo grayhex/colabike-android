@@ -240,7 +240,13 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val safety: SafetyRepository = NetworkSafetyRepository(api.safety, media)
     override val people: PeopleRepository = NetworkPeopleRepository(api.users, api.search, media)
     override val feed: FeedRepository = NetworkFeedRepository(api.personal, media)
-    private val journalRepository = NetworkJournalRepository(api.journal, api.personal, media)
+    private val journalRepository =
+        NetworkJournalRepository(
+            api.journal,
+            api.personal,
+            media,
+            clearing = api::journalWithNulls,
+        )
     override val journal: JournalRepository = journalRepository
     override val comments: CommentsRepository =
         NetworkCommentsRepository(api.comments, api::commentsWithKey, media)

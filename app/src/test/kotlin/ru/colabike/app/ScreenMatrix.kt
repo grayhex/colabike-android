@@ -26,6 +26,7 @@ import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import java.io.File
 import java.time.Instant
+import java.time.LocalDate
 import ru.colabike.app.bikes.BikePhotosActions
 import ru.colabike.app.bikes.BikePhotosScreen
 import ru.colabike.app.bikes.BikePhotosUiState
@@ -48,12 +49,15 @@ import ru.colabike.core.model.AccountDeletion
 import ru.colabike.core.model.AgreementChange
 import ru.colabike.core.model.AppNotice
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.Compatibility
 import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedItem
 import ru.colabike.core.model.IntentReadiness
 import ru.colabike.core.model.IntentStatus
 import ru.colabike.core.model.IntentVisibility
+import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.JournalStatus
 import ru.colabike.core.model.LaunchFill
 import ru.colabike.core.model.ListingBikeLink
 import ru.colabike.core.model.ListingCatalogLink
@@ -167,6 +171,13 @@ enum class Screen(val file: String) {
     BikeParts("bike_parts"),
     BikePartEditor("bike_part_editor"),
     BikePartProblems("bike_part_problems"),
+
+    /** A journal entry: the empty form, its findings, a form of one's own entry, the question. */
+    JournalOwn("journal_own"),
+    JournalEditorNew("journal_editor_new"),
+    JournalEditorProblems("journal_editor_problems"),
+    JournalEditorEdit("journal_editor_edit"),
+    JournalEditorDelete("journal_editor_delete"),
 
     /**
      * The pictures of one's own bike: the list, pictures on their way, the question before a
@@ -657,6 +668,23 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                 BikePhotosActions(),
                             )
                         }
+                    Screen.JournalOwn,
+                    Screen.JournalEditorNew,
+                    Screen.JournalEditorProblems,
+                    Screen.JournalEditorEdit,
+                    Screen.JournalEditorDelete ->
+                        AppShell(
+                            FakeDependencies(
+                                bikes =
+                                    FakeBikes(mapOf(null to Page(listOf(ownBike.summary), null)))
+                                        .apply { details = mapOf("b-own" to ownBike) },
+                                journal =
+                                    FakeJournal(
+                                        pages = mapOf(null to Page(listOf(ownEntry.summary), null)),
+                                        entries = mapOf("j-own" to ownEntry),
+                                    ),
+                            )
+                        )
                     Screen.BikeEditorDelete,
                     Screen.BikePhotos,
                     Screen.BikePhotosDelete,
@@ -814,6 +842,30 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithTag("bike:edit").performClick()
             onNodeWithTag("bike-editor:delete").performScrollTo().performClick()
         }
+        Screen.JournalEditorNew,
+        Screen.JournalEditorProblems -> {
+            onNodeWithContentDescription("Мой трейл", substring = true).performClick()
+            onNodeWithTag("bike:journal-new").performScrollTo().performClick()
+            if (screen == Screen.JournalEditorProblems) {
+                onNodeWithTag("journal-editor:status:published").performScrollTo().performClick()
+                // The findings are shown once the person tried to save, above the button.
+                onNodeWithTag("journal-editor:save").performScrollTo().performClick()
+                onNodeWithTag("journal-editor:save").performScrollTo()
+            }
+        }
+        Screen.JournalOwn,
+        Screen.JournalEditorEdit,
+        Screen.JournalEditorDelete -> {
+            onNodeWithContentDescription("Мой трейл", substring = true).performClick()
+            onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
+            onNodeWithTag("journal:j-own").performClick()
+            if (screen != Screen.JournalOwn) {
+                onNodeWithTag("journal:edit").performClick()
+                if (screen == Screen.JournalEditorDelete) {
+                    onNodeWithTag("journal-editor:delete").performScrollTo().performClick()
+                }
+            }
+        }
         Screen.BikePhotos,
         Screen.BikePhotosDelete -> {
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
@@ -929,6 +981,25 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
 }
 
 /** The viewer's own bike, for the screens that change or delete one. */
+private val ownEntry =
+    journalEntry(1).let {
+        it.copy(
+            summary =
+                it.summary.copy(
+                    id = JournalId("j-own"),
+                    kind = "build",
+                    title = "Новая цепь и кассета",
+                    status = JournalStatus.Published,
+                    isPublic = true,
+                    eventDate = LocalDate.parse("2026-09-14"),
+                    mileageKm = 4200,
+                    bike = BikeRef(BikeId("b-own"), "Мой трейл"),
+                ),
+            version = "\"e0\"",
+            installationResult = "modified",
+        )
+    }
+
 private val ownBike =
     PreviewData.bikeDetail.fromDraft(
         BikeId("b-own"),

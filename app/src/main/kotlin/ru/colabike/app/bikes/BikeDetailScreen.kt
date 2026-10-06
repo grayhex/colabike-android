@@ -97,6 +97,7 @@ fun BikeDetailRoute(
     onEdit: ((id: BikeId) -> Unit)? = null,
     onEditParts: ((id: BikeId) -> Unit)? = null,
     onEditPhotos: ((id: BikeId) -> Unit)? = null,
+    onNewJournalEntry: ((id: BikeId) -> Unit)? = null,
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -135,6 +136,13 @@ fun BikeDetailRoute(
                     (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
             )
                 ({ onEditPhotos(id) })
+            else null,
+        onNewJournalEntry =
+            if (
+                onNewJournalEntry != null &&
+                    (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
+            )
+                ({ onNewJournalEntry(id) })
             else null,
         topActions = {
             // The owner changes the bike; everyone else may report it.
@@ -185,6 +193,7 @@ fun BikeDetailScreen(
     onOpenComponent: (modelId: String) -> Unit = {},
     onEditParts: (() -> Unit)? = null,
     onEditPhotos: (() -> Unit)? = null,
+    onNewJournalEntry: (() -> Unit)? = null,
     topActions: @Composable RowScope.() -> Unit = {},
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
@@ -249,6 +258,7 @@ fun BikeDetailScreen(
                         onOpenComponent,
                         onEditParts,
                         onEditPhotos,
+                        onNewJournalEntry,
                     )
             }
         }
@@ -272,6 +282,7 @@ private fun BikeContent(
     onOpenComponent: (modelId: String) -> Unit,
     onEditParts: (() -> Unit)?,
     onEditPhotos: (() -> Unit)?,
+    onNewJournalEntry: (() -> Unit)?,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -399,6 +410,15 @@ private fun BikeContent(
                             onOpenModel = onOpenComponent,
                         )
                     }
+                }
+                if (onNewJournalEntry != null) {
+                    ColaListItem(
+                        title = stringResource(R.string.journal_new_open),
+                        supporting = stringResource(R.string.journal_new_open_hint),
+                        icon = ColaIcons.Journal,
+                        onClick = onNewJournalEntry,
+                        modifier = Modifier.testTag("bike:journal-new"),
+                    )
                 }
                 if (onEditPhotos != null) {
                     ColaListItem(

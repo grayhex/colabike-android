@@ -11,6 +11,7 @@ import ru.colabike.app.ui.Pager
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.CommentKind
+import ru.colabike.core.model.JournalChange
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
 
@@ -51,6 +52,19 @@ class JournalListViewModel(
                     if (it.id.value == change.target.id)
                         it.copy(comments = (it.comments + change.delta).coerceAtLeast(0))
                     else it
+                }
+            }
+        }
+        if (source is JournalSource.OfBike) {
+            // An entry written, changed or deleted in the editor: the list is the server's again.
+            viewModelScope.launch {
+                repository.changes.collect { change ->
+                    val here =
+                        when (change) {
+                            is JournalChange.Saved -> change.entry.summary.bike.id == source.id
+                            is JournalChange.Removed -> true
+                        }
+                    if (here) pager.refresh()
                 }
             }
         }

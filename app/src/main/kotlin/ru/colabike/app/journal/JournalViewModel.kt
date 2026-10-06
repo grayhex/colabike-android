@@ -15,6 +15,7 @@ import ru.colabike.app.ui.toUiText
 import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.JournalChange
 import ru.colabike.core.model.JournalEntry
 import ru.colabike.core.model.JournalId
 import ru.colabike.core.model.JournalRepository
@@ -69,6 +70,18 @@ class JournalViewModel(
                                 )
                         )
                     }
+                }
+            }
+        }
+        // The entry saved in the editor is the page now; one deleted there is no longer here.
+        viewModelScope.launch {
+            repository.changes.collect { change ->
+                when {
+                    change is JournalChange.Saved && change.entry.summary.id == id ->
+                        update { it.copy(entry = change.entry) }
+                    change is JournalChange.Removed && change.id == id ->
+                        mutableState.value =
+                            JournalUiState.Failed(DataError.NotFound().toUiText(), notFound = true)
                 }
             }
         }
