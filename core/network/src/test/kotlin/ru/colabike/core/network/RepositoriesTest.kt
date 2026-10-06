@@ -370,11 +370,11 @@ class PeopleRepositoryTest {
         val id = UserId(uuid)
         site.json(
             200,
-            """{"relationship":{"isSelf":false,"following":true,"followedBy":false,"friends":false},"followers":13}""",
+            """{"relationship":{"isSelf":false,"following":true,"followedBy":false,"friends":false,"blockedByMe":false},"followers":13}""",
         )
         site.json(
             200,
-            """{"relationship":{"isSelf":false,"following":false,"followedBy":false,"friends":false},"followers":12}""",
+            """{"relationship":{"isSelf":false,"following":false,"followedBy":false,"friends":false,"blockedByMe":false},"followers":12}""",
         )
 
         people.followChanges.test {
