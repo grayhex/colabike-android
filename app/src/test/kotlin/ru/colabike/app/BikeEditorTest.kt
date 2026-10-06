@@ -289,6 +289,30 @@ class BikeEditorViewModelTest {
     }
 
     @Test
+    fun `a year that was there is not taken away, nothing is sent`() = runTest {
+        val vm = changing()
+
+        vm.setYear("")
+        vm.setColor("Красный")
+        vm.save()
+
+        assertThat(bikes.updated).isEmpty()
+        assertThat(vm.editing().problems).containsExactly(BikeProblem.NoYear)
+        assertThat(vm.editing().saved).isNull()
+    }
+
+    @Test
+    fun `a bike the server holds without a year is changed without one`() = runTest {
+        bikes.details = mapOf("b-own" to own.copy(summary = own.summary.copy(year = null)))
+        val vm = changing()
+
+        vm.setColor("Красный")
+        vm.save()
+
+        assertThat(bikes.updated.single().second).isEqualTo(BikePatch(color = "Красный"))
+    }
+
+    @Test
     fun `a form nobody changed sends nothing and closes as saved`() = runTest {
         val vm = changing()
 

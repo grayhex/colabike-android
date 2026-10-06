@@ -352,12 +352,14 @@ class BikeEditorViewModel(
         val current = mutable.value as? BikeEditorUiState.Editing ?: return
         if (current.saving || current.deleting) return
         val (draft, unreadable) = current.form.toDraft()
-        val problems = (unreadable + BikeRules.check(draft, creating = id == null)).distinct()
+        val original = current.editing
+        // A year, once there, stays: a form with the year emptied would say nothing about it.
+        val needsYear = original == null || original.summary.year != null
+        val problems = (unreadable + BikeRules.check(draft, needsYear)).distinct()
         if (problems.isNotEmpty()) {
             mutable.value = current.copy(problems = problems, problem = null, canReload = false)
             return
         }
-        val original = current.editing
         if (original != null && draft.diff(original.toDraft()).isEmpty) {
             // Nothing differs from what the server holds: nothing to send, the page stays as it is.
             mutable.value = current.copy(saved = original, problems = emptyList(), problem = null)

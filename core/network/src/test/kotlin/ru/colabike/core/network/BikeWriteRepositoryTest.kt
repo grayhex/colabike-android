@@ -233,6 +233,18 @@ class BikeWriteRepositoryTest {
     }
 
     @Test
+    fun `a bike already deleted elsewhere is deleted all the same and the lists are told`() =
+        runTest {
+            site.json(404, error("not_found"))
+
+            bikes.changes.test {
+                bikes.delete(BikeId(id))
+
+                assertThat(awaitItem()).isEqualTo(BikeChange.Removed(BikeId(id)))
+            }
+        }
+
+    @Test
     fun `a bike with rides is not deleted and the server's words are kept`() = runTest {
         site.json(409, error("conflict", "У велосипеда есть покатушки."))
 

@@ -81,7 +81,7 @@ class BikeEditingTest {
 
     @Test
     fun `a good form has no problems`() {
-        assertThat(BikeRules.check(base, creating = true)).isEmpty()
+        assertThat(BikeRules.check(base, needsYear = true)).isEmpty()
     }
 
     @Test
@@ -89,7 +89,7 @@ class BikeEditingTest {
         val problems =
             BikeRules.check(
                 base.copy(name = "   ", year = null, classification = ClassificationDraft("")),
-                creating = true,
+                needsYear = true,
             )
 
         assertThat(problems)
@@ -97,11 +97,11 @@ class BikeEditingTest {
     }
 
     @Test
-    fun `a bike the server holds without a year may stay so when it is changed`() {
+    fun `a bike the server holds without a year may stay so, one that had a year keeps it`() {
         val withoutYear = base.copy(year = null)
 
-        assertThat(BikeRules.check(withoutYear, creating = false)).isEmpty()
-        assertThat(BikeRules.check(withoutYear, creating = true))
+        assertThat(BikeRules.check(withoutYear, needsYear = false)).isEmpty()
+        assertThat(BikeRules.check(withoutYear, needsYear = true))
             .containsExactly(BikeProblem.NoYear)
     }
 
@@ -123,7 +123,7 @@ class BikeEditingTest {
                     manufacturerUrl = "http://insecure.example",
                     priceRub = -1.0,
                 ),
-                creating = true,
+                needsYear = true,
             )
 
         assertThat(problems)
@@ -155,7 +155,7 @@ class BikeEditingTest {
                     priceRub = 0.0,
                     manufacturerUrl = "",
                 ),
-                creating = true,
+                needsYear = true,
             )
 
         assertThat(problems).isEmpty()
@@ -163,7 +163,7 @@ class BikeEditingTest {
 
     @Test
     fun `a zero weight is not a weight`() {
-        assertThat(BikeRules.check(base.copy(weightKg = 0.0), creating = true))
+        assertThat(BikeRules.check(base.copy(weightKg = 0.0), needsYear = true))
             .containsExactly(BikeProblem.WeightInvalid)
     }
 

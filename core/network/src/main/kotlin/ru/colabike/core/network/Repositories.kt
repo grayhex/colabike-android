@@ -138,7 +138,12 @@ class NetworkBikesRepository(
     override suspend fun delete(id: BikeId) {
         val uuid =
             runCatching { UUID.fromString(id.value) }.getOrNull() ?: throw DataError.NotFound()
-        apiCall(dispatcher) { api.deleteBike(uuid) }
+        try {
+            apiCall(dispatcher) { api.deleteBike(uuid) }
+        } catch (_: DataError.NotFound) {
+            // Deleted elsewhere first: what was asked for has happened, and the lists that still
+            // show the bike are told as well.
+        }
         saved.tryEmit(BikeChange.Removed(id))
     }
 

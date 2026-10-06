@@ -235,11 +235,12 @@ object BikeRules {
     const val MAX_LINK = 2048
 
     /**
-     * Everything the form can get wrong that the server would refuse. [creating] asks for what a
-     * new bike must have: its year. The numbers of a form that did not parse are told apart by the
-     * caller, which has the text; here they are already numbers.
+     * Everything the form can get wrong that the server would refuse. [needsYear]: a new bike has
+     * its year, and so does one that had it (a year cannot be taken away, the server has no way to
+     * say so); only a bike the server holds without one may stay so. The numbers of a form that did
+     * not parse are told apart by the caller, which has the text; here they are already numbers.
      */
-    fun check(draft: BikeDraft, creating: Boolean): List<BikeProblem> = buildList {
+    fun check(draft: BikeDraft, needsYear: Boolean): List<BikeProblem> = buildList {
         if (draft.name.trim().isEmpty()) add(BikeProblem.NoName)
         if (draft.name.trim().length > MAX_NAME) add(BikeProblem.NameTooLong)
         if (draft.brand.trim().length > MAX_BRAND) add(BikeProblem.BrandTooLong)
@@ -247,7 +248,7 @@ object BikeRules {
         if (draft.trim.trim().length > MAX_TRIM) add(BikeProblem.TrimTooLong)
         val year = draft.year
         if (year == null) {
-            if (creating) add(BikeProblem.NoYear)
+            if (needsYear) add(BikeProblem.NoYear)
         } else if (year !in MIN_YEAR..MAX_YEAR) {
             add(BikeProblem.YearOutOfRange)
         }
