@@ -36,6 +36,11 @@ data class Relationship(
     val followedBy: Boolean,
     /** Both follow each other. */
     val friends: Boolean,
+    /**
+     * The viewer blocked the person. Who blocked the viewer is never told: the API has no field for
+     * it, and a refusal reads as "unavailable".
+     */
+    val blockedByMe: Boolean = false,
 )
 
 /** A person in a list (a follower, a search result), with what the viewer is to them. */

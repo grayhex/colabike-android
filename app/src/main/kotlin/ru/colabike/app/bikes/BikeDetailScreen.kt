@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +53,7 @@ import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.app.links.LocalSharer
 import ru.colabike.app.links.SiteLinks
+import ru.colabike.app.safety.ReportMenu
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
@@ -71,6 +73,9 @@ import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.CommentCountChange
+import ru.colabike.core.model.ReportKind
+import ru.colabike.core.model.ReportTarget
+import ru.colabike.core.model.SafetyRepository
 
 @Composable
 fun BikeDetailRoute(
@@ -86,6 +91,7 @@ fun BikeDetailRoute(
     onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComponent: (modelId: String) -> Unit = {},
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
+    safety: SafetyRepository? = null,
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -110,6 +116,15 @@ fun BikeDetailRoute(
         onOpenComments = onOpenComments,
         onOpenRides = onOpenRides,
         onOpenComponent = onOpenComponent,
+        topActions = {
+            ReportMenu(
+                target = ReportTarget(ReportKind.Bike, id.value),
+                authorId = (state as? BikeDetailUiState.Loaded)?.bike?.summary?.author?.id,
+                safety = safety,
+                auth = auth,
+                own = (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true,
+            )
+        },
     )
 }
 
@@ -133,6 +148,7 @@ fun BikeDetailScreen(
     onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComponent: (modelId: String) -> Unit = {},
+    topActions: @Composable RowScope.() -> Unit = {},
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
     Scaffold(
@@ -152,6 +168,7 @@ fun BikeDetailScreen(
                         ?.ifBlank { null },
                 titleMaxLines = 4,
                 onBack = if (showBack) onBack else null,
+                actions = if (loaded != null) topActions else ({}),
             )
         },
     ) { padding ->

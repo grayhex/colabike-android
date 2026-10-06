@@ -20,6 +20,7 @@ import ru.colabike.core.model.DataError
 import ru.colabike.core.model.FollowState
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.Profile
+import ru.colabike.core.model.SafetyRepository
 
 @Immutable
 data class PersonUiState(
@@ -40,6 +41,11 @@ data class PersonUiState(
     /** A subscription is on its way to the server: the button already shows the new state. */
     val following: Boolean = false,
     val followError: UiText? = null,
+    /** The question "block this person?" is open; nothing is sent until it is answered. */
+    val blockPrompt: Boolean = false,
+    /** A block or an unblocking is on its way. */
+    val blockBusy: Boolean = false,
+    val blockError: UiText? = null,
 )
 
 /**
@@ -52,6 +58,7 @@ class PersonViewModel(
     private val bikesRepository: BikesRepository,
     private val ref: String,
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
+    private val safety: SafetyRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(PersonUiState())
     val state: StateFlow<PersonUiState> = mutableState.asStateFlow()
@@ -64,6 +71,14 @@ class PersonViewModel(
                 mutableState.update { current ->
                     if (current.profile?.person?.id == change.id) current.withFollow(change.state)
                     else current
+                }
+            }
+        }
+        // A block made on the list of blocked people shows here without loading the page again.
+        safety?.let { repository ->
+            viewModelScope.launch {
+                repository.blockChanges.collect { change ->
+                    if (state.value.profile?.person?.id == change.id) refreshProfile()
                 }
             }
         }
@@ -182,6 +197,55 @@ class PersonViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Blocking asks first (it cuts the follows both ways); unblocking is one tap, because it asks
+     * for nothing the person cannot take back. Not for oneself, which the server does not allow.
+     */
+    fun toggleBlock() {
+        val current = state.value
+        val relationship = current.profile?.relationship ?: return
+        if (safety == null || relationship.isSelf || current.blockBusy) return
+        if (relationship.blockedByMe) setBlocked(false)
+        else mutableState.value = current.copy(blockPrompt = true)
+    }
+
+    fun dismissBlockPrompt() = mutableState.update { it.copy(blockPrompt = false) }
+
+    fun confirmBlock() {
+        mutableState.update { it.copy(blockPrompt = false) }
+        setBlocked(true)
+    }
+
+    private fun setBlocked(blocked: Boolean) {
+        val id = state.value.profile?.person?.id ?: return
+        val repository = safety ?: return
+        mutableState.update { it.copy(blockBusy = true, blockError = null) }
+        viewModelScope.launch {
+            try {
+                repository.setBlocked(id, blocked)
+                // The server cut the follows both ways (and does not bring them back): what the
+                // page shows is read again, not guessed.
+                refreshProfileNow()
+                mutableState.update { it.copy(blockBusy = false) }
+            } catch (e: DataError) {
+                mutableState.update { it.copy(blockBusy = false, blockError = e.toUiText()) }
+            }
+        }
+    }
+
+    private suspend fun refreshProfileNow() {
+        try {
+            val profile = people.profile(ref)
+            mutableState.update { it.copy(profile = profile) }
+        } catch (e: DataError) {
+            // The old page stays; it is the blocking that was asked for, and it went through.
+        }
+    }
+
+    private fun refreshProfile() {
+        viewModelScope.launch { refreshProfileNow() }
     }
 
     private fun PersonUiState.withFollow(follow: FollowState): PersonUiState =

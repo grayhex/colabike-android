@@ -67,6 +67,7 @@ fun ProfileRoute(
     onOpenNotifications: () -> Unit,
     onOpenAbout: () -> Unit,
     onDeleteAccount: () -> Unit = {},
+    onOpenBlocked: () -> Unit = {},
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
     onOpenSavedMarket: (() -> Unit)? = {},
@@ -92,6 +93,7 @@ fun ProfileRoute(
         onManageOnWeb = { opener.open(dependencies.links.account) },
         onOpenAbout = onOpenAbout,
         onDeleteAccount = onDeleteAccount,
+        onOpenBlocked = onOpenBlocked,
     )
 }
 
@@ -109,6 +111,7 @@ fun ProfileScreen(
     onManageOnWeb: () -> Unit,
     onOpenAbout: () -> Unit,
     onDeleteAccount: () -> Unit = {},
+    onOpenBlocked: () -> Unit = {},
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
     onOpenSavedMarket: (() -> Unit)? = {},
@@ -165,6 +168,7 @@ fun ProfileScreen(
                                         onOpenNotifications = onOpenNotifications,
                                         onManageOnWeb = onManageOnWeb,
                                         onDeleteAccount = onDeleteAccount,
+                                        onOpenBlocked = onOpenBlocked,
                                     )
                                 else -> Unit
                             }
@@ -249,6 +253,7 @@ private fun MemberSections(
     onOpenNotifications: () -> Unit,
     onManageOnWeb: () -> Unit,
     onDeleteAccount: () -> Unit,
+    onOpenBlocked: () -> Unit,
 ) {
     val account = state.account
     Column(
@@ -336,6 +341,12 @@ private fun MemberSections(
             supporting = stringResource(R.string.profile_devices_hint),
             icon = ColaIcons.Devices,
             onClick = onOpenDevices,
+        )
+        ColaListItem(
+            title = stringResource(R.string.profile_blocked),
+            supporting = stringResource(R.string.profile_blocked_hint),
+            icon = ColaIcons.Block,
+            onClick = onOpenBlocked,
         )
         ColaListItem(
             title = stringResource(R.string.profile_manage_web),

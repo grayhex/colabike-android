@@ -60,6 +60,7 @@ class DestinationSerializationTest {
             Destination.NearbyOffers,
             Destination.About,
             Destination.Licenses,
+            Destination.Blocked,
         )
 
     @Test

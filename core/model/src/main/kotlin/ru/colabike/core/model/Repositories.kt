@@ -31,6 +31,25 @@ interface AccountRepository {
 }
 
 /**
+ * Reporting and blocking (cola #354). Implementations throw [DataError]. A report of the viewer's
+ * own content or of something that is no longer there is [DataError.Rejected] /
+ * [DataError.NotFound].
+ */
+interface SafetyRepository {
+    /** True when the report is new; sending it again is not an error, only `false`. */
+    suspend fun report(target: ReportTarget, reason: ReportReason): Boolean
+
+    /** Idempotent; the answer is the state to show. One cannot block oneself. */
+    suspend fun setBlocked(id: UserId, blocked: Boolean): Boolean
+
+    /** The people the viewer has blocked, newest block first. */
+    suspend fun blocked(cursor: String? = null, limit: Int = 24): Page<PersonSummary>
+
+    /** Every block or unblock made through this repository, for the screens that show people. */
+    val blockChanges: SharedFlow<BlockChange>
+}
+
+/**
  * Deleting one's own account (cola #354). Implementations throw [DataError]; a proof the server
  * does not accept is [DataError.Rejected] with the code `invalid_credentials`.
  */

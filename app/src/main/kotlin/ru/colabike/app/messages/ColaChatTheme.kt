@@ -44,8 +44,10 @@ fun ColaChatTheme(content: @Composable () -> Unit) {
 /**
  * What the SDK may offer. Only photos (through the system picker, no storage permission), no
  * camera, files, polls or commands; no voice messages (the microphone is not asked for), no
- * translation, no link previews in the composer. Muting, blocking and flagging a user at the
- * provider are not offered: who may write to whom is ColaBike's, and the server decides it.
+ * translation, no link previews in the composer. Muting and blocking a user at the provider are not
+ * offered: who may write to whom is ColaBike's, and the server decides it (a block is made on the
+ * person's page and reaches the provider from there, docs/adr/0021). Flagging a message is: it is
+ * how a message is reported, and the provider's moderation queue is the owner's.
  */
 internal val colaChatConfig =
     ChatUiConfig(
@@ -60,7 +62,7 @@ internal val colaChatConfig =
             MessageActionsConfig(
                 optionsVisibility =
                     MessageActionsOptionsVisibility(
-                        isFlagMessageVisible = false,
+                        isFlagMessageVisible = true,
                         isPinMessageVisible = false,
                         isMuteUserVisible = false,
                         isBlockUserVisible = false,

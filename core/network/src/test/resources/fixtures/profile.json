@@ -7,5 +7,5 @@
   "location": "Москва",
   "createdAt": "2026-09-01T10:00:00.000Z",
   "counts": {"bikes": 3, "followers": 12, "following": 7},
-  "relationship": {"isSelf": false, "following": true, "followedBy": false, "friends": false}
+  "relationship": {"isSelf": false, "following": true, "followedBy": false, "friends": false, "blockedByMe": false}
 }

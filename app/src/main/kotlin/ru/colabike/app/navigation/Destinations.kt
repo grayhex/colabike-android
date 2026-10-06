@@ -103,6 +103,9 @@ sealed interface Destination : NavKey {
     /** Where the account is signed in; opened from the profile. */
     @Serializable data object Devices : Destination
 
+    /** The people the signed-in person blocked, and unblocking them; opened from the profile. */
+    @Serializable data object Blocked : Destination
+
     /** Deleting the account for good: the word, the proof, the deletion (docs/adr/0021). */
     @Serializable data object DeleteAccount : Destination
 

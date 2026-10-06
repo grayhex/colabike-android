@@ -89,8 +89,13 @@ class ColaChatThemeTest {
         assertThat(colaChatConfig.composer.linkPreviewEnabled).isFalse()
         assertThat(colaChatConfig.translation.enabled).isFalse()
         assertThat(colaChatConfig.attachmentPicker.useSystemPicker).isTrue()
-        assertThat(colaChatConfig.messageActions.optionsVisibility.isFlagMessageVisible).isFalse()
         assertThat(colaChatConfig.messageActions.optionsVisibility.isBlockUserVisible).isFalse()
+        assertThat(colaChatConfig.messageActions.optionsVisibility.isMuteUserVisible).isFalse()
+    }
+
+    @Test
+    fun `a message can be reported, which is what the stores ask of a chat`() {
+        assertThat(colaChatConfig.messageActions.optionsVisibility.isFlagMessageVisible).isTrue()
     }
 
     private companion object {

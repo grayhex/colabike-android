@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -61,6 +62,8 @@ import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.messages.WriteState
 import ru.colabike.app.messages.WriteViewModel
+import ru.colabike.app.safety.BlockOffer
+import ru.colabike.app.safety.SafetyMenu
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
@@ -82,6 +85,9 @@ import ru.colabike.core.model.ChatRepository
 import ru.colabike.core.model.CommentCountChange
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.Profile
+import ru.colabike.core.model.ReportKind
+import ru.colabike.core.model.ReportTarget
+import ru.colabike.core.model.SafetyRepository
 import ru.colabike.core.model.UserId
 
 /** What a person's page can open. Callbacks, so the screen never touches navigation itself. */
@@ -104,8 +110,9 @@ fun PersonRoute(
     actions: PersonActions,
     chat: ChatRepository? = null,
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
+    safety: SafetyRepository? = null,
 ) {
-    val viewModel = viewModel { PersonViewModel(people, bikes, ref, commentChanges) }
+    val viewModel = viewModel { PersonViewModel(people, bikes, ref, commentChanges, safety) }
     val writer = chat?.let { viewModel(key = "write:$ref") { WriteViewModel(it) } }
     val writing by
         (writer?.state ?: remember { MutableStateFlow<WriteState>(WriteState.Idle) })
@@ -130,6 +137,12 @@ fun PersonRoute(
         onLoadMore = viewModel::loadMoreBikes,
         // A guest is asked to sign in first; the subscription is not made for them afterwards.
         onToggleFollow = if (signedIn) viewModel::toggleFollow else signIn,
+        safety = safety,
+        signedIn = signedIn,
+        onSignIn = signIn,
+        onToggleBlock = viewModel::toggleBlock,
+        onConfirmBlock = viewModel::confirmBlock,
+        onDismissBlock = viewModel::dismissBlockPrompt,
         writing = writing,
         // Messages are a member's: a guest is asked to sign in first.
         onWrite =
@@ -159,6 +172,12 @@ fun PersonScreen(
     onToggleFollow: () -> Unit,
     writing: WriteState = WriteState.Idle,
     onWrite: (() -> Unit)? = null,
+    safety: SafetyRepository? = null,
+    signedIn: Boolean = false,
+    onSignIn: () -> Unit = {},
+    onToggleBlock: () -> Unit = {},
+    onConfirmBlock: () -> Unit = {},
+    onDismissBlock: () -> Unit = {},
 ) {
     val profile = state.profile
     Scaffold(
@@ -174,10 +193,30 @@ fun PersonScreen(
                         )
                     },
                 onBack = actions.onBack,
+                actions = {
+                    // Not for oneself: there is nobody to report or to block.
+                    if (profile != null && profile.relationship?.isSelf != true)
+                        SafetyMenu(
+                            target = ReportTarget(ReportKind.Profile, profile.person.id.value),
+                            safety = safety,
+                            signedIn = signedIn,
+                            onSignIn = onSignIn,
+                            block =
+                                safety?.let {
+                                    BlockOffer(
+                                        blocked = profile.relationship?.blockedByMe == true,
+                                        onToggle = onToggleBlock,
+                                    )
+                                },
+                        )
+                },
             )
         },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
+            if (state.blockPrompt && profile != null) {
+                BlockDialog(profile.person.displayName, onConfirmBlock, onDismissBlock)
+            }
             when {
                 state.loading -> LoadingState(Modifier.fillMaxSize())
                 profile == null ->
@@ -195,6 +234,7 @@ fun PersonScreen(
                         onToggleFollow,
                         writing,
                         onWrite,
+                        onToggleBlock,
                     )
             }
         }
@@ -210,6 +250,7 @@ private fun PersonContent(
     onToggleFollow: () -> Unit,
     writing: WriteState,
     onWrite: (() -> Unit)?,
+    onToggleBlock: () -> Unit,
 ) {
     val grid = rememberLazyGridState()
     val nearEnd by remember {
@@ -228,7 +269,7 @@ private fun PersonContent(
         modifier = Modifier.fillMaxSize().testTag("person:grid"),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Header(state, profile, actions, onToggleFollow, writing, onWrite)
+            Header(state, profile, actions, onToggleFollow, writing, onWrite, onToggleBlock)
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
@@ -290,6 +331,7 @@ private fun Header(
     onToggleFollow: () -> Unit,
     writing: WriteState,
     onWrite: (() -> Unit)?,
+    onToggleBlock: () -> Unit,
 ) {
     val person = profile.person
     val relationship = profile.relationship
@@ -326,10 +368,19 @@ private fun Header(
                     Text(stringResource(R.string.person_my_account))
                 }
             }
+            relationship?.blockedByMe == true -> BlockedBanner(state.blockBusy, onToggleBlock)
             else -> {
                 FollowButton(state, profile, onToggleFollow)
                 if (onWrite != null) WriteButton(person.displayName, writing, onWrite)
             }
+        }
+        state.blockError?.let {
+            Text(
+                it.resolve(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
         }
         (writing as? WriteState.Failed)?.let {
             Text(
@@ -510,4 +561,58 @@ private fun joinedText(profile: Profile): String {
             .withZone(ZoneId.systemDefault())
             .format(profile.joined)
     return stringResource(R.string.person_joined, date)
+}
+
+/** "You blocked this person": what it means and the way back, in place of the follow button. */
+@Composable
+private fun BlockedBanner(busy: Boolean, onUnblock: () -> Unit) {
+    ColaCard(Modifier.widthIn(max = 420.dp).fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+        Column(
+            Modifier.padding(Spacing.l),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
+        ) {
+            Text(
+                stringResource(R.string.block_banner),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                stringResource(R.string.block_banner_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            OutlinedButton(
+                onClick = onUnblock,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.touch),
+            ) {
+                Text(stringResource(R.string.block_unblock))
+            }
+        }
+    }
+}
+
+/** The question before a block: what it does, in words, and a button that says so. */
+@Composable
+private fun BlockDialog(name: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.block_title, name)) },
+        text = { Text(stringResource(R.string.block_message)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm, modifier = Modifier.heightIn(min = Spacing.touch)) {
+                Text(
+                    stringResource(R.string.block_confirm),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = Spacing.touch)) {
+                Text(stringResource(R.string.block_cancel))
+            }
+        },
+    )
 }

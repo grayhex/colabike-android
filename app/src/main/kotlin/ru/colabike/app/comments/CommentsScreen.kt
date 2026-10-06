@@ -42,7 +42,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +71,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.safety.ReportDialog
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
@@ -81,9 +84,13 @@ import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.Comment
+import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.CommentRules
 import ru.colabike.core.model.CommentTarget
 import ru.colabike.core.model.CommentsRepository
+import ru.colabike.core.model.ReportKind
+import ru.colabike.core.model.ReportTarget
+import ru.colabike.core.model.SafetyRepository
 import ru.colabike.core.model.UserId
 
 @Composable
@@ -96,7 +103,9 @@ fun CommentsRoute(
     focus: String?,
     onBack: () -> Unit,
     onOpenAuthor: (ref: String) -> Unit,
+    safety: SafetyRepository? = null,
 ) {
+    var reporting by remember { mutableStateOf<Comment?>(null) }
     val viewModel =
         viewModel(key = "comments:${target.kind}:${target.id}:$focus") {
             CommentsViewModel(repository, drafts, target, focus)
@@ -129,8 +138,27 @@ fun CommentsRoute(
                 onAskDelete = viewModel::askDelete,
                 onDismissDelete = viewModel::dismissDelete,
                 onConfirmDelete = viewModel::confirmDelete,
+                // Only where there is a place to send it; a guest is asked to sign in first.
+                onReport = if (safety != null) ({ reporting = it }) else ({}),
             ),
     )
+    val reported = reporting
+    if (safety != null && reported != null) {
+        ReportDialog(
+            target =
+                ReportTarget(
+                    when (target.kind) {
+                        CommentKind.Bike -> ReportKind.BikeComment
+                        CommentKind.Journal -> ReportKind.JournalComment
+                        CommentKind.Ride -> ReportKind.RideComment
+                        CommentKind.Component -> ReportKind.ComponentComment
+                    },
+                    reported.id,
+                ),
+            safety = safety,
+            onDismiss = { reporting = null },
+        )
+    }
 }
 
 /** What the discussion can do. Callbacks, so the screen never touches the model itself. */
@@ -152,6 +180,7 @@ class CommentsActions(
     val onAskDelete: (Comment) -> Unit = {},
     val onDismissDelete: () -> Unit = {},
     val onConfirmDelete: () -> Unit = {},
+    val onReport: (Comment) -> Unit = {},
 )
 
 /**
@@ -413,6 +442,17 @@ private fun CommentRow(
                     contentPadding = ActionPadding,
                 ) {
                     Text(stringResource(R.string.comments_reply))
+                }
+                if (!mine) {
+                    TextButton(
+                        onClick = {
+                            if (signedIn) actions.onReport(comment) else actions.onSignIn()
+                        },
+                        modifier = Modifier.heightIn(min = Spacing.touch),
+                        contentPadding = ActionPadding,
+                    ) {
+                        Text(stringResource(R.string.safety_report))
+                    }
                 }
                 if (mine) {
                     TextButton(
