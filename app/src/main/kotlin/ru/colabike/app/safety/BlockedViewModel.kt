@@ -36,15 +36,34 @@ class BlockedViewModel(private val safety: SafetyRepository) : ViewModel() {
 
     init {
         load()
-        // A person blocked or unblocked on their own page shows here when the list is next opened;
-        // one unblocked from elsewhere while this screen is open leaves it at once.
+        // The list stays on the back stack while the viewer is on another tab, so a change made
+        // elsewhere has to reach it: someone unblocked leaves at once, someone blocked is read
+        // from the server (the page of a new block is not known here).
         viewModelScope.launch {
             safety.blockChanges.collect { change ->
-                if (!change.blocked)
+                if (change.blocked) refresh()
+                else
                     mutableState.update {
                         it.copy(people = it.people.filterNot { p -> p.person.id == change.id })
                     }
             }
+        }
+    }
+
+    /** Reads the first page again without the spinner; a failure leaves the list as it was. */
+    private fun refresh() {
+        viewModelScope.launch {
+            try {
+                val page = safety.blocked(null)
+                mutableState.update {
+                    it.copy(
+                        people = page.items,
+                        nextCursor = page.nextCursor,
+                        loading = false,
+                        error = null,
+                    )
+                }
+            } catch (_: DataError) {}
         }
     }
 

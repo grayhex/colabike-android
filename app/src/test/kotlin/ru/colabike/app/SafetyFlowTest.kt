@@ -218,4 +218,21 @@ class OwnContentTest {
 
         compose.onNodeWithContentDescription("Ещё").assertDoesNotExist()
     }
+
+    @Test
+    fun `a bike that says it is the viewer's own has no report even when it names no author`() {
+        val own = bikes(0, 1).map { it.copy(isOwner = true, author = null) }
+        val dependencies =
+            FakeDependencies(
+                bikes = FakeBikes(mapOf(null to Page(own, null))),
+                auth = FakeAuth(AuthState.SignedIn(account)),
+            )
+        compose.setContent { ColaBikeTheme { ColaBikeApp(dependencies) } }
+        compose.waitForIdle()
+
+        compose.onNodeWithContentDescription("Велосипед 0", substring = true).performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithContentDescription("Ещё").assertDoesNotExist()
+    }
 }

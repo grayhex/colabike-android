@@ -122,6 +122,7 @@ fun BikeDetailRoute(
                 authorId = (state as? BikeDetailUiState.Loaded)?.bike?.summary?.author?.id,
                 safety = safety,
                 auth = auth,
+                own = (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true,
             )
         },
     )

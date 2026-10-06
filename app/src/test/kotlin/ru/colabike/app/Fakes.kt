@@ -1082,6 +1082,9 @@ class FakeSafety(var blockedPeople: List<PersonSummary> = emptyList()) : SafetyR
     val reports = mutableListOf<Pair<ReportTarget, ReportReason>>()
     val blocks = mutableListOf<Pair<UserId, Boolean>>()
     var nextError: DataError? = null
+
+    /** Fails the next read of the list only, not the block or report made before it. */
+    var listError: DataError? = null
     var created = true
     private val changes = MutableSharedFlow<BlockChange>(extraBufferCapacity = 8)
     override val blockChanges: SharedFlow<BlockChange> = changes
@@ -1108,6 +1111,10 @@ class FakeSafety(var blockedPeople: List<PersonSummary> = emptyList()) : SafetyR
 
     override suspend fun blocked(cursor: String?, limit: Int): Page<PersonSummary> {
         fail()
+        listError?.let {
+            listError = null
+            throw it
+        }
         return Page(
             blockedPeople.filterNot { p -> blocks.any { it.first == p.person.id && !it.second } },
             null,

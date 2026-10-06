@@ -216,10 +216,12 @@ fun ReportMenu(
     authorId: UserId?,
     safety: SafetyRepository?,
     auth: AuthActions,
+    /** The page itself says the viewer made it (a bike may come without an author). */
+    own: Boolean = false,
 ) {
     val state by auth.state.collectAsStateWithLifecycle()
     val signedIn = state is AuthState.SignedIn
     val me = (state as? AuthState.SignedIn)?.account?.id
-    if (authorId != null && authorId == me) return
+    if (own || (authorId != null && authorId == me)) return
     SafetyMenu(target, safety, signedIn, onSignIn = LocalSignInRequest.current)
 }

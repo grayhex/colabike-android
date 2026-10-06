@@ -135,6 +135,33 @@ class BlockedViewModelTest {
     }
 
     @Test
+    fun `someone blocked on their own page while the list is kept appears in it`() = runTest {
+        safety.blockedPeople = everyone.take(2)
+        val vm = BlockedViewModel(safety)
+        assertThat(vm.state.value.people).hasSize(2)
+
+        safety.blockedPeople = everyone
+        safety.setBlocked(everyone[2].person.id, blocked = true)
+
+        assertThat(vm.state.value.people.map { it.person.id.value })
+            .containsExactly("u0", "u1", "u2")
+            .inOrder()
+    }
+
+    @Test
+    fun `a list that could not be refreshed after a block keeps what it showed`() = runTest {
+        val vm = BlockedViewModel(safety)
+
+        safety.blockedPeople = emptyList()
+        // The block itself goes through; only the next read of the list fails.
+        safety.listError = DataError.Offline(java.io.IOException("down"))
+        safety.setBlocked(everyone[2].person.id, blocked = true)
+
+        assertThat(vm.state.value.people).hasSize(3)
+        assertThat(vm.state.value.error).isNull()
+    }
+
+    @Test
     fun `when the list cannot be read it offers to try again`() = runTest {
         safety.nextError = DataError.Offline(java.io.IOException("down"))
 
