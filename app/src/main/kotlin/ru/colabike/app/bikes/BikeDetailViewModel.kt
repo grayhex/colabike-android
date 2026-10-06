@@ -73,6 +73,8 @@ class BikeDetailViewModel(
                 when {
                     change is BikeChange.Saved && change.bike.summary.id == id ->
                         mutableState.value = BikeDetailUiState.Loaded(change.bike)
+                    // The build changed: read the page again, and keep it on screen meanwhile.
+                    change is BikeChange.Parts && change.id == id -> refresh()
                     change is BikeChange.Removed && change.id == id ->
                         mutableState.value =
                             BikeDetailUiState.Failed(
@@ -99,6 +101,16 @@ class BikeDetailViewModel(
                 } catch (e: DataError) {
                     BikeDetailUiState.Failed(e.toUiText(), notFound = e is DataError.NotFound)
                 }
+        }
+    }
+
+    /** Reads the page again without the spinner; a failure leaves the page as it was. */
+    private fun refresh() {
+        viewModelScope.launch {
+            try {
+                val bike = repository.bike(id)
+                update { it.copy(bike = bike) }
+            } catch (_: DataError) {}
         }
     }
 

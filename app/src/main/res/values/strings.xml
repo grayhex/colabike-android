@@ -993,4 +993,37 @@
     <string name="bike_problem_mileage">Пробег: целое число до 10 000 000 км.</string>
     <string name="bike_problem_link">Ссылка должна начинаться с https:// и быть без логина и пароля.</string>
     <string name="bike_problem_price">Цена: число от 0 до 999 999 999 ₽.</string>
+    <!-- Build editor (docs/adr/0022) -->
+    <string name="parts_open">Комплектация</string>
+    <string name="parts_open_hint">Добавить деталь, изменить, порядок групп</string>
+    <string name="parts_title">Комплектация</string>
+    <string name="parts_add">Добавить деталь</string>
+    <string name="parts_empty">В комплектации пока ничего нет. Добавьте раму, трансмиссию, колёса: так страницу велосипеда читают и сравнивают.</string>
+    <string name="parts_change_named">Изменить: %1$s</string>
+    <string name="parts_order">Порядок групп</string>
+    <string name="parts_order_hint">В таком порядке группы показаны на странице велосипеда.</string>
+    <string name="parts_move_up">Поднять группу «%1$s»</string>
+    <string name="parts_move_down">Опустить группу «%1$s»</string>
+    <string name="part_needs_email">Чтобы менять комплектацию публичного велосипеда, подтвердите почту на сайте. Приватный велосипед можно менять без этого.</string>
+    <string name="part_changed_elsewhere">Деталь уже изменили на другом устройстве. Загрузите актуальную и повторите: ваши правки в форме при этом пропадут.</string>
+    <string name="part_editor_new">Новая деталь</string>
+    <string name="part_editor_edit">Изменить деталь</string>
+    <string name="part_unavailable_title">Деталь недоступна</string>
+    <string name="part_cannot_edit">Этой детали или велосипеда нет, или велосипед не ваш: изменить комплектацию нельзя.</string>
+    <string name="part_section_what">Что это</string>
+    <string name="part_section_details">Подробности</string>
+    <string name="part_field_section">Где показать</string>
+    <string name="part_field_category">Категория (рама, цепь, седло…)</string>
+    <string name="part_field_name">Название</string>
+    <string name="part_field_notes">Заметка</string>
+    <string name="part_field_price">Цена, ₽</string>
+    <string name="part_field_url">Ссылка на страницу детали</string>
+    <string name="part_delete">Удалить деталь</string>
+    <string name="part_delete_title">Удалить деталь?</string>
+    <string name="part_delete_message">«%1$s» исчезнет из комплектации. Это нельзя отменить.</string>
+    <string name="part_problem_no_category">Укажите категорию.</string>
+    <string name="part_problem_category_long">Категория длиннее 60 знаков.</string>
+    <string name="part_problem_no_name">Назовите деталь.</string>
+    <string name="part_problem_name_long">Название длиннее 150 знаков.</string>
+    <string name="part_problem_notes_long">Заметка длиннее 500 знаков.</string>
 </resources>

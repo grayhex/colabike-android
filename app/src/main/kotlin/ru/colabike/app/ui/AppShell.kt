@@ -56,6 +56,8 @@ import ru.colabike.app.about.LicensesRoute
 import ru.colabike.app.account.DeleteAccountRoute
 import ru.colabike.app.bikes.BikeDetailRoute
 import ru.colabike.app.bikes.BikeEditorRoute
+import ru.colabike.app.bikes.BikePartEditorRoute
+import ru.colabike.app.bikes.BikePartsRoute
 import ru.colabike.app.bikes.BikesRoute
 import ru.colabike.app.comments.CommentsRoute
 import ru.colabike.app.components.ComponentRoute
@@ -716,9 +718,33 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         navigator.back()
                                                     }
                                                 },
-                                                onOpenGarage = {
-                                                    navigator.back()
+                                                onOpenGarage = { navigator.toRoot() },
+                                            )
+                                        }
+                                        entry<Destination.BikeParts> { key ->
+                                            BikePartsRoute(
+                                                repository = dependencies.bikes,
+                                                bikeId = key.bikeId,
+                                                onBack = { navigator.back() },
+                                                onAdd = {
+                                                    navigator.open(Destination.BikePart(key.bikeId))
                                                 },
+                                                onOpenPart = { part ->
+                                                    navigator.open(
+                                                        Destination.BikePart(key.bikeId, part)
+                                                    )
+                                                },
+                                                onOpenGarage = { navigator.toRoot() },
+                                            )
+                                        }
+                                        entry<Destination.BikePart> { key ->
+                                            BikePartEditorRoute(
+                                                repository = dependencies.bikes,
+                                                bikeId = key.bikeId,
+                                                componentId = key.id,
+                                                onBack = { navigator.back() },
+                                                onDone = { navigator.back() },
+                                                onOpenGarage = { navigator.toRoot() },
                                             )
                                         }
                                         entry<Destination.Bike>(
@@ -741,6 +767,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 safety = dependencies.safety,
                                                 onEdit = { id ->
                                                     navigator.open(Destination.BikeEditor(id.value))
+                                                },
+                                                onEditParts = { id ->
+                                                    navigator.open(Destination.BikeParts(id.value))
                                                 },
                                                 id = BikeId(key.id),
                                                 showBack = !besideList,

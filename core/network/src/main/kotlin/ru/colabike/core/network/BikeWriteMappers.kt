@@ -1,6 +1,8 @@
 package ru.colabike.core.network
 
 import ru.colabike.api.models.BikeClassificationRequest
+import ru.colabike.api.models.BikeComponentPatchRequest
+import ru.colabike.api.models.BikeComponentRequest
 import ru.colabike.api.models.BikePatchRequest
 import ru.colabike.api.models.BikePatchRequestPriceVisibility
 import ru.colabike.api.models.BikeRequest
@@ -8,6 +10,8 @@ import ru.colabike.api.models.BikeRequestPriceVisibility
 import ru.colabike.core.model.BikeDraft
 import ru.colabike.core.model.BikePatch
 import ru.colabike.core.model.ClassificationDraft
+import ru.colabike.core.model.ComponentDraft
+import ru.colabike.core.model.ComponentPatch
 import ru.colabike.core.model.PriceVisibility
 
 /**
@@ -86,3 +90,37 @@ private fun PriceVisibility.toCreate() =
 
 private fun PriceVisibility.toPatch() =
     BikePatchRequestPriceVisibility(bike = bike, components = components, accessories = accessories)
+
+private fun sectionOf(key: String): BikeComponentRequest.Section =
+    BikeComponentRequest.Section.entries.firstOrNull {
+        it.value == key && it != BikeComponentRequest.Section.unknown_default_open_api
+    } ?: throw IllegalArgumentException("Unknown section")
+
+private fun patchSectionOf(key: String): BikeComponentPatchRequest.Section =
+    BikeComponentPatchRequest.Section.entries.firstOrNull {
+        it.value == key && it != BikeComponentPatchRequest.Section.unknown_default_open_api
+    } ?: throw IllegalArgumentException("Unknown section")
+
+/** A new part; the group is given as the form reckoned it, empty meaning "by category". */
+internal fun ComponentDraft.toRequest(): BikeComponentRequest =
+    BikeComponentRequest(
+        section = sectionOf(section),
+        category = category.trim(),
+        name = name.trim(),
+        notes = notes.trim(),
+        price = priceRub,
+        url = url.trim(),
+        groupId = groupId,
+    )
+
+/** Only what changed. A price taken away is added as `null` by the client itself. */
+internal fun ComponentPatch.toRequest(): BikeComponentPatchRequest =
+    BikeComponentPatchRequest(
+        section = section?.let(::patchSectionOf),
+        category = category?.trim(),
+        name = name?.trim(),
+        notes = notes?.trim(),
+        price = priceRub,
+        url = url?.trim(),
+        groupId = groupId,
+    )

@@ -52,6 +52,8 @@ object ColaIcons {
     @DrawableRes val Add = R.drawable.cola_ic_add
     @DrawableRes val Edit = R.drawable.cola_ic_edit
     @DrawableRes val Delete = R.drawable.cola_ic_delete
+    @DrawableRes val ArrowUp = R.drawable.cola_ic_arrow_up
+    @DrawableRes val ArrowDown = R.drawable.cola_ic_arrow_down
     @DrawableRes val Close = R.drawable.cola_ic_close
     @DrawableRes val Search = R.drawable.cola_ic_search
     @DrawableRes val Bookmark = R.drawable.cola_ic_bookmark

@@ -42,6 +42,30 @@ interface BikesRepository {
     /** Deletes one's own bike; one with rides is [DataError.Rejected] with status 409. */
     suspend fun delete(id: BikeId)
 
+    /**
+     * Adds a part to the build of one's own bike. [key] (a UUID) is the identity of the intention:
+     * the same key after a lost answer is the same part. A part of a public bike needs a confirmed
+     * address ([DataError.Rejected] with `email_verification_required`).
+     */
+    suspend fun addComponent(bike: BikeId, draft: ComponentDraft, key: String): BikeComponent
+
+    /**
+     * Changes the named fields of a part. [version] is optional: with it a part another device
+     * changed first is [DataError.Rejected] with status 412; without it the change is applied.
+     */
+    suspend fun updateComponent(
+        bike: BikeId,
+        id: String,
+        patch: ComponentPatch,
+        version: String?,
+    ): BikeComponent
+
+    /** Removes a part; one that is already gone is removed all the same. */
+    suspend fun removeComponent(bike: BikeId, id: String)
+
+    /** The order in which the owner shows the groups of the build: all keys, replacing the old. */
+    suspend fun setGroupOrder(bike: BikeId, groups: List<String>): BikeDetail
+
     /** Every bike saved or deleted through this repository, for lists and pages to agree. */
     val changes: SharedFlow<BikeChange>
 }

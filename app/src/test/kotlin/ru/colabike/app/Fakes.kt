@@ -84,9 +84,11 @@ import ru.colabike.core.model.CommentThread
 import ru.colabike.core.model.CommentThreads
 import ru.colabike.core.model.CommentsRepository
 import ru.colabike.core.model.Compatibility
+import ru.colabike.core.model.ComponentDraft
 import ru.colabike.core.model.ComponentFilters
 import ru.colabike.core.model.ComponentId
 import ru.colabike.core.model.ComponentModel
+import ru.colabike.core.model.ComponentPatch
 import ru.colabike.core.model.ComponentPhoto
 import ru.colabike.core.model.ComponentQuery
 import ru.colabike.core.model.ComponentsRepository
@@ -269,6 +271,98 @@ class FakeBikes(
             writeError = null
             throw it
         }
+    }
+
+    /** What the build editor asked for, in order. */
+    val addedParts = mutableListOf<Triple<BikeId, ComponentDraft, String>>()
+    val changedParts = mutableListOf<Triple<String, ComponentPatch, String?>>()
+    val removedParts = mutableListOf<String>()
+    val groupOrders = mutableListOf<List<String>>()
+
+    private fun withParts(bike: BikeId, change: (BikeDetail) -> BikeDetail) {
+        val before =
+            details[bike.value]
+                ?: PreviewData.bikeDetail.copy(
+                    summary = PreviewData.bikeDetail.summary.copy(id = bike)
+                )
+        details = details + (bike.value to change(before))
+    }
+
+    override suspend fun addComponent(
+        bike: BikeId,
+        draft: ComponentDraft,
+        key: String,
+    ): BikeComponent {
+        failWrite()
+        addedParts += Triple(bike, draft, key)
+        val part =
+            BikeComponent(
+                id = "p-new-${addedParts.size}",
+                section = draft.section,
+                category = draft.category.trim(),
+                name = draft.name.trim(),
+                notes = draft.notes.trim(),
+                url = draft.url.takeIf { it.isNotBlank() },
+                groupId = draft.groupId,
+                sortOrder = 100 + addedParts.size,
+                priceRub = draft.priceRub,
+                version = "\"p1\"",
+            )
+        withParts(bike) { it.copy(components = it.components + part) }
+        savedFlow.tryEmit(BikeChange.Parts(bike))
+        return part
+    }
+
+    override suspend fun updateComponent(
+        bike: BikeId,
+        id: String,
+        patch: ComponentPatch,
+        version: String?,
+    ): BikeComponent {
+        failWrite()
+        changedParts += Triple(id, patch, version)
+        lateinit var changed: BikeComponent
+        withParts(bike) { detail ->
+            detail.copy(
+                components =
+                    detail.components.map { part ->
+                        if (part.id != id) part
+                        else
+                            part
+                                .copy(
+                                    section = patch.section ?: part.section,
+                                    category = patch.category ?: part.category,
+                                    name = patch.name ?: part.name,
+                                    notes = patch.notes ?: part.notes,
+                                    priceRub =
+                                        if (patch.clearPrice) null
+                                        else patch.priceRub ?: part.priceRub,
+                                    url = patch.url?.takeIf { it.isNotBlank() } ?: part.url,
+                                    groupId = patch.groupId ?: part.groupId,
+                                    version = "\"p${changedParts.size + 1}\"",
+                                )
+                                .also { changed = it }
+                    }
+            )
+        }
+        savedFlow.tryEmit(BikeChange.Parts(bike))
+        return changed
+    }
+
+    override suspend fun removeComponent(bike: BikeId, id: String) {
+        failWrite()
+        removedParts += id
+        withParts(bike) { detail ->
+            detail.copy(components = detail.components.filterNot { it.id == id })
+        }
+        savedFlow.tryEmit(BikeChange.Parts(bike))
+    }
+
+    override suspend fun setGroupOrder(bike: BikeId, groups: List<String>): BikeDetail {
+        failWrite()
+        groupOrders += groups
+        withParts(bike) { it.copy(groupOrder = groups) }
+        return details.getValue(bike.value).also { savedFlow.tryEmit(BikeChange.Saved(it)) }
     }
 
     /** Holds a create until it is completed, to look at the form while it is being saved. */

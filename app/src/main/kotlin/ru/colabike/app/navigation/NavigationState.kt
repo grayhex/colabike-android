@@ -123,6 +123,12 @@ class Navigator(
         return false
     }
 
+    /** The section on screen at its own root: every screen opened above it is dropped. */
+    fun toRoot() {
+        val stack = state.currentStack
+        while (stack.size > 1) stack.removeAt(stack.lastIndex)
+    }
+
     /** A screen above the current one (profile → devices): pushed, and Back pops it. */
     fun open(destination: Destination) {
         if (!allowed(destination)) return
@@ -158,6 +164,8 @@ class Navigator(
                 is Destination.Conversation -> TopLevel.Messages.root
                 is Destination.Bike,
                 is Destination.BikeEditor,
+                is Destination.BikeParts,
+                is Destination.BikePart,
                 is Destination.Person,
                 is Destination.Journal,
                 is Destination.Listing,
