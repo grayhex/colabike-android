@@ -175,6 +175,11 @@ class BikePhotosViewModel(
                 send(item, entry)
             } catch (e: PhotoImportException) {
                 fail(item, UiText.Res(importMessage(e.reason)), retry = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Whatever else the platform throws at a file it cannot read is not a crash.
+                fail(item, UiText.Res(R.string.photos_import_unreadable), retry = false)
             }
         }
     }

@@ -262,6 +262,17 @@ class BikePhotosViewModelTest {
         }
 
     @Test
+    fun `a file that breaks the platform is unreadable, not a crash of the app`() = runTest {
+        val vm = photos(files = FakePhotoFiles(crashes = setOf("content://odd")))
+
+        vm.add(listOf("content://odd"))
+
+        val failed = vm.pending().single().state as PendingState.Failed
+        assertThat(failed.message).isEqualTo(UiText.Res(R.string.photos_import_unreadable))
+        assertThat(failed.retry).isFalse()
+    }
+
+    @Test
     fun `no more pictures are taken than the bike has room for, and the rest is counted`() =
         runTest {
             val eleven = (1..11).map { Photo("q$it", "https://example.test/q$it.jpg") }

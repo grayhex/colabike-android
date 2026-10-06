@@ -2569,6 +2569,8 @@ class FakePushSync : PushSync {
 /** Makes a file of what was picked without a phone: [failures] by source say what goes wrong. */
 class FakePhotoFiles(
     private val failures: Map<String, PhotoImportException.Reason> = emptyMap(),
+    /** Sources that break the platform's way: with an exception that is not ours. */
+    private val crashes: Set<String> = emptySet(),
     private val directory: java.io.File =
         java.nio.file.Files.createTempDirectory("photos").toFile(),
 ) : PhotoFiles {
@@ -2578,6 +2580,7 @@ class FakePhotoFiles(
     override suspend fun import(source: String): java.io.File {
         imported += source
         failures[source]?.let { throw PhotoImportException(it) }
+        if (source in crashes) throw IllegalStateException("decoder failed")
         return java.io.File(directory, "pick-${imported.size}.jpg").also {
             it.writeBytes(byteArrayOf(1))
         }
