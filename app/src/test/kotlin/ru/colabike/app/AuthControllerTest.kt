@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import ru.colabike.app.auth.AuthController
 import ru.colabike.app.auth.YandexFailure
+import ru.colabike.app.auth.YandexReauth
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.auth.DeviceInfo
 import ru.colabike.core.auth.DeviceSession
@@ -92,6 +93,80 @@ class AuthControllerTest {
             auth.handleLink("https://colabike.test/app/auth?error=cancelled")
 
             expectNoEvents()
+        }
+        assertThat(auth.state.value).isInstanceOf(AuthState.SignedIn::class.java)
+    }
+
+    @Test
+    fun `a return that a signed-in person asked for is a proof for the screen, not a session`() =
+        runTest {
+            val auth = controller(this, signedIn = true)
+            auth.beginReauth()
+
+            auth.yandexReauth.test {
+                auth.handleLink("https://colabike.test/app/auth?code=$code")
+
+                val proof = awaitItem() as YandexReauth.Proof
+                assertThat(proof.code).isEqualTo(code)
+                assertThat(proof.verifier).isNotEmpty()
+                // Secrets stay out of the text form, which is what logs and crash reports see.
+                assertThat(proof.toString()).doesNotContain(code)
+                assertThat(proof.toString()).doesNotContain(proof.verifier)
+            }
+            assertThat(auth.state.value).isInstanceOf(AuthState.SignedIn::class.java)
+            // The verifier was handed out once.
+            auth.yandexReauth.test {
+                auth.handleLink("https://colabike.test/app/auth?code=$code")
+                expectNoEvents()
+            }
+        }
+
+    @Test
+    fun `a confirmation that failed is told only to the screen that asked for it`() = runTest {
+        val auth = controller(this, signedIn = true)
+
+        auth.yandexReauth.test {
+            // Nobody asked: a cancelled return is nobody's news.
+            auth.handleLink("https://colabike.test/app/auth?error=cancelled")
+            expectNoEvents()
+            auth.beginReauth()
+            auth.handleLink("https://colabike.test/app/auth?error=cancelled")
+
+            assertThat(awaitItem()).isEqualTo(YandexReauth.Failed(YandexSignIn.Reason.Cancelled))
+        }
+    }
+
+    @Test
+    fun `a return that comes while the session is still being read waits for it`() = runTest {
+        // The process was recreated while the browser was in front: the stored session is not read
+        // yet.
+        val session =
+            DeviceSession(
+                plainSessions = ColaBikeApi(config, HttpClients.base(config)).sessions,
+                store = Memory("cola_rt_stored"),
+                device = DeviceInfo("Test", "0.1.0"),
+                media = MediaUrls(config.siteUrl),
+            )
+        val auth =
+            AuthController(
+                session = session,
+                yandex = YandexSignIn(config.siteUrl, "https://colabike.test/app/auth", verifier),
+                yandexReady = { true },
+                revoke = {},
+                scope = this,
+            )
+        auth.beginReauth()
+        assertThat(auth.state.value).isEqualTo(AuthState.Restoring)
+
+        auth.yandexReauth.test {
+            auth.handleLink("https://colabike.test/app/auth?code=$code")
+            // Not taken for a sign-in (which would spend the code and open a second session).
+            expectNoEvents()
+
+            session.restore()
+
+            val proof = awaitItem() as YandexReauth.Proof
+            assertThat(proof.code).isEqualTo(code)
         }
         assertThat(auth.state.value).isInstanceOf(AuthState.SignedIn::class.java)
     }

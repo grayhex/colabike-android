@@ -165,6 +165,7 @@ class Navigator(
                 is Destination.Comments ->
                     if (destination.kind == "ride") TopLevel.Rides.root else TopLevel.Bikes.root
                 Destination.Devices,
+                Destination.DeleteAccount,
                 Destination.NearbySettings,
                 Destination.NearbyOffers,
                 Destination.NotificationSettings -> TopLevel.Profile.root

@@ -77,7 +77,9 @@
     <string name="profile_devices">Устройства и входы</string>
     <string name="profile_devices_hint">Где выполнен вход в ваш аккаунт</string>
     <string name="profile_manage_web">Управление аккаунтом</string>
-    <string name="profile_manage_web_hint">Почта, пароль и удаление аккаунта: на сайте, в браузере</string>
+    <string name="profile_manage_web_hint">Почта и пароль: на сайте, в браузере</string>
+    <string name="profile_delete_account">Удалить аккаунт</string>
+    <string name="profile_delete_account_hint">Навсегда, вместе с велосипедами, журналом и покатушками</string>
     <string name="profile_section_appearance">Оформление</string>
     <string name="profile_section_app">Приложение</string>
     <string name="profile_about">О приложении</string>
@@ -88,6 +90,26 @@
     <string name="profile_unverified">Почта не подтверждена. Подтвердить её можно на сайте.</string>
     <string name="profile_sign_out">Выйти</string>
 
+    <string name="delete_account_title">Удаление аккаунта</string>
+    <string name="delete_account_heading">Аккаунт будет удалён навсегда</string>
+    <string name="delete_account_what">Вместе с ним уйдут ваши велосипеды с фотографиями, журнал, покатушки и намерения, объявления, подписки и уведомления. Сеансы на всех устройствах и в браузерах завершатся. Комментарии останутся как «недоступные». Вернуть аккаунт нельзя.</string>
+    <string name="delete_account_how_password">Чтобы убедиться, что это вы, введите слово УДАЛИТЬ и текущий пароль.</string>
+    <string name="delete_account_how_yandex">У аккаунта нет пароля: он создан через Яндекс ID. Введите слово УДАЛИТЬ, затем войдите через Яндекс ещё раз, чтобы мы убедились, что аккаунт удаляете вы.</string>
+    <string name="delete_account_word_label">Слово подтверждения</string>
+    <string name="delete_account_word_hint">Введите УДАЛИТЬ</string>
+    <string name="delete_account_password">Текущий пароль</string>
+    <string name="delete_account_action">Удалить аккаунт навсегда</string>
+    <string name="delete_account_action_yandex">Войти через Яндекс и удалить</string>
+    <string name="delete_account_deleting">Удаляем…</string>
+    <string name="delete_account_provider_waiting">Ждём подтверждения: войдите через Яндекс в браузере и вернитесь в приложение.</string>
+    <string name="delete_account_provider_ready">Яндекс подтвердил, что это вы. Нажмите кнопку, чтобы удалить аккаунт.</string>
+    <string name="delete_account_provider_cancelled">Вход через Яндекс не завершён. Аккаунт не удалён.</string>
+    <string name="delete_account_provider_failed">Не удалось подтвердить вход через Яндекс. Аккаунт не удалён, попробуйте ещё раз.</string>
+    <string name="delete_account_wrong_password">Пароль не подходит. Аккаунт не удалён.</string>
+    <string name="delete_account_wrong_provider">Подтверждение через Яндекс не подошло или устарело. Аккаунт не удалён: нажмите кнопку и войдите ещё раз.</string>
+    <string name="delete_account_admin">Вы администратор. Сначала передайте права другому человеку на сайте, затем удалите аккаунт.</string>
+    <string name="delete_account_no_method">У аккаунта нет ни пароля, ни входа через Яндекс. Задайте пароль через «Забыли пароль?» на сайте и вернитесь сюда.</string>
+    <string name="delete_account_unavailable">Удалить аккаунт из приложения сейчас нельзя. Это можно сделать на сайте.</string>
     <string name="devices_title">Устройства и входы</string>
     <string name="devices_intro">Здесь все места, где выполнен вход в ваш аккаунт. Не узнаёте устройство — завершите его сеанс и смените пароль на сайте.</string>
     <string name="devices_this_device">Это устройство</string>

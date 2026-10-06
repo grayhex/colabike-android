@@ -66,6 +66,7 @@ fun ProfileRoute(
     onOpenDevices: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenAbout: () -> Unit,
+    onDeleteAccount: () -> Unit = {},
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
     onOpenSavedMarket: (() -> Unit)? = {},
@@ -90,6 +91,7 @@ fun ProfileRoute(
         onOpenSavedMarket = onOpenSavedMarket,
         onManageOnWeb = { opener.open(dependencies.links.account) },
         onOpenAbout = onOpenAbout,
+        onDeleteAccount = onDeleteAccount,
     )
 }
 
@@ -106,6 +108,7 @@ fun ProfileScreen(
     onOpenNotifications: () -> Unit,
     onManageOnWeb: () -> Unit,
     onOpenAbout: () -> Unit,
+    onDeleteAccount: () -> Unit = {},
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
     onOpenSavedMarket: (() -> Unit)? = {},
@@ -161,6 +164,7 @@ fun ProfileScreen(
                                         onOpenDevices = onOpenDevices,
                                         onOpenNotifications = onOpenNotifications,
                                         onManageOnWeb = onManageOnWeb,
+                                        onDeleteAccount = onDeleteAccount,
                                     )
                                 else -> Unit
                             }
@@ -244,6 +248,7 @@ private fun MemberSections(
     onOpenDevices: () -> Unit,
     onOpenNotifications: () -> Unit,
     onManageOnWeb: () -> Unit,
+    onDeleteAccount: () -> Unit,
 ) {
     val account = state.account
     Column(
@@ -339,6 +344,15 @@ private fun MemberSections(
             tone = HaloTone.Secondary,
             action = ListItemAction.External,
             onClick = onManageOnWeb,
+        )
+        // In the app, not only on the site: a store asks for it, and a person who has no
+        // password has no other way (docs/adr/0021).
+        ColaListItem(
+            title = stringResource(R.string.profile_delete_account),
+            supporting = stringResource(R.string.profile_delete_account_hint),
+            icon = ColaIcons.Info,
+            tone = HaloTone.Secondary,
+            onClick = onDeleteAccount,
         )
     }
 }

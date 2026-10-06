@@ -31,6 +31,20 @@ interface AccountRepository {
 }
 
 /**
+ * Deleting one's own account (cola #354). Implementations throw [DataError]; a proof the server
+ * does not accept is [DataError.Rejected] with the code `invalid_credentials`.
+ */
+interface AccountDeletionRepository {
+    suspend fun deletion(): AccountDeletion
+
+    /**
+     * Irreversible. On success the server has ended every session of the account, this one too: the
+     * next call is signed out.
+     */
+    suspend fun delete(proof: DeletionProof)
+}
+
+/**
  * People and their public bikes. [ref] is a person's UUID or current username; screens keep the
  * UUID. Implementations throw [DataError] on failure.
  */

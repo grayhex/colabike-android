@@ -38,6 +38,7 @@ import ru.colabike.app.ui.UiText
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
+import ru.colabike.core.model.AccountDeletion
 import ru.colabike.core.model.AgreementChange
 import ru.colabike.core.model.AppNotice
 import ru.colabike.core.model.BikeId
@@ -82,6 +83,14 @@ enum class Screen(val file: String) {
     ProfileGuest("profile_guest"),
     ProfileMore("profile_more"),
     Devices("devices"),
+
+    /**
+     * Profile → Delete account: for an account with a password, for one made through Yandex ID, and
+     * for an administrator who has to hand the rights over first.
+     */
+    DeleteAccount("delete_account"),
+    DeleteAccountYandex("delete_account_yandex"),
+    DeleteAccountAdmin("delete_account_admin"),
     About("about"),
 
     /** The author of a bike: header, numbers, and bikes. */
@@ -491,6 +500,24 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                     )
                             )
                         )
+                    Screen.DeleteAccountYandex ->
+                        AppShell(
+                            FakeDependencies(
+                                accountDeletion =
+                                    FakeAccountDeletion(
+                                        AccountDeletion(AccountDeletion.Method.Yandex, true, null)
+                                    )
+                            )
+                        )
+                    Screen.DeleteAccountAdmin ->
+                        AppShell(
+                            FakeDependencies(
+                                accountDeletion =
+                                    FakeAccountDeletion(
+                                        AccountDeletion(null, false, AccountDeletion.Reason.Admin)
+                                    )
+                            )
+                        )
                     Screen.ProfileGuest,
                     Screen.FeedGuest,
                     Screen.CommentsGuest,
@@ -565,6 +592,12 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.Devices -> {
             section("Профиль").performClick()
             onNodeWithText("Устройства и входы").performScrollTo().performClick()
+        }
+        Screen.DeleteAccount,
+        Screen.DeleteAccountYandex,
+        Screen.DeleteAccountAdmin -> {
+            section("Профиль").performClick()
+            onNodeWithText("Удалить аккаунт").performScrollTo().performClick()
         }
         Screen.About -> {
             section("Профиль").performClick()

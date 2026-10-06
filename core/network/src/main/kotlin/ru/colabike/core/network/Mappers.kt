@@ -1,6 +1,7 @@
 package ru.colabike.core.network
 
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import ru.colabike.api.models.AccountDeletion as AccountDeletionDto
 import ru.colabike.api.models.AccountSession as AccountSessionDto
 import ru.colabike.api.models.Author as AuthorDto
 import ru.colabike.api.models.Bike as BikeDto
@@ -27,6 +28,7 @@ import ru.colabike.api.models.ReplyPage as ReplyPageDto
 import ru.colabike.api.models.UserPage as UserPageDto
 import ru.colabike.api.models.UserSummary as UserSummaryDto
 import ru.colabike.core.model.Account
+import ru.colabike.core.model.AccountDeletion
 import ru.colabike.core.model.AccountSession
 import ru.colabike.core.model.BikeClassification
 import ru.colabike.core.model.BikeComponent
@@ -169,6 +171,29 @@ fun MeDto.toAccount(media: MediaUrls): Account =
         bio = bio,
         location = location,
         emailVerified = emailVerifiedAt != null,
+    )
+
+internal fun AccountDeletionDto.toModel(): AccountDeletion =
+    AccountDeletion(
+        method =
+            when (method) {
+                AccountDeletionDto.Method.password -> AccountDeletion.Method.Password
+                AccountDeletionDto.Method.yandex -> AccountDeletion.Method.Yandex
+                AccountDeletionDto.Method.unknown_default_open_api,
+                null -> null
+            },
+        // A method this version cannot give is a deletion it cannot confirm: not offered.
+        allowed =
+            allowed &&
+                method in
+                    listOf(AccountDeletionDto.Method.password, AccountDeletionDto.Method.yandex),
+        reason =
+            when (reason) {
+                AccountDeletionDto.Reason.admin -> AccountDeletion.Reason.Admin
+                AccountDeletionDto.Reason.no_method -> AccountDeletion.Reason.NoMethod
+                AccountDeletionDto.Reason.unknown_default_open_api -> AccountDeletion.Reason.Other
+                null -> null
+            },
     )
 
 internal fun AccountSessionDto.toModel(): AccountSession =
