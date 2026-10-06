@@ -66,6 +66,26 @@ interface BikesRepository {
     /** The order in which the owner shows the groups of the build: all keys, replacing the old. */
     suspend fun setGroupOrder(bike: BikeId, groups: List<String>): BikeDetail
 
+    /**
+     * Sends one picture of one's own bike: the bytes of [file] as they are (the server checks them,
+     * rotates, converts and sizes them), [onProgress] from 0 to 1 as they leave. [key] (a UUID) is
+     * the identity of the file: the same key and the same bytes after a lost answer give the same
+     * photo, never a second one. Cancelling the calling coroutine stops the transfer. The first
+     * photo becomes the cover.
+     */
+    suspend fun uploadPhoto(
+        bike: BikeId,
+        file: java.io.File,
+        key: String,
+        onProgress: (Float) -> Unit = {},
+    ): Photo
+
+    /** Makes a photo the cover of the bike; the bike comes back with its photos in order. */
+    suspend fun setCover(bike: BikeId, photoId: String): BikeDetail
+
+    /** Removes a photo; one that is already gone is removed all the same. */
+    suspend fun deletePhoto(bike: BikeId, photoId: String)
+
     /** Every bike saved or deleted through this repository, for lists and pages to agree. */
     val changes: SharedFlow<BikeChange>
 }

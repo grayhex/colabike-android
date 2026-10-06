@@ -26,6 +26,11 @@ import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import java.io.File
 import java.time.Instant
+import ru.colabike.app.bikes.BikePhotosActions
+import ru.colabike.app.bikes.BikePhotosScreen
+import ru.colabike.app.bikes.BikePhotosUiState
+import ru.colabike.app.bikes.PendingPhoto
+import ru.colabike.app.bikes.PendingState
 import ru.colabike.app.config.LaunchFrame
 import ru.colabike.app.config.LaunchPlan
 import ru.colabike.app.config.OnboardingScreen
@@ -38,6 +43,7 @@ import ru.colabike.app.ui.UiText
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
+import ru.colabike.core.designsystem.theme.ColaCanvas
 import ru.colabike.core.model.AccountDeletion
 import ru.colabike.core.model.AgreementChange
 import ru.colabike.core.model.AppNotice
@@ -161,6 +167,14 @@ enum class Screen(val file: String) {
     BikeParts("bike_parts"),
     BikePartEditor("bike_part_editor"),
     BikePartProblems("bike_part_problems"),
+
+    /**
+     * The pictures of one's own bike: the list, pictures on their way, the question before a
+     * removal.
+     */
+    BikePhotos("bike_photos"),
+    BikePhotosPending("bike_photos_pending"),
+    BikePhotosDelete("bike_photos_delete"),
 
     /** The same ride further down: the route and the charts of its series; and the route's map. */
     RideCompletedAnalysis("ride_completed_analysis"),
@@ -614,7 +628,38 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                 settings = FakeSettings(guest = true),
                             )
                         )
+                    Screen.BikePhotosPending ->
+                        // The shell paints the canvas under a screen; here nothing else does.
+                        ColaCanvas {
+                            BikePhotosScreen(
+                                BikePhotosUiState.Ready(
+                                    bike = ownBike,
+                                    pending =
+                                        listOf(
+                                            PendingPhoto(1, PendingState.Sending(0.4f)),
+                                            PendingPhoto(2, PendingState.Waiting),
+                                            PendingPhoto(
+                                                3,
+                                                PendingState.Failed(
+                                                    UiText.Res(R.string.photos_import_too_small),
+                                                    retry = false,
+                                                ),
+                                            ),
+                                            PendingPhoto(
+                                                4,
+                                                PendingState.Failed(
+                                                    UiText.Res(R.string.error_offline),
+                                                    retry = true,
+                                                ),
+                                            ),
+                                        ),
+                                ),
+                                BikePhotosActions(),
+                            )
+                        }
                     Screen.BikeEditorDelete,
+                    Screen.BikePhotos,
+                    Screen.BikePhotosDelete,
                     Screen.BikeParts,
                     Screen.BikePartEditor,
                     Screen.BikePartProblems ->
@@ -768,6 +813,14 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
             onNodeWithTag("bike:edit").performClick()
             onNodeWithTag("bike-editor:delete").performScrollTo().performClick()
+        }
+        Screen.BikePhotos,
+        Screen.BikePhotosDelete -> {
+            onNodeWithContentDescription("Мой трейл", substring = true).performClick()
+            onNodeWithTag("bike:photos").performScrollTo().performClick()
+            if (screen == Screen.BikePhotosDelete) {
+                onNodeWithTag("photos:delete:p2").performScrollTo().performClick()
+            }
         }
         Screen.BikeParts,
         Screen.BikePartEditor,

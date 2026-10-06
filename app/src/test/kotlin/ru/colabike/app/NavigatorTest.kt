@@ -59,6 +59,7 @@ class NavigatorTest {
         navigator.openBike("b1")
         navigator.open(Destination.BikeParts("b1"))
         navigator.open(Destination.BikePart("b1"))
+        navigator.open(Destination.BikePhotos("b1"))
 
         navigator.toRoot()
 

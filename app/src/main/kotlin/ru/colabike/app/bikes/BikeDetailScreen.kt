@@ -96,6 +96,7 @@ fun BikeDetailRoute(
     safety: SafetyRepository? = null,
     onEdit: ((id: BikeId) -> Unit)? = null,
     onEditParts: ((id: BikeId) -> Unit)? = null,
+    onEditPhotos: ((id: BikeId) -> Unit)? = null,
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -127,6 +128,13 @@ fun BikeDetailRoute(
                     (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
             )
                 ({ onEditParts(id) })
+            else null,
+        onEditPhotos =
+            if (
+                onEditPhotos != null &&
+                    (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
+            )
+                ({ onEditPhotos(id) })
             else null,
         topActions = {
             // The owner changes the bike; everyone else may report it.
@@ -176,6 +184,7 @@ fun BikeDetailScreen(
     onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComponent: (modelId: String) -> Unit = {},
     onEditParts: (() -> Unit)? = null,
+    onEditPhotos: (() -> Unit)? = null,
     topActions: @Composable RowScope.() -> Unit = {},
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
@@ -239,6 +248,7 @@ fun BikeDetailScreen(
                         onOpenRides,
                         onOpenComponent,
                         onEditParts,
+                        onEditPhotos,
                     )
             }
         }
@@ -261,6 +271,7 @@ private fun BikeContent(
     onOpenRides: (id: BikeId, name: String) -> Unit,
     onOpenComponent: (modelId: String) -> Unit,
     onEditParts: (() -> Unit)?,
+    onEditPhotos: (() -> Unit)?,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -388,6 +399,15 @@ private fun BikeContent(
                             onOpenModel = onOpenComponent,
                         )
                     }
+                }
+                if (onEditPhotos != null) {
+                    ColaListItem(
+                        title = stringResource(R.string.photos_open),
+                        supporting = stringResource(R.string.photos_open_hint),
+                        icon = ColaIcons.Image,
+                        onClick = onEditPhotos,
+                        modifier = Modifier.testTag("bike:photos"),
+                    )
                 }
                 if (onEditParts != null) {
                     ColaListItem(

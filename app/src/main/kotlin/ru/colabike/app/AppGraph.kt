@@ -13,6 +13,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.AuthController
+import ru.colabike.app.bikes.ContentPhotoFiles
+import ru.colabike.app.bikes.PhotoFiles
 import ru.colabike.app.comments.CommentDrafts
 import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.config.AppConfigController
@@ -182,6 +184,9 @@ interface AppDependencies {
 
     /** Where a ride's route is drawn: the real map in the app, a drawing in tests. */
     val maps: RouteMaps
+
+    /** Files made of the pictures the person picked for a bike (docs/adr/0022). */
+    val photoFiles: PhotoFiles
 }
 
 /**
@@ -222,7 +227,13 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     private val api = ColaBikeApi(config, httpClient)
 
     override val bikes: BikesRepository =
-        NetworkBikesRepository(api.bikes, api.search, media, clearing = api::bikesWithNulls)
+        NetworkBikesRepository(
+            api.bikes,
+            api.search,
+            media,
+            clearing = api::bikesWithNulls,
+            uploading = api::bikesUploading,
+        )
     override val account: AccountRepository = NetworkAccountRepository(api.account, media)
     override val accountDeletion: AccountDeletionRepository =
         NetworkAccountDeletionRepository(api.account)
@@ -277,6 +288,7 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
     override val links = SiteLinks(config.siteUrl)
     override val clock: Clock = Clock.systemUTC()
     override val maps: RouteMaps = MapLibreRouteMaps(BuildConfig.MAP_STYLE_URL)
+    override val photoFiles: PhotoFiles = ContentPhotoFiles(context.applicationContext)
     override val pending: PendingNavigation =
         PreferencesPendingNavigation(
             context.getSharedPreferences("pending-navigation", Context.MODE_PRIVATE),

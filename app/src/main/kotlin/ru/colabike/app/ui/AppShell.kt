@@ -58,6 +58,7 @@ import ru.colabike.app.bikes.BikeDetailRoute
 import ru.colabike.app.bikes.BikeEditorRoute
 import ru.colabike.app.bikes.BikePartEditorRoute
 import ru.colabike.app.bikes.BikePartsRoute
+import ru.colabike.app.bikes.BikePhotosRoute
 import ru.colabike.app.bikes.BikesRoute
 import ru.colabike.app.comments.CommentsRoute
 import ru.colabike.app.components.ComponentRoute
@@ -737,6 +738,15 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onOpenGarage = { navigator.toRoot() },
                                             )
                                         }
+                                        entry<Destination.BikePhotos> { key ->
+                                            BikePhotosRoute(
+                                                repository = dependencies.bikes,
+                                                bikeId = key.bikeId,
+                                                onBack = { navigator.back() },
+                                                onOpenGarage = { navigator.toRoot() },
+                                                photoFiles = dependencies.photoFiles,
+                                            )
+                                        }
                                         entry<Destination.BikePart> { key ->
                                             BikePartEditorRoute(
                                                 repository = dependencies.bikes,
@@ -770,6 +780,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 },
                                                 onEditParts = { id ->
                                                     navigator.open(Destination.BikeParts(id.value))
+                                                },
+                                                onEditPhotos = { id ->
+                                                    navigator.open(Destination.BikePhotos(id.value))
                                                 },
                                                 id = BikeId(key.id),
                                                 showBack = !besideList,

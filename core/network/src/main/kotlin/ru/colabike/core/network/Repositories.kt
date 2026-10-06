@@ -1,11 +1,20 @@
 package ru.colabike.core.network
 
+import java.io.File
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import okhttp3.Call
 import ru.colabike.api.apis.AccountApi
 import ru.colabike.api.apis.BikesApi
 import ru.colabike.api.apis.SafetyApi
@@ -45,6 +54,7 @@ import ru.colabike.core.model.LikeState
 import ru.colabike.core.model.Page
 import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.PersonSummary
+import ru.colabike.core.model.Photo
 import ru.colabike.core.model.Profile
 import ru.colabike.core.model.ReportKind
 import ru.colabike.core.model.ReportReason
@@ -59,6 +69,11 @@ class NetworkBikesRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     /** The bikes API whose `PATCH` body also names these fields as `null` (a weight, a price). */
     private val clearing: (nulls: Set<String>) -> BikesApi = { api },
+    /** The bikes API for a picture: progress of the body, and the call, to stop it. */
+    private val uploading: (onProgress: (Float) -> Unit, onCall: (Call) -> Unit) -> BikesApi =
+        { _, _ ->
+            api
+        },
 ) : BikesRepository {
     private val likes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
     override val likeChanges: SharedFlow<LikeChange> = likes.asSharedFlow()
@@ -180,6 +195,75 @@ class NetworkBikesRepository(
         // The server answers 204 to a repeat as well: gone already is as good as removed now.
         apiCall(dispatcher) { api.deleteBikeComponent(bikeUuid, componentUuid) }
         saved.tryEmit(BikeChange.Parts(bike))
+    }
+
+    override suspend fun uploadPhoto(
+        bike: BikeId,
+        file: File,
+        key: String,
+        onProgress: (Float) -> Unit,
+    ): Photo {
+        require(runCatching { UUID.fromString(key) }.isSuccess) { "Idempotency-Key must be a UUID" }
+        val uuid = uuidOrNotFound(bike.value)
+        // The transfer is a blocking call: a cancelled coroutine has to stop it by hand, at once,
+        // not when the server answers. The watcher below is cancelled with its parent, and its
+        // last act is to cancel the call, which is then known (or is cancelled the moment it is).
+        val call = AtomicReference<Call?>()
+        val stopped = AtomicBoolean(false)
+        val finished = AtomicBoolean(false)
+        return coroutineScope {
+            val watcher =
+                launch(start = CoroutineStart.UNDISPATCHED) {
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        if (!finished.get()) {
+                            stopped.set(true)
+                            call.get()?.cancel()
+                        }
+                    }
+                }
+            try {
+                val dto =
+                    try {
+                        apiCall(dispatcher) {
+                            uploading(onProgress) {
+                                    call.set(it)
+                                    if (stopped.get()) it.cancel()
+                                }
+                                .uploadBikePhoto(uuid, UUID.fromString(key), file)
+                        }
+                    } catch (e: DataError) {
+                        // A transfer we stopped ourselves is a cancellation, not a lost connection.
+                        if (stopped.get()) throw CancellationException("Upload cancelled", e)
+                        throw e
+                    }
+                val photo = dto.toModel(media) ?: throw DataError.Unexpected(null)
+                saved.tryEmit(BikeChange.Photos(bike))
+                photo
+            } finally {
+                finished.set(true)
+                watcher.cancel()
+            }
+        }
+    }
+
+    override suspend fun setCover(bike: BikeId, photoId: String): BikeDetail {
+        val bikeUuid = uuidOrNotFound(bike.value)
+        val photoUuid = uuidOrNotFound(photoId)
+        return apiCall(dispatcher) {
+                api.setBikeCoverWithHttpInfo(bikeUuid, photoUuid).valueAndTag()
+            }
+            .let { (dto, tag) -> dto.toModel(media, tag) }
+            .also { saved.tryEmit(BikeChange.Saved(it)) }
+    }
+
+    override suspend fun deletePhoto(bike: BikeId, photoId: String) {
+        val bikeUuid = uuidOrNotFound(bike.value)
+        val photoUuid = uuidOrNotFound(photoId)
+        // The server answers 204 to a repeat as well: gone already is as good as removed now.
+        apiCall(dispatcher) { api.deleteBikePhoto(bikeUuid, photoUuid) }
+        saved.tryEmit(BikeChange.Photos(bike))
     }
 
     override suspend fun setGroupOrder(bike: BikeId, groups: List<String>): BikeDetail {
