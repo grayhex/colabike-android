@@ -876,6 +876,40 @@ class FakeJournal(
         return entry
     }
 
+    /** What the photos screen of an entry asked for, in order. */
+    val uploaded = mutableListOf<Triple<JournalId, java.io.File, String>>()
+    val removedPhotos = mutableListOf<String>()
+
+    /** Runs inside the next uploads (to report progress, to wait); the key it got comes with it. */
+    var uploading: (suspend (key: String, onProgress: (Float) -> Unit) -> Unit)? = null
+
+    override suspend fun uploadPhoto(
+        id: JournalId,
+        file: java.io.File,
+        key: String,
+        onProgress: (Float) -> Unit,
+    ): Photo {
+        uploading?.invoke(key, onProgress)
+        failWrite()
+        uploaded += Triple(id, file, key)
+        val photo =
+            Photo("jp-new-${uploaded.size}", "https://example.test/entry-${uploaded.size}.jpg")
+        val before = entries[id.value] ?: throw DataError.NotFound()
+        entries = entries + (id.value to before.copy(photos = before.photos + photo))
+        writtenEmitter.tryEmit(JournalChange.Photos(id))
+        return photo
+    }
+
+    override suspend fun deletePhoto(id: JournalId, photoId: String) {
+        failWrite()
+        removedPhotos += photoId
+        val before = entries[id.value] ?: throw DataError.NotFound()
+        entries =
+            entries +
+                (id.value to before.copy(photos = before.photos.filterNot { it.id == photoId }))
+        writtenEmitter.tryEmit(JournalChange.Photos(id))
+    }
+
     override suspend fun delete(id: JournalId) {
         failWrite()
         deleted += id
@@ -2682,10 +2716,12 @@ class FakePhotoFiles(
         java.nio.file.Files.createTempDirectory("photos").toFile(),
 ) : PhotoFiles {
     val imported = mutableListOf<String>()
+    val checks = mutableListOf<Boolean>()
     val discarded = mutableListOf<java.io.File>()
 
-    override suspend fun import(source: String): java.io.File {
+    override suspend fun import(source: String, checkMinimum: Boolean): java.io.File {
         imported += source
+        checks += checkMinimum
         failures[source]?.let { throw PhotoImportException(it) }
         if (source in crashes) throw IllegalStateException("decoder failed")
         return java.io.File(directory, "pick-${imported.size}.jpg").also {

@@ -85,6 +85,8 @@ class JournalActions(
     val onOpenComponent: (modelId: String) -> Unit = {},
     /** The author changes the entry: the bike it is about and the entry. */
     val onEdit: (bike: BikeId, id: JournalId) -> Unit = { _, _ -> },
+    /** The author adds and removes the entry's photos. */
+    val onEditPhotos: (id: JournalId) -> Unit = {},
 )
 
 @Composable
@@ -271,6 +273,17 @@ private fun Entry(
                 onClick = { actions.onOpenAuthor(summary.author.id.value) },
             )
             if (entry.photos.isNotEmpty()) BikeGallery(entry.photos, aspect = 4f / 3f)
+            // Only the author is given the version a change names: the others have no photos to
+            // change.
+            if (entry.version != null) {
+                ColaListItem(
+                    title = stringResource(R.string.journal_photos_open),
+                    supporting = stringResource(R.string.journal_photos_open_hint),
+                    icon = ColaIcons.Image,
+                    onClick = { actions.onEditPhotos(summary.id) },
+                    modifier = Modifier.testTag("journal:photos"),
+                )
+            }
             if (entry.body.isNotBlank()) MarkdownText(entry.body, onOpenLink)
             val updated = summary.updatedAt
             if (updated > summary.createdAt.plusSeconds(60)) {

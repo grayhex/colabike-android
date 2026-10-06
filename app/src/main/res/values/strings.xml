@@ -1034,7 +1034,7 @@
     <string name="photos_rules">JPEG, PNG или WebP до 10 МБ, от 600 × 400 пикселей. Другие форматы и очень большие снимки приложение уменьшит и перекодирует само. Первое фото становится обложкой.</string>
     <string name="photos_full">Больше фото не поместится. Чтобы добавить новое, удалите одно из загруженных.</string>
     <string name="photos_empty">Пока ни одного фото. Первое станет обложкой: его видят в списках и в ленте.</string>
-    <string name="photos_skipped">Не поместилось: %1$d. На велосипед можно не больше %2$d фото.</string>
+    <string name="photos_skipped">Не поместилось: %1$d. Можно не больше %2$d фото.</string>
     <string name="photos_keep_open">Не закрывайте экран, пока идёт загрузка: иначе она прервётся.</string>
     <string name="photos_photo_named">Фото %1$d из %2$d</string>
     <string name="photos_cover">Обложка</string>
@@ -1104,4 +1104,12 @@
     <string name="journal_problem_mileage">Пробег — целое число от 0 до 10 000 000 км.</string>
     <string name="journal_problem_date">Дата — день.месяц.год, например 14.09.2026, и такой день должен быть.</string>
     <string name="journal_problem_parts">Компонентов в записи не больше 50.</string>
+    <string name="journal_photos_open">Фотографии записи</string>
+    <string name="journal_photos_open_hint">Добавить и убрать фото</string>
+    <string name="journal_photos_title">Фото записи</string>
+    <string name="journal_photos_rules">JPEG, PNG или WebP до 10 МБ, не больше 8 фото. Другие форматы и очень большие снимки приложение уменьшит и перекодирует само.</string>
+    <string name="journal_photos_full">Больше фото не поместится. Чтобы добавить новое, удалите одно из загруженных.</string>
+    <string name="journal_photos_empty">Пока ни одного фото. Фото черновика видите только вы.</string>
+    <string name="journal_photos_delete_message">Фото %1$d пропадёт из записи. Это нельзя отменить.</string>
+    <string name="journal_photos_needs_email">Чтобы менять фото опубликованной записи, подтвердите почту на сайте. Фото черновика можно менять без этого.</string>
 </resources>

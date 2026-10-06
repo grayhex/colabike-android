@@ -246,6 +246,7 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
             api.personal,
             media,
             clearing = api::journalWithNulls,
+            uploading = api::journalUploading,
         )
     override val journal: JournalRepository = journalRepository
     override val comments: CommentsRepository =

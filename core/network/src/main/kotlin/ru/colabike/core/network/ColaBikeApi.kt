@@ -128,26 +128,30 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
      * upload really stops the transfer.
      */
     fun bikesUploading(onProgress: (Float) -> Unit, onCall: (Call) -> Unit): BikesApi =
-        BikesApi(
-            config.apiBaseUrl,
-            client
-                .newBuilder()
-                .callTimeout(UPLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
-                .addInterceptor { chain ->
-                    onCall(chain.call())
-                    val request = chain.request()
-                    val body = request.body
-                    chain.proceed(
-                        if (body == null) request
-                        else
-                            request
-                                .newBuilder()
-                                .method(request.method, ProgressBody(body, onProgress))
-                                .build()
-                    )
-                }
-                .build(),
-        )
+        BikesApi(config.apiBaseUrl, uploadingClient(onProgress, onCall))
+
+    /** The journal for sending a picture of an entry, as [bikesUploading]. */
+    fun journalUploading(onProgress: (Float) -> Unit, onCall: (Call) -> Unit): JournalApi =
+        JournalApi(config.apiBaseUrl, uploadingClient(onProgress, onCall))
+
+    private fun uploadingClient(onProgress: (Float) -> Unit, onCall: (Call) -> Unit): OkHttpClient =
+        client
+            .newBuilder()
+            .callTimeout(UPLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+            .addInterceptor { chain ->
+                onCall(chain.call())
+                val request = chain.request()
+                val body = request.body
+                chain.proceed(
+                    if (body == null) request
+                    else
+                        request
+                            .newBuilder()
+                            .method(request.method, ProgressBody(body, onProgress))
+                            .build()
+                )
+            }
+            .build()
 
     /** The chat bridge with an `Idempotency-Key` on every request made through it. */
     fun chatWithKey(key: String): ChatApi =

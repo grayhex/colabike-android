@@ -281,6 +281,9 @@ object BikeRules {
 /** What the server takes of a bike's pictures (cola `limits.ts`, `images.ts`). */
 object PhotoRules {
     const val MAX_PER_BIKE = 12
+
+    /** A journal entry holds fewer pictures than a bike (cola `limits.ts`). */
+    const val MAX_PER_ENTRY = 8
     const val MAX_BYTES = 10L * 1024 * 1024
 
     /** The server refuses more pixels than this (413) before it looks at the picture. */

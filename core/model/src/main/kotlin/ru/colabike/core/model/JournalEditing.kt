@@ -137,4 +137,7 @@ sealed interface JournalChange {
     data class Saved(val entry: JournalEntry) : JournalChange
 
     data class Removed(val id: JournalId) : JournalChange
+
+    /** A photo of this entry was added or removed: read the entry again. */
+    data class Photos(val id: JournalId) : JournalChange
 }

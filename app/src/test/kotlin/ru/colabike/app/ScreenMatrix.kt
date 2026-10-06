@@ -27,11 +27,11 @@ import coil3.compose.LocalAsyncImagePreviewHandler
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
-import ru.colabike.app.bikes.BikePhotosActions
 import ru.colabike.app.bikes.BikePhotosScreen
 import ru.colabike.app.bikes.BikePhotosUiState
 import ru.colabike.app.bikes.PendingPhoto
 import ru.colabike.app.bikes.PendingState
+import ru.colabike.app.bikes.PhotosActions
 import ru.colabike.app.config.LaunchFrame
 import ru.colabike.app.config.LaunchPlan
 import ru.colabike.app.config.OnboardingScreen
@@ -74,6 +74,7 @@ import ru.colabike.core.model.ParticipationResponse
 import ru.colabike.core.model.ParticipationState
 import ru.colabike.core.model.Person
 import ru.colabike.core.model.PersonSummary
+import ru.colabike.core.model.Photo
 import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RequestedDateStatus
 import ru.colabike.core.model.RideId
@@ -174,6 +175,7 @@ enum class Screen(val file: String) {
 
     /** A journal entry: the empty form, its findings, a form of one's own entry, the question. */
     JournalOwn("journal_own"),
+    JournalPhotos("journal_photos"),
     JournalEditorNew("journal_editor_new"),
     JournalEditorProblems("journal_editor_problems"),
     JournalEditorEdit("journal_editor_edit"),
@@ -665,10 +667,11 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                             ),
                                         ),
                                 ),
-                                BikePhotosActions(),
+                                PhotosActions(),
                             )
                         }
                     Screen.JournalOwn,
+                    Screen.JournalPhotos,
                     Screen.JournalEditorNew,
                     Screen.JournalEditorProblems,
                     Screen.JournalEditorEdit,
@@ -854,12 +857,15 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             }
         }
         Screen.JournalOwn,
+        Screen.JournalPhotos,
         Screen.JournalEditorEdit,
         Screen.JournalEditorDelete -> {
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
             onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
             onNodeWithTag("journal:j-own").performClick()
-            if (screen != Screen.JournalOwn) {
+            if (screen == Screen.JournalPhotos) {
+                onNodeWithTag("journal:photos").performScrollTo().performClick()
+            } else if (screen != Screen.JournalOwn) {
                 onNodeWithTag("journal:edit").performClick()
                 if (screen == Screen.JournalEditorDelete) {
                     onNodeWithTag("journal-editor:delete").performScrollTo().performClick()
@@ -995,6 +1001,7 @@ private val ownEntry =
                     mileageKm = 4200,
                     bike = BikeRef(BikeId("b-own"), "Мой трейл"),
                 ),
+            photos = (1..3).map { n -> Photo("jq$n", "https://example.test/entry-$n.jpg") },
             version = "\"e0\"",
             installationResult = "modified",
         )

@@ -63,6 +63,8 @@ class JournalListViewModel(
                         when (change) {
                             is JournalChange.Saved -> change.entry.summary.bike.id == source.id
                             is JournalChange.Removed -> true
+                            // A card of the list does not show photos.
+                            is JournalChange.Photos -> false
                         }
                     if (here) pager.refresh()
                 }

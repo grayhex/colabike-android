@@ -37,8 +37,12 @@ class PhotoImportException(val reason: Reason, cause: Throwable? = null) :
  * photo) is made a JPEG of up to 2400 px, which is all the server would keep of it.
  */
 interface PhotoFiles {
-    /** [source] is what the picker gave (a `content:` address). Throws [PhotoImportException]. */
-    suspend fun import(source: String): File
+    /**
+     * [source] is what the picker gave (a `content:` address). A bike's picture has to be at least
+     * 600 x 400 ([checkMinimum]); a journal entry's has no such floor. Throws
+     * [PhotoImportException].
+     */
+    suspend fun import(source: String, checkMinimum: Boolean = true): File
 
     /** Forgets a file made by [import]; one that is already gone is no error. */
     fun discard(file: File)
@@ -54,7 +58,7 @@ class ContentPhotoFiles(
 ) : PhotoFiles {
     private val directory = File(context.cacheDir, DIRECTORY)
 
-    override suspend fun import(source: String): File =
+    override suspend fun import(source: String, checkMinimum: Boolean): File =
         withContext(dispatcher) {
             val uri = source.toUri()
             // The picker gives `content:` addresses; a `file:` one would read what is not ours.
@@ -67,7 +71,7 @@ class ContentPhotoFiles(
             var result: File? = null
             try {
                 copyTo(uri, copy)
-                val prepared = prepare(copy)
+                val prepared = prepare(copy, checkMinimum)
                 result = prepared
                 prepared
             } catch (e: IOException) {
@@ -112,7 +116,7 @@ class ContentPhotoFiles(
     /**
      * The file to send: [copy] itself when the server reads it as it is, else a JPEG made of it.
      */
-    private fun prepare(copy: File): File {
+    private fun prepare(copy: File, checkMinimum: Boolean): File {
         val bounds =
             BitmapFactory.Options()
                 .apply { inJustDecodeBounds = true }
@@ -122,7 +126,7 @@ class ContentPhotoFiles(
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
             throw PhotoImportException(PhotoImportException.Reason.Unreadable)
         }
-        if (PhotoRules.isTooSmall(bounds.outWidth, bounds.outHeight)) {
+        if (checkMinimum && PhotoRules.isTooSmall(bounds.outWidth, bounds.outHeight)) {
             throw PhotoImportException(PhotoImportException.Reason.TooSmall)
         }
         val readable =
