@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.YandexFailure
 import ru.colabike.app.auth.YandexReauth
+import ru.colabike.app.bikes.PhotoFiles
+import ru.colabike.app.bikes.PhotoImportException
 import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.config.AppConfigSource
 import ru.colabike.app.config.AppConfigState
@@ -363,6 +365,71 @@ class FakeBikes(
         groupOrders += groups
         withParts(bike) { it.copy(groupOrder = groups) }
         return details.getValue(bike.value).also { savedFlow.tryEmit(BikeChange.Saved(it)) }
+    }
+
+    /** Says to the screens that a bike changed, as a repository does after a write of its own. */
+    fun announce(change: BikeChange) {
+        savedFlow.tryEmit(change)
+    }
+
+    /** What the photos screen asked for, in order. */
+    val uploaded = mutableListOf<Triple<BikeId, java.io.File, String>>()
+    val covers = mutableListOf<String>()
+    val removedPhotos = mutableListOf<String>()
+
+    /** Runs inside the next uploads (to report progress, to wait); the key it got comes with it. */
+    var uploading: (suspend (key: String, onProgress: (Float) -> Unit) -> Unit)? = null
+
+    override suspend fun uploadPhoto(
+        bike: BikeId,
+        file: java.io.File,
+        key: String,
+        onProgress: (Float) -> Unit,
+    ): Photo {
+        uploading?.invoke(key, onProgress)
+        failWrite()
+        uploaded += Triple(bike, file, key)
+        val photo =
+            Photo("ph-new-${uploaded.size}", "https://example.test/new-${uploaded.size}.jpg")
+        withParts(bike) {
+            it.copy(
+                photos = it.photos + photo,
+                summary = it.summary.copy(cover = it.summary.cover ?: photo),
+            )
+        }
+        savedFlow.tryEmit(BikeChange.Photos(bike))
+        return photo
+    }
+
+    override suspend fun setCover(bike: BikeId, photoId: String): BikeDetail {
+        failWrite()
+        covers += photoId
+        withParts(bike) { detail ->
+            val cover = detail.photos.first { it.id == photoId }
+            detail.copy(
+                photos = listOf(cover) + detail.photos.filterNot { it.id == photoId },
+                summary = detail.summary.copy(cover = cover),
+            )
+        }
+        return details.getValue(bike.value).also { savedFlow.tryEmit(BikeChange.Saved(it)) }
+    }
+
+    override suspend fun deletePhoto(bike: BikeId, photoId: String) {
+        failWrite()
+        removedPhotos += photoId
+        withParts(bike) { detail ->
+            val rest = detail.photos.filterNot { it.id == photoId }
+            detail.copy(
+                photos = rest,
+                summary =
+                    detail.summary.copy(
+                        cover =
+                            if (detail.summary.cover?.id == photoId) rest.firstOrNull()
+                            else detail.summary.cover
+                    ),
+            )
+        }
+        savedFlow.tryEmit(BikeChange.Photos(bike))
     }
 
     /** Holds a create until it is completed, to look at the form while it is being saved. */
@@ -2486,6 +2553,7 @@ class FakeDependencies(
     override val pending: FakePending = FakePending(),
     override val clock: Clock = Clock.fixed(Instant.parse("2026-10-03T20:00:00Z"), ZoneOffset.UTC),
     override val maps: RouteMaps = SketchRouteMaps,
+    override val photoFiles: FakePhotoFiles = FakePhotoFiles(),
     override val pushSync: FakePushSync = FakePushSync(),
     override val visibleConversation: VisibleConversation = VisibleConversation(),
 ) : AppDependencies
@@ -2495,5 +2563,31 @@ class FakePushSync : PushSync {
 
     override fun request(force: Boolean) {
         requests += force
+    }
+}
+
+/** Makes a file of what was picked without a phone: [failures] by source say what goes wrong. */
+class FakePhotoFiles(
+    private val failures: Map<String, PhotoImportException.Reason> = emptyMap(),
+    /** Sources that break the platform's way: with an exception that is not ours. */
+    private val crashes: Set<String> = emptySet(),
+    private val directory: java.io.File =
+        java.nio.file.Files.createTempDirectory("photos").toFile(),
+) : PhotoFiles {
+    val imported = mutableListOf<String>()
+    val discarded = mutableListOf<java.io.File>()
+
+    override suspend fun import(source: String): java.io.File {
+        imported += source
+        failures[source]?.let { throw PhotoImportException(it) }
+        if (source in crashes) throw IllegalStateException("decoder failed")
+        return java.io.File(directory, "pick-${imported.size}.jpg").also {
+            it.writeBytes(byteArrayOf(1))
+        }
+    }
+
+    override fun discard(file: java.io.File) {
+        discarded += file
+        file.delete()
     }
 }

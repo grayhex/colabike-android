@@ -38,6 +38,9 @@ sealed interface Destination : NavKey {
     /** The build of one's own bike: its parts and the order of their groups. */
     @Serializable data class BikeParts(val bikeId: String) : Destination
 
+    /** The pictures of one's own bike: sent, made the cover, removed. */
+    @Serializable data class BikePhotos(val bikeId: String) : Destination
+
     /** The form of a part of a bike's build: a new one when [id] is null, else a change of it. */
     @Serializable data class BikePart(val bikeId: String, val id: String? = null) : Destination
 

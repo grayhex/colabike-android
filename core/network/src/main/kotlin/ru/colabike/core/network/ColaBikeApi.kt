@@ -1,13 +1,19 @@
 package ru.colabike.core.network
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import okhttp3.Call
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okio.Buffer
+import okio.BufferedSink
+import okio.ForwardingSink
+import okio.buffer
 import ru.colabike.api.apis.AccountApi
 import ru.colabike.api.apis.AppApi
 import ru.colabike.api.apis.BikesApi
@@ -112,6 +118,34 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
                 .build(),
         )
 
+    /**
+     * Bikes for sending a picture: a call that may take minutes (the base client allows one, for a
+     * page, and a phone's photo over a bad connection is more), a body that says how much of it has
+     * left ([onProgress], 0 to 1) and the call itself handed over ([onCall]), so that a cancelled
+     * upload really stops the transfer.
+     */
+    fun bikesUploading(onProgress: (Float) -> Unit, onCall: (Call) -> Unit): BikesApi =
+        BikesApi(
+            config.apiBaseUrl,
+            client
+                .newBuilder()
+                .callTimeout(UPLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+                .addInterceptor { chain ->
+                    onCall(chain.call())
+                    val request = chain.request()
+                    val body = request.body
+                    chain.proceed(
+                        if (body == null) request
+                        else
+                            request
+                                .newBuilder()
+                                .method(request.method, ProgressBody(body, onProgress))
+                                .build()
+                    )
+                }
+                .build(),
+        )
+
     /** The chat bridge with an `Idempotency-Key` on every request made through it. */
     fun chatWithKey(key: String): ChatApi =
         ChatApi(
@@ -125,6 +159,7 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
         )
 
     private companion object {
+        const val UPLOAD_TIMEOUT_MINUTES = 5L
         const val IDEMPOTENCY_KEY = "Idempotency-Key"
         val configured = AtomicBoolean(false)
 
@@ -136,5 +171,33 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
                 Serializer.kotlinxSerializationJsonConfiguration = { explicitNulls = false }
             }
         }
+    }
+}
+
+/** A request body that tells how much of it has been written to the connection. */
+private class ProgressBody(
+    private val delegate: RequestBody,
+    private val onProgress: (Float) -> Unit,
+) : RequestBody() {
+    override fun contentType() = delegate.contentType()
+
+    override fun contentLength() = delegate.contentLength()
+
+    override fun isOneShot() = delegate.isOneShot()
+
+    override fun writeTo(sink: BufferedSink) {
+        val total = contentLength().coerceAtLeast(1L)
+        var written = 0L
+        val counting =
+            object : ForwardingSink(sink) {
+                    override fun write(source: Buffer, byteCount: Long) {
+                        super.write(source, byteCount)
+                        written += byteCount
+                        onProgress((written.toFloat() / total).coerceIn(0f, 1f))
+                    }
+                }
+                .buffer()
+        delegate.writeTo(counting)
+        counting.flush()
     }
 }

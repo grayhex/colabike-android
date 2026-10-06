@@ -54,13 +54,18 @@ import ru.colabike.core.model.Photo
 /** The size asked of the server for the full-screen picture (`?width=`, cola api-v1). */
 private const val FULLSCREEN_WIDTH = "1600"
 
+/** The size for a small picture in a list of a bike's photos (one of the server's own widths). */
+private const val THUMBNAIL_WIDTH = "320"
+
 /** The same picture at the size for a full screen; an address that is not a URL stays as it is. */
-fun Photo.fullscreenUrl(): String =
-    url.toHttpUrlOrNull()
-        ?.newBuilder()
-        ?.setQueryParameter("width", FULLSCREEN_WIDTH)
-        ?.build()
-        ?.toString() ?: url
+fun Photo.fullscreenUrl(): String = sized(FULLSCREEN_WIDTH)
+
+/** The same picture small, for a row of a list. */
+fun Photo.thumbnailUrl(): String = sized(THUMBNAIL_WIDTH)
+
+private fun Photo.sized(width: String): String =
+    url.toHttpUrlOrNull()?.newBuilder()?.setQueryParameter("width", width)?.build()?.toString()
+        ?: url
 
 /**
  * The photos of a bike as pages of a pager with "2 / 5" on the corner; a tap opens the full-screen

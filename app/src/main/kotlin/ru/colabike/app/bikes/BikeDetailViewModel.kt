@@ -75,6 +75,8 @@ class BikeDetailViewModel(
                         mutableState.value = BikeDetailUiState.Loaded(change.bike)
                     // The build changed: read the page again, and keep it on screen meanwhile.
                     change is BikeChange.Parts && change.id == id -> refresh()
+                    // A photo came, went or became the cover: the gallery is the server's now.
+                    change is BikeChange.Photos && change.id == id -> refresh()
                     change is BikeChange.Removed && change.id == id ->
                         mutableState.value =
                             BikeDetailUiState.Failed(

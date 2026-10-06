@@ -278,6 +278,28 @@ object BikeRules {
     }
 }
 
+/** What the server takes of a bike's pictures (cola `limits.ts`, `images.ts`). */
+object PhotoRules {
+    const val MAX_PER_BIKE = 12
+    const val MAX_BYTES = 10L * 1024 * 1024
+
+    /** The server refuses more pixels than this (413) before it looks at the picture. */
+    const val MAX_PIXELS = 40_000_000L
+
+    /** The longest side the server keeps; a bigger picture is made smaller on the phone first. */
+    const val MAX_SIDE = 2400
+
+    private const val MIN_SHORT_SIDE = 400
+    private const val MIN_LONG_SIDE = 600
+
+    /** A picture of a bike is at least 600 × 400, whichever way it is held. */
+    fun isTooSmall(width: Int, height: Int): Boolean =
+        minOf(width, height) < MIN_SHORT_SIDE || maxOf(width, height) < MIN_LONG_SIDE
+
+    /** The picture has no more pixels than the server reads. */
+    fun fitsPixels(width: Int, height: Int): Boolean = width.toLong() * height <= MAX_PIXELS
+}
+
 /**
  * A bike that was saved or removed here, for the screens that show it to agree without a reload.
  */
@@ -288,4 +310,7 @@ sealed interface BikeChange {
 
     /** A part of this bike's build was made, changed or removed: read the bike again. */
     data class Parts(val id: BikeId) : BikeChange
+
+    /** A photo of this bike was added, made the cover or removed: read the bike again. */
+    data class Photos(val id: BikeId) : BikeChange
 }

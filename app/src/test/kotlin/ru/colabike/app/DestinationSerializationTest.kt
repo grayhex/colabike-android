@@ -63,6 +63,7 @@ class DestinationSerializationTest {
             Destination.Blocked,
             Destination.BikeEditor(),
             Destination.BikeParts("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31"),
+            Destination.BikePhotos("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31"),
             Destination.BikePart("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31"),
             Destination.BikePart(
                 "6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31",
