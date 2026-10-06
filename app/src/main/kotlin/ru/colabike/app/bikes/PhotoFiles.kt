@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.net.Uri
+import androidx.core.net.toUri
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.coroutineContext
@@ -55,7 +56,7 @@ class ContentPhotoFiles(
 
     override suspend fun import(source: String): File =
         withContext(dispatcher) {
-            val uri = Uri.parse(source)
+            val uri = source.toUri()
             // The picker gives `content:` addresses; a `file:` one would read what is not ours.
             if (uri.scheme != ContentResolver.SCHEME_CONTENT) {
                 throw PhotoImportException(PhotoImportException.Reason.Unreadable)
