@@ -35,6 +35,8 @@ class LicensesTest {
                 "Redistribution and use in source and binary forms",
                 "OpenStreetMap, OpenMapTiles и OpenFreeMap",
                 "openstreetmap.org/copyright",
+                "Яндекс Карты (MapKit)",
+                "yandex.ru/legal/maps_api",
                 "Stream Chat SDK",
                 "github.com/GetStream/stream-chat-android/blob/main/LICENSE",
             )
