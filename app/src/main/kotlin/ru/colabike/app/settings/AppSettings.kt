@@ -22,6 +22,15 @@ enum class ThemeMode {
 }
 
 /**
+ * Whose map lies under a route. OpenStreetMap is the default and the way back; the Yandex map is
+ * the person's choice and exists only in a build with the owner's key (docs/adr/0025).
+ */
+enum class MapProvider {
+    OpenStreetMap,
+    Yandex,
+}
+
+/**
  * Choices of the person that stay on this device. An interface, so tests and previews fake it.
  * Nothing secret lives here: tokens are in `core:auth`.
  */
@@ -29,6 +38,11 @@ interface AppSettings {
     val themeMode: StateFlow<ThemeMode>
 
     fun setThemeMode(mode: ThemeMode)
+
+    /** The map under every route, on every screen; changed without a restart. */
+    val mapProvider: StateFlow<MapProvider>
+
+    fun setMapProvider(provider: MapProvider)
 
     /**
      * The person chose to look around without signing in. It lasts until they sign in; after a
@@ -62,6 +76,9 @@ class PreferencesSettings(private val preferences: SharedPreferences) : AppSetti
     private val mutableTheme = MutableStateFlow(readTheme())
     override val themeMode: StateFlow<ThemeMode> = mutableTheme.asStateFlow()
 
+    private val mutableMap = MutableStateFlow(readMapProvider())
+    override val mapProvider: StateFlow<MapProvider> = mutableMap.asStateFlow()
+
     private val mutableGuest = MutableStateFlow(preferences.getBoolean(KEY_GUEST, false))
     override val browsingAsGuest: StateFlow<Boolean> = mutableGuest.asStateFlow()
 
@@ -77,6 +94,11 @@ class PreferencesSettings(private val preferences: SharedPreferences) : AppSetti
     override fun setThemeMode(mode: ThemeMode) {
         preferences.edit { putString(KEY_THEME, mode.name) }
         mutableTheme.value = mode
+    }
+
+    override fun setMapProvider(provider: MapProvider) {
+        preferences.edit { putString(KEY_MAP, provider.name) }
+        mutableMap.value = provider
     }
 
     override fun setOnboardingSeen(revision: Int) {
@@ -107,8 +129,14 @@ class PreferencesSettings(private val preferences: SharedPreferences) : AppSetti
         ThemeMode.entries.firstOrNull { it.name == preferences.getString(KEY_THEME, null) }
             ?: ThemeMode.System
 
+    /** A value this version does not know is the default map, not a crash. */
+    private fun readMapProvider(): MapProvider =
+        MapProvider.entries.firstOrNull { it.name == preferences.getString(KEY_MAP, null) }
+            ?: MapProvider.OpenStreetMap
+
     private companion object {
         const val KEY_THEME = "theme_mode"
+        const val KEY_MAP = "map_provider"
         const val KEY_GUEST = "browsing_as_guest"
         const val KEY_ONBOARDING = "onboarding_seen"
         const val KEY_NOTICE = "notice_closed"

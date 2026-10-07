@@ -15,6 +15,13 @@ val siteUrl = "https://colabike.ru"
 // OpenFreeMap style, so that a build without any property shows a map (docs/adr/0024).
 val mapStyleUrl = providers.gradleProperty("colabike.mapStyleUrl").orElse("").get().trim()
 
+// The key of the owner's mobile app in the Yandex Maps developer console
+// (-Pcolabike.yandexMapsApiKey=...
+// or gradle.properties; never committed). A key for the JavaScript API of the site is another
+// product and does not work in the Android SDK. Empty: this build offers no Yandex map and the
+// setting for it is not shown (docs/adr/0025-yandex-maps.md).
+val yandexMapsApiKey = providers.gradleProperty("colabike.yandexMapsApiKey").orElse("").get().trim()
+
 // The version of the API contract this build was generated from, for support: the version in the
 // snapshot and the start of its checksum (api/openapi.json.sha256 pins the snapshot).
 val contractVersion: String = run {
@@ -35,6 +42,10 @@ val rustoreProjectId =
 
 check(rustoreProjectId.isEmpty() || Regex("[A-Za-z0-9._-]{1,100}").matches(rustoreProjectId)) {
     "colabike.rustore.projectId must be a project id from the RuStore console"
+}
+
+check(yandexMapsApiKey.isEmpty() || Regex("[A-Za-z0-9-]{8,80}").matches(yandexMapsApiKey)) {
+    "colabike.yandexMapsApiKey must be the key of a mobile app from the Yandex Maps console"
 }
 
 check(
@@ -61,6 +72,7 @@ android {
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
         buildConfigField("String", "NATIVE_AUTH_RETURN_URL", "\"$siteUrl/app/auth\"")
         buildConfigField("String", "MAP_STYLE_URL", "\"$mapStyleUrl\"")
+        buildConfigField("String", "YANDEX_MAPS_API_KEY", "\"$yandexMapsApiKey\"")
         buildConfigField("String", "RUSTORE_PROJECT_ID", "\"$rustoreProjectId\"")
         buildConfigField("String", "CONTRACT_VERSION", "\"$contractVersion\"")
         // The Yandex ID button waits for cola#324 (App Link and NATIVE_AUTH_RETURN_URL on the
@@ -128,6 +140,13 @@ dependencies {
     implementation(project(":core:auth"))
     implementation(project(":core:designsystem"))
     implementation(libs.maplibre.android)
+    // The Yandex map, offered when the owner gives a key. Its POM names Google Play Services
+    // (location, Play Integrity) which the app must not carry (AGENTS.md): the SDK reaches them
+    // only to locate the phone and to attest, neither of which a map of a route asks for.
+    implementation(libs.yandex.mapkit) {
+        exclude(group = "com.google.android.gms")
+        exclude(group = "com.google.android.play")
+    }
     implementation(libs.stream.compose)
     // The SDK reports its own crashes through Tracer when the library is there and falls back to a
     // stub when it is not (it looks the class up by name): without it nothing of the SDK's crashes

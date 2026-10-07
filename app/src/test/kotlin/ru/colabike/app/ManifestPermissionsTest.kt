@@ -35,6 +35,7 @@ class ManifestPermissionsTest {
                 "android.permission.ACCESS_FINE_LOCATION",
                 "android.permission.ACCESS_BACKGROUND_LOCATION",
                 "android.permission.ACCESS_WIFI_STATE",
+                "android.permission.CHANGE_WIFI_STATE",
             )
     }
 

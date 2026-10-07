@@ -34,6 +34,13 @@ interface RouteMaps {
      */
     val hasBasemap: Boolean
 
+    /**
+     * Whether this build can show the Yandex map: the owner's key is built in. Without it the
+     * person has no map to choose between and the setting is not shown (docs/adr/0025).
+     */
+    val offersYandex: Boolean
+        get() = false
+
     /** The route, panned and zoomed by the hand. Fills [modifier]. */
     @Composable fun Map(route: RideRoute, modifier: Modifier)
 }
