@@ -647,7 +647,7 @@ private const val DayMonth = "d MMM"
 @Composable
 private fun JournalPreviewRow(entry: JournalSummary, locale: Locale, onClick: () -> Unit) {
     val day: LocalDate =
-        entry.eventDate ?: LocalDate.ofInstant(entry.createdAt, ZoneId.systemDefault())
+        entry.eventDate ?: entry.createdAt.atZone(ZoneId.systemDefault()).toLocalDate()
     val dayText = DateTimeFormatter.ofPattern(DayMonth, locale).format(day).trimEnd('.')
     val kind = journalKindLabel(entry.kind)
     val draft =
