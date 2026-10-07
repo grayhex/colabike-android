@@ -46,11 +46,14 @@ fun LicensesRoute(onBack: () -> Unit) {
     val interCovers = stringResource(R.string.licenses_inter_covers)
     val maplibre = stringResource(R.string.licenses_maplibre_title)
     val maplibreCovers = stringResource(R.string.licenses_maplibre_covers)
+    val osm = stringResource(R.string.licenses_osm_title)
+    val osmCovers = stringResource(R.string.licenses_osm_covers)
+    val osmText = stringResource(R.string.licenses_osm_text)
     val stream = stringResource(R.string.licenses_stream_title)
     val streamCovers = stringResource(R.string.licenses_stream_covers)
     val streamText = stringResource(R.string.licenses_stream_text)
     val entries by
-        produceState(emptyList<LicenseEntry>(), title, covers, inter, maplibre, stream) {
+        produceState(emptyList<LicenseEntry>(), title, covers, inter, maplibre, osm, stream) {
             value =
                 withContext(Dispatchers.IO) {
                     fun raw(@RawRes id: Int) =
@@ -67,6 +70,7 @@ fun LicensesRoute(onBack: () -> Unit) {
                             raw(ru.colabike.core.designsystem.R.raw.license_material_symbols),
                         ),
                         LicenseEntry(maplibre, maplibreCovers, raw(R.raw.license_maplibre)),
+                        LicenseEntry(osm, osmCovers, osmText),
                         LicenseEntry(stream, streamCovers, streamText),
                     )
                 }

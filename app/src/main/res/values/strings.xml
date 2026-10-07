@@ -178,6 +178,9 @@
     <string name="licenses_inter_covers">Шрифт приложения (латиница и кириллица, четыре начертания). Лицензия SIL Open Font License 1.1.</string>
     <string name="licenses_maplibre_title">MapLibre Native</string>
     <string name="licenses_maplibre_covers">Карта маршрута. Лицензия BSD 2-Clause.</string>
+    <string name="licenses_osm_title">OpenStreetMap, OpenMapTiles и OpenFreeMap</string>
+    <string name="licenses_osm_covers">Подложка карты маршрута: данные © участники OpenStreetMap (Open Database License 1.0), векторная схема © OpenMapTiles (CC BY 4.0), тайлы и стили предоставляет OpenFreeMap.</string>
+    <string name="licenses_osm_text">Данные: https://www.openstreetmap.org/copyright\nСхема тайлов: https://openmaptiles.org/\nТайлы и стили: https://openfreemap.org/</string>
     <string name="licenses_stream_title">Stream Chat SDK</string>
     <string name="licenses_stream_covers">Сообщения. Лицензия Stream (Source Code License Agreement): распространяется программа, исходный код SDK приложение не содержит.</string>
     <string name="licenses_stream_text">Полный текст лицензии: https://github.com/GetStream/stream-chat-android/blob/main/LICENSE</string>
@@ -484,6 +487,10 @@
     <string name="route_open_map">Открыть карту</string>
     <string name="route_cut_note">Маршрут разорван там, где участок скрыт: линия между частями не проводится.</string>
     <string name="route_no_basemap">Подложка карты не подключена: показан только маршрут.</string>
+    <string name="map_attribution">OpenFreeMap © OpenMapTiles · данные © OpenStreetMap</string>
+    <string name="map_attribution_action">Условия использования данных OpenStreetMap</string>
+    <string name="map_basemap_failed">Подложка не загрузилась: показан только маршрут.</string>
+    <string name="map_basemap_retry">Повторить</string>
     <string name="bike_rides">Покатушки велосипеда</string>
     <string name="bike_rides_hint">Состоявшиеся публичные поездки</string>
     <string name="market_open">Объявления</string>
