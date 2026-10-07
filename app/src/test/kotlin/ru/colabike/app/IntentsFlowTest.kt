@@ -101,7 +101,6 @@ class IntentsFlowTest {
         compose.onNodeWithTag("intent-editor:visibility:private").assertIsSelected()
         scrolled("intent-editor:area")
         compose.onNodeWithTag("intent-editor:area").performTextInput("Парк Горького")
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 
@@ -119,8 +118,6 @@ class IntentsFlowTest {
         start()
         compose.onNodeWithTag("intents:create").performClick()
         compose.waitForIdle()
-
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 
@@ -143,7 +140,6 @@ class IntentsFlowTest {
             .assertIsDisplayed()
         scrolled("intent-editor:area")
         compose.onNodeWithTag("intent-editor:area").performTextInput("Парк")
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 
@@ -160,7 +156,6 @@ class IntentsFlowTest {
         scrolled("intent-editor:area")
         compose.onNodeWithTag("intent-editor:area").performTextInput("Парк")
         intents.failNext = DataError.Rejected(403, "email_verification_required", "")
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 
@@ -257,7 +252,6 @@ class IntentsFlowTest {
         compose.onNodeWithTag("intent-editor").assertIsDisplayed()
         scrolled("intent-editor:visibility:community")
         compose.onNodeWithTag("intent-editor:visibility:community").performClick()
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 

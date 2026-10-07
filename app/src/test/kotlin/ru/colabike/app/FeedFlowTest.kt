@@ -379,7 +379,7 @@ class FeedFlowTest {
         start(dependencies)
 
         section("Профиль").performClick()
-        compose.onNodeWithText("Сохранённое").performScrollTo().performClick()
+        compose.onNodeWithText("Записи журнала").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Запись 0", substring = true).assertIsDisplayed()
         compose.onNodeWithContentDescription("Запись 1", substring = true).assertIsDisplayed()
@@ -404,7 +404,7 @@ class FeedFlowTest {
         start(dependencies())
 
         section("Профиль").performClick()
-        compose.onNodeWithText("Сохранённое").performScrollTo().performClick()
+        compose.onNodeWithText("Записи журнала").performScrollTo().performClick()
         compose.waitForIdle()
 
         compose.onNodeWithText("Ничего не сохранено").assertIsDisplayed()
