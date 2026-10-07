@@ -75,6 +75,7 @@ import ru.colabike.app.intents.IntentsRoute
 import ru.colabike.app.journal.JournalActions
 import ru.colabike.app.journal.JournalEditorRoute
 import ru.colabike.app.journal.JournalListRoute
+import ru.colabike.app.journal.JournalPhotosRoute
 import ru.colabike.app.journal.JournalRoute
 import ru.colabike.app.journal.JournalSource
 import ru.colabike.app.links.AppLink
@@ -391,6 +392,11 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         },
                                                         onOpenAuthor = { ref ->
                                                             navigator.open(Destination.Person(ref))
+                                                        },
+                                                        onEditPhotos = { id ->
+                                                            navigator.open(
+                                                                Destination.JournalPhotos(id.value)
+                                                            )
                                                         },
                                                         onEdit = { bike, id ->
                                                             navigator.open(
@@ -774,6 +780,15 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                     }
                                                 },
                                                 onOpenGarage = { navigator.toRoot() },
+                                            )
+                                        }
+                                        entry<Destination.JournalPhotos> { key ->
+                                            JournalPhotosRoute(
+                                                repository = dependencies.journal,
+                                                entryId = key.id,
+                                                onBack = { navigator.back() },
+                                                onOpenGarage = { navigator.toRoot() },
+                                                photoFiles = dependencies.photoFiles,
                                             )
                                         }
                                         entry<Destination.BikePhotos> { key ->

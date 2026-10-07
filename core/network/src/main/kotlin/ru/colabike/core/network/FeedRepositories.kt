@@ -1,5 +1,6 @@
 package ru.colabike.core.network
 
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineDispatcher
@@ -7,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import okhttp3.Call
 import ru.colabike.api.apis.JournalApi
 import ru.colabike.api.apis.PersonalApi
 import ru.colabike.core.model.BikeId
@@ -22,6 +24,7 @@ import ru.colabike.core.model.JournalPatch
 import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.JournalSummary
 import ru.colabike.core.model.Page
+import ru.colabike.core.model.Photo
 import ru.colabike.core.model.SavedChange
 
 /** `/me/feed`: personal, so [api] is the client with the Bearer interceptor. */
@@ -55,6 +58,11 @@ class NetworkJournalRepository(
      * The journal for a `PATCH` that names these fields as `null` (a date, a mileage taken away).
      */
     private val clearing: (Set<String>) -> JournalApi = { api },
+    /** The journal for sending a picture: with its progress told and its call handed over. */
+    private val uploading: (onProgress: (Float) -> Unit, onCall: (Call) -> Unit) -> JournalApi =
+        { _, _ ->
+            api
+        },
 ) : JournalRepository {
     private val savedEmitter = MutableSharedFlow<SavedChange>(extraBufferCapacity = 16)
     override val savedChanges: SharedFlow<SavedChange> = savedEmitter.asSharedFlow()
@@ -142,6 +150,35 @@ class NetworkJournalRepository(
         known[id.value] = answer.saved
         savedEmitter.tryEmit(SavedChange(id, answer.saved))
         return answer.saved
+    }
+
+    override suspend fun uploadPhoto(
+        id: JournalId,
+        file: File,
+        key: String,
+        onProgress: (Float) -> Unit,
+    ): Photo {
+        require(runCatching { UUID.fromString(key) }.isSuccess) { "Idempotency-Key must be a UUID" }
+        val uuid = uuidOrNotFound(id.value)
+        val dto =
+            cancellableUpload(
+                dispatcher,
+                api = { onCall -> uploading(onProgress, onCall) },
+                send = { it.uploadJournalPhoto(uuid, UUID.fromString(key), file) },
+            )
+        val photo =
+            media.resolve(dto.url)?.let { Photo(dto.id.toString(), it) }
+                ?: throw DataError.Unexpected(null)
+        written.tryEmit(JournalChange.Photos(id))
+        return photo
+    }
+
+    override suspend fun deletePhoto(id: JournalId, photoId: String) {
+        val entryUuid = uuidOrNotFound(id.value)
+        val photoUuid = uuidOrNotFound(photoId)
+        // The server answers 204 to a repeat as well: gone already is as good as removed now.
+        apiCall(dispatcher) { api.deleteJournalPhoto(entryUuid, photoUuid) }
+        written.tryEmit(JournalChange.Photos(id))
     }
 
     // A malformed id cannot name an entry; the API would answer 404 as well.

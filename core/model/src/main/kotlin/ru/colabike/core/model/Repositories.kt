@@ -202,6 +202,23 @@ interface JournalRepository {
     /** Deletes one's own entry with its comments, likes and photos; one already gone is gone. */
     suspend fun delete(id: JournalId)
 
+    /**
+     * Sends one picture of one's own entry: the bytes of [file] as they are (the server checks
+     * them, rotates, converts and sizes them), [onProgress] from 0 to 1 as they leave. [key] (a
+     * UUID) is the identity of the file: the same key and the same bytes after a lost answer give
+     * the same photo, never a second one. Cancelling the calling coroutine stops the transfer. A
+     * draft may have photos; those of a published public entry need a confirmed address.
+     */
+    suspend fun uploadPhoto(
+        id: JournalId,
+        file: java.io.File,
+        key: String,
+        onProgress: (Float) -> Unit = {},
+    ): Photo
+
+    /** Removes a photo of one's own entry; one that is already gone is removed all the same. */
+    suspend fun deletePhoto(id: JournalId, photoId: String)
+
     /** Every entry written, changed or deleted through this repository. */
     val changes: SharedFlow<JournalChange>
 }

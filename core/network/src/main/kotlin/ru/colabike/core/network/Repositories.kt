@@ -2,18 +2,11 @@ package ru.colabike.core.network
 
 import java.io.File
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.launch
 import okhttp3.Call
 import ru.colabike.api.apis.AccountApi
 import ru.colabike.api.apis.BikesApi
@@ -205,47 +198,15 @@ class NetworkBikesRepository(
     ): Photo {
         require(runCatching { UUID.fromString(key) }.isSuccess) { "Idempotency-Key must be a UUID" }
         val uuid = uuidOrNotFound(bike.value)
-        // The transfer is a blocking call: a cancelled coroutine has to stop it by hand, at once,
-        // not when the server answers. The watcher below is cancelled with its parent, and its
-        // last act is to cancel the call, which is then known (or is cancelled the moment it is).
-        val call = AtomicReference<Call?>()
-        val stopped = AtomicBoolean(false)
-        val finished = AtomicBoolean(false)
-        return coroutineScope {
-            val watcher =
-                launch(start = CoroutineStart.UNDISPATCHED) {
-                    try {
-                        awaitCancellation()
-                    } finally {
-                        if (!finished.get()) {
-                            stopped.set(true)
-                            call.get()?.cancel()
-                        }
-                    }
-                }
-            try {
-                val dto =
-                    try {
-                        apiCall(dispatcher) {
-                            uploading(onProgress) {
-                                    call.set(it)
-                                    if (stopped.get()) it.cancel()
-                                }
-                                .uploadBikePhoto(uuid, UUID.fromString(key), file)
-                        }
-                    } catch (e: DataError) {
-                        // A transfer we stopped ourselves is a cancellation, not a lost connection.
-                        if (stopped.get()) throw CancellationException("Upload cancelled", e)
-                        throw e
-                    }
-                val photo = dto.toModel(media) ?: throw DataError.Unexpected(null)
-                saved.tryEmit(BikeChange.Photos(bike))
-                photo
-            } finally {
-                finished.set(true)
-                watcher.cancel()
-            }
-        }
+        val dto =
+            cancellableUpload(
+                dispatcher,
+                api = { onCall -> uploading(onProgress, onCall) },
+                send = { it.uploadBikePhoto(uuid, UUID.fromString(key), file) },
+            )
+        val photo = dto.toModel(media) ?: throw DataError.Unexpected(null)
+        saved.tryEmit(BikeChange.Photos(bike))
+        return photo
     }
 
     override suspend fun setCover(bike: BikeId, photoId: String): BikeDetail {

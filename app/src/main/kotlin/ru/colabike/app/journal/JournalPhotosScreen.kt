@@ -1,4 +1,4 @@
-package ru.colabike.app.bikes
+package ru.colabike.app.journal
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +10,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import ru.colabike.app.R
+import ru.colabike.app.bikes.PhotosActions
+import ru.colabike.app.bikes.PhotosList
+import ru.colabike.app.bikes.PhotosTexts
+import ru.colabike.app.bikes.PhotosView
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaTopBar
@@ -19,43 +23,47 @@ import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.model.PhotoRules
 
 /**
- * The pictures of one's own bike. "Add" opens the system picker (no permission is asked); what is
- * picked goes one after another with its progress, and stays in the list with the reason if it did
- * not go. A photo can be made the cover or removed, both with buttons that have names.
+ * The pictures of one's own journal entry. "Add" opens the system picker (no permission is asked);
+ * what is picked goes one after another with its progress, and stays in the list with the reason if
+ * it did not go. A photo can be removed, after a question.
  */
 @Composable
-fun BikePhotosScreen(state: BikePhotosUiState, actions: PhotosActions) {
+fun JournalPhotosScreen(state: JournalPhotosUiState, actions: PhotosActions) {
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            ColaTopBar(title = stringResource(R.string.photos_title), onBack = actions.onBack)
+            ColaTopBar(
+                title = stringResource(R.string.journal_photos_title),
+                onBack = actions.onBack,
+            )
         },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (state) {
-                BikePhotosUiState.Loading -> LoadingState(Modifier.fillMaxSize())
-                is BikePhotosUiState.Failed ->
+                JournalPhotosUiState.Loading -> LoadingState(Modifier.fillMaxSize())
+                is JournalPhotosUiState.Failed ->
                     ErrorState(state.message.resolve(), actions.onRetry, Modifier.fillMaxSize())
-                BikePhotosUiState.Unavailable ->
+                JournalPhotosUiState.Unavailable ->
                     EmptyState(
-                        title = stringResource(R.string.bike_unavailable_title),
-                        message = stringResource(R.string.bike_cannot_edit),
+                        title = stringResource(R.string.journal_unavailable_title),
+                        message = stringResource(R.string.journal_cannot_edit),
                         icon = ColaIcons.Bike,
                         actionLabel = stringResource(R.string.bike_open_garage),
                         onAction = actions.onOpenGarage,
                         modifier = Modifier.fillMaxSize().testTag("photos:unavailable"),
                     )
-                is BikePhotosUiState.Ready ->
+                is JournalPhotosUiState.Ready ->
                     PhotosList(
                         state.toView(),
                         actions,
-                        withCover = true,
+                        // An entry has no cover: its pictures go in the order they were added.
+                        withCover = false,
                         texts =
                             PhotosTexts(
-                                rules = R.string.photos_rules,
-                                full = R.string.photos_full,
-                                empty = R.string.photos_empty,
-                                deleteMessage = R.string.photos_delete_message,
+                                rules = R.string.journal_photos_rules,
+                                full = R.string.journal_photos_full,
+                                empty = R.string.journal_photos_empty,
+                                deleteMessage = R.string.journal_photos_delete_message,
                             ),
                     )
             }
@@ -63,10 +71,10 @@ fun BikePhotosScreen(state: BikePhotosUiState, actions: PhotosActions) {
     }
 }
 
-private fun BikePhotosUiState.Ready.toView() =
+private fun JournalPhotosUiState.Ready.toView() =
     PhotosView(
-        photos = bike.photos,
-        coverId = bike.summary.cover?.id,
+        photos = entry.photos,
+        coverId = null,
         pending = pending,
         busy = busy,
         confirmingDelete = confirmingDelete,
@@ -74,6 +82,6 @@ private fun BikePhotosUiState.Ready.toView() =
         skipped = skipped,
         occupied = occupied,
         slotsLeft = slotsLeft,
-        limit = PhotoRules.MAX_PER_BIKE,
+        limit = PhotoRules.MAX_PER_ENTRY,
         sending = sending,
     )

@@ -32,7 +32,7 @@ import ru.colabike.core.model.Page
 import ru.colabike.core.model.toDraft
 
 /** The system picker, answered with whatever the test says the person picked. */
-private class PickedRegistry(var picked: List<Uri>) : ActivityResultRegistry() {
+internal class PickedRegistry(var picked: List<Uri>) : ActivityResultRegistry() {
     var launches = 0
 
     override fun <I, O> onLaunch(

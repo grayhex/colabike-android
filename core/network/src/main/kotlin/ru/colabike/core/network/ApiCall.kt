@@ -1,11 +1,18 @@
 package ru.colabike.core.network
 
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
+import okhttp3.Call
 import ru.colabike.api.infrastructure.ApiResponse
 import ru.colabike.api.infrastructure.ClientError
 import ru.colabike.api.infrastructure.ClientException
@@ -41,6 +48,56 @@ suspend fun <T> apiCall(dispatcher: CoroutineDispatcher = Dispatchers.IO, block:
             throw DataError.Unexpected(e)
         }
     }
+
+/**
+ * One blocking upload that stops when its coroutine does. The call is a blocking one, so a
+ * cancelled coroutine has to stop it by hand, at once, not when the server answers: a watcher,
+ * cancelled with its parent, cancels the call as its last act (the call is known by then, or is
+ * cancelled the moment it is). [api] builds the client of the generated API with the call handed to
+ * it; what the stopped transfer throws is turned into a [CancellationException], not a lost
+ * connection.
+ */
+internal suspend fun <A, T> cancellableUpload(
+    dispatcher: CoroutineDispatcher,
+    api: (onCall: (Call) -> Unit) -> A,
+    send: (A) -> T,
+): T {
+    val call = AtomicReference<Call?>()
+    val stopped = AtomicBoolean(false)
+    val finished = AtomicBoolean(false)
+    return coroutineScope {
+        val watcher =
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    awaitCancellation()
+                } finally {
+                    if (!finished.get()) {
+                        stopped.set(true)
+                        call.get()?.cancel()
+                    }
+                }
+            }
+        try {
+            try {
+                apiCall(dispatcher) {
+                    send(
+                        api {
+                            call.set(it)
+                            if (stopped.get()) it.cancel()
+                        }
+                    )
+                }
+            } catch (e: DataError) {
+                // A transfer we stopped ourselves is a cancellation, not a lost connection.
+                if (stopped.get()) throw CancellationException("Upload cancelled", e)
+                throw e
+            }
+        } finally {
+            finished.set(true)
+            watcher.cancel()
+        }
+    }
+}
 
 /** The API error of a 4xx answer: code and message, or null when the body is not one. */
 data class ApiFailure(

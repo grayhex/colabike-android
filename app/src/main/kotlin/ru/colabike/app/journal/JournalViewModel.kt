@@ -79,6 +79,8 @@ class JournalViewModel(
                 when {
                     change is JournalChange.Saved && change.entry.summary.id == id ->
                         update { it.copy(entry = change.entry) }
+                    // A photo came or went: the entry's gallery is the server's now.
+                    change is JournalChange.Photos && change.id == id -> refresh()
                     change is JournalChange.Removed && change.id == id ->
                         mutableState.value =
                             JournalUiState.Failed(DataError.NotFound().toUiText(), notFound = true)
@@ -102,6 +104,16 @@ class JournalViewModel(
                 } catch (e: DataError) {
                     JournalUiState.Failed(e.toUiText(), notFound = e is DataError.NotFound)
                 }
+        }
+    }
+
+    /** Reads the entry again without the spinner; a failure leaves the page as it was. */
+    private fun refresh() {
+        viewModelScope.launch {
+            try {
+                val entry = repository.entry(id)
+                update { it.copy(entry = entry) }
+            } catch (_: DataError) {}
         }
     }
 
