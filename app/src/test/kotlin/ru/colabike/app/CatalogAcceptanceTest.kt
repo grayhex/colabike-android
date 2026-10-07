@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -43,6 +45,7 @@ private val previewPhotos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8C
  * name is written: here two lines long. The same screen is saved as the screenshot of the
  * acceptance.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "ru-w412dp-h915dp-xhdpi")
@@ -63,6 +66,7 @@ class CatalogAcceptanceTest(private val look: Look) {
         compose.setContent {
             CompositionLocalProvider(
                 LocalInspectionMode provides true,
+                LocalRippleConfiguration provides null,
                 LocalAsyncImagePreviewHandler provides previewPhotos,
                 LocalDensity provides Density(LocalDensity.current.density, 1f),
             ) {

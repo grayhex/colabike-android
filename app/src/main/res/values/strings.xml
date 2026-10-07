@@ -322,10 +322,8 @@
     <string name="ride_note">Заметка</string>
     <string name="ride_description">Описание</string>
     <string name="ride_plan_title">План</string>
-    <string name="ride_when_completed">Состоялась: %1$s</string>
     <string name="ride_when_planned">Начало: %1$s</string>
     <string name="ride_expected_end">Ожидаемое окончание: %1$s</string>
-    <string name="ride_timezone_note">Время показано по часовому поясу вашего устройства (%1$s).</string>
     <string name="ride_weekly_note">Повторяется каждую неделю; показана ближайшая дата.</string>
     <string name="ride_recruitment_closed">Набор закрыт</string>
     <string name="ride_distance">Дистанция</string>

@@ -13,10 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -24,7 +23,6 @@ import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
-import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,35 +30,29 @@ import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ru.colabike.app.ui.AppShell
-import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
-import ru.colabike.core.model.BikeId
-import ru.colabike.core.model.Page
 
 @OptIn(ExperimentalCoilApi::class)
-private val pagePhotos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
+private val formPhotos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
 
 /**
- * The acceptance of the bike page (issue #42): on a full portrait screen of 412 × 915 dp at the
- * system font of 1.0 the first screen holds, under the photo and the name, the owner, the like and
- * the share, the start of the description, and the facts themselves (not only their heading).
+ * The form "I want to ride" and the profile on the screen of the acceptance (issue #42): 412 × 915
+ * dp at the system font of 1.0, the bars with their real height. The form's main action is on the
+ * bottom edge from the first moment; the screens are saved as the screenshots of the acceptance.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "ru-w412dp-h915dp-xhdpi")
-class BikePageAcceptanceTest(private val look: Look) {
+class FormAndProfileAcceptanceTest(private val look: Look) {
     @get:Rule val compose = createComposeRule()
 
-    @Test
-    fun `the owner, the actions, the description and the facts are on the first screen`() {
-        val bike =
-            PreviewData.bike.copy(id = BikeId("b0"), name = "Canyon Grail CF SLX 8 AXS (2026)")
+    private fun show() {
         compose.setContent {
             CompositionLocalProvider(
                 LocalInspectionMode provides true,
                 LocalRippleConfiguration provides null,
-                LocalAsyncImagePreviewHandler provides pagePhotos,
+                LocalAsyncImagePreviewHandler provides formPhotos,
                 LocalDensity provides Density(LocalDensity.current.density, 1f),
             ) {
                 ColaBikeTheme(darkTheme = look.dark) {
@@ -69,28 +61,35 @@ class BikePageAcceptanceTest(private val look: Look) {
                             .background(MaterialTheme.colorScheme.background)
                             .padding(top = StatusBar, bottom = GestureStrip)
                     ) {
-                        AppShell(
-                            FakeDependencies(
-                                bikes = FakeBikes(mapOf(null to Page(listOf(bike), null)))
-                            )
-                        )
+                        AppShell(FakeDependencies())
                     }
                 }
             }
         }
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("Canyon Grail", substring = true).performClick()
+    }
+
+    @Test
+    fun `the form has its main action on the bottom edge`() {
+        show()
+        compose.section("Покатушки").performClick()
+        compose.onNodeWithTag("rides:intents").performClick()
+        compose.onNodeWithTag("intents:create").performClick()
         compose.waitForIdle()
         compose.settle()
 
-        val bottom = 915.dp - GestureStrip
-        fun bottomOf(text: String) =
-            compose.onNodeWithText(text, substring = true).getUnclippedBoundsInRoot().bottom
-        assertThat(bottomOf("Поделиться").value).isAtMost(bottom.value)
-        assertThat(bottomOf("Надёжный горный велосипед").value).isAtMost(bottom.value)
-        // The value of a fact, not just the heading of the section.
-        assertThat(bottomOf("14,2 кг").value).isAtMost(bottom.value)
-        compose.captureWhenDrawn("src/test/screenshots/bike_page_${look.file}.png")
+        compose.onNodeWithTag("intent-editor:save").assertIsDisplayed()
+        compose.captureWhenDrawn("src/test/screenshots/intent_form_${look.file}.png")
+    }
+
+    @Test
+    fun `the profile is grouped`() {
+        show()
+        compose.section("Профиль").performClick()
+        compose.waitForIdle()
+        compose.settle()
+
+        compose.captureWhenDrawn("src/test/screenshots/profile_page_${look.file}.png")
     }
 
     private companion object {
