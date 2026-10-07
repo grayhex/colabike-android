@@ -10,9 +10,9 @@ plugins {
 // tests and previews use fakes (docs/architecture.md, "Environments").
 val siteUrl = "https://colabike.ru"
 
-// The style of the map under a route (an `https` MapLibre style URL), chosen by the owner and given
-// as -Pcolabike.mapStyleUrl=... or in gradle.properties. Empty: the route is drawn on a plain
-// background and the app makes no tile request at all (docs/adr/0009-route-map-and-analysis.md).
+// An override of the style of the map under a route (an `https` MapLibre style URL), given by the
+// owner as -Pcolabike.mapStyleUrl=... or in gradle.properties. Empty (the usual case): the built-in
+// OpenFreeMap style, so that a build without any property shows a map (docs/adr/0024).
 val mapStyleUrl = providers.gradleProperty("colabike.mapStyleUrl").orElse("").get().trim()
 
 // The version of the API contract this build was generated from, for support: the version in the

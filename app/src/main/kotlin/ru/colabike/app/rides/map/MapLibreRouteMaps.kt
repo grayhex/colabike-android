@@ -2,22 +2,37 @@ package ru.colabike.app.rides.map
 
 import android.content.ComponentCallbacks2
 import android.content.res.Configuration
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -36,6 +51,8 @@ import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
 import ru.colabike.app.R
+import ru.colabike.app.links.LocalLinkOpener
+import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.GeoPoint
 import ru.colabike.core.model.RideRoute
 
@@ -44,16 +61,18 @@ import ru.colabike.core.model.RideRoute
  * page's transitions. It asks for no location and starts no service; its tile requests are its own
  * and carry nothing of the ColaBike session.
  *
- * [styleUrl] is the style of the basemap the owner chose (`https` only). With none the route is
- * drawn on a plain background and makes no network request at all ([hasBasemap] is false).
+ * The basemap is OpenStreetMap by OpenFreeMap, built in, so that a build without any property shows
+ * a real map (ADR 0024). [styleOverride] is the style the owner put in `colabike.mapStyleUrl`
+ * (`https` only); a missing or wrong one is the built-in style.
  */
-class MapLibreRouteMaps(styleUrl: String?) : RouteMaps {
-    private val style: String? = styleUrl?.trim()?.takeIf { it.startsWith("https://") }
-
-    override val hasBasemap: Boolean = style != null
+class MapLibreRouteMaps(private val styleOverride: String?) : RouteMaps {
+    override val hasBasemap: Boolean = true
 
     @Composable
-    override fun Map(route: RideRoute, modifier: Modifier) = MapLibreRoute(route, style, modifier)
+    override fun Map(route: RideRoute, modifier: Modifier) {
+        val dark = MaterialTheme.colorScheme.background.luminance() < DARK_LUMINANCE
+        MapLibreRoute(route, BasemapStyle.choose(styleOverride, dark), modifier)
+    }
 }
 
 /** What an instrumented test can look at: the style loaded and the route is on it. */
@@ -67,10 +86,11 @@ private data class MapLook(val background: Int, val halo: Int, val line: Int)
 @Composable
 internal fun MapLibreRoute(
     route: RideRoute,
-    styleUrl: String?,
+    style: BasemapStyle?,
     modifier: Modifier = Modifier,
     probe: MapProbe? = null,
 ) {
+    val styleUrl = style?.url
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scheme = MaterialTheme.colorScheme
@@ -85,6 +105,7 @@ internal fun MapLibreRoute(
     // Where the hand left the camera, kept over a turn of the screen; null until it is moved.
     var camera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
     var remoteFailed by remember(styleUrl) { mutableStateOf(false) }
+    val currentStyleUrl by rememberUpdatedState(styleUrl)
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
 
     val mapView = remember {
@@ -95,7 +116,7 @@ internal fun MapLibreRoute(
     DisposableEffect(mapView) {
         mapView.addOnDidFailLoadingMapListener { message ->
             // A style that cannot be had must not take the route with it: draw the route alone.
-            if (styleUrl != null) remoteFailed = true
+            if (currentStyleUrl != null) remoteFailed = true
             probe?.failure = message
         }
         mapView.getMapAsync { ready ->
@@ -104,10 +125,11 @@ internal fun MapLibreRoute(
                 isRotateGesturesEnabled = false
                 isTiltGesturesEnabled = false
                 isCompassEnabled = false
-                // Keep the attribution clear of the page's faded bottom edge.
+                // The library's logo is not asked for by its licence; the sources of the map are
+                // named by the caption of the built-in style or by the button of an override.
+                isLogoEnabled = false
                 val margin = (ATTRIBUTION_MARGIN_DP * density).toInt()
                 setAttributionMargins(margin, 0, 0, margin)
-                setLogoMargins(margin, 0, 0, margin)
             }
             ready.setMinZoomPreference(MIN_ZOOM)
             ready.setMaxZoomPreference(MAX_ZOOM)
@@ -189,9 +211,12 @@ internal fun MapLibreRoute(
     }
 
     val ready = map
-    LaunchedEffect(ready, route, styleUrl, look, remoteFailed) {
+    LaunchedEffect(ready, route, style, look, remoteFailed) {
         if (ready == null) return@LaunchedEffect
         val remote = styleUrl?.takeIf { !remoteFailed }
+        // An override names its sources through the library's button; the built-in style has the
+        // caption below, which is on the page whether or not anything is tapped.
+        ready.uiSettings.isAttributionEnabled = remote != null && style?.builtIn != true
         val builder =
             if (remote != null) Style.Builder().fromUri(remote)
             else Style.Builder().fromJson(blankStyle(look.background))
@@ -209,10 +234,72 @@ internal fun MapLibreRoute(
         }
     }
 
-    AndroidView(
-        factory = { mapView },
-        modifier = modifier.semantics { contentDescription = description },
-    )
+    Box(modifier) {
+        AndroidView(
+            factory = { mapView },
+            modifier = Modifier.fillMaxSize().semantics { contentDescription = description },
+        )
+        BasemapCaption(
+            attributionShown = style?.builtIn == true && !remoteFailed,
+            failed = remoteFailed,
+            onRetry = { remoteFailed = false },
+            modifier = Modifier.align(Alignment.BottomStart).padding(CAPTION_PADDING_DP.dp),
+        )
+    }
+}
+
+/**
+ * What the map owes a reader under it: where its data comes from (OpenStreetMap contributors, by
+ * licence; the tile provider by its terms), or that the tiles did not come and the route stands
+ * alone, with a way to try again.
+ */
+@Composable
+internal fun BasemapCaption(
+    attributionShown: Boolean,
+    failed: Boolean,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (!attributionShown && !failed) return
+    val opener = LocalLinkOpener.current
+    val action = stringResource(R.string.map_attribution_action)
+    val color = MaterialTheme.colorScheme.surface.copy(alpha = CAPTION_ALPHA)
+    if (failed) {
+        Row(
+            modifier.background(color, MaterialTheme.shapes.small).testTag("map:failed"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.map_basemap_failed),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f, fill = false).padding(start = Spacing.s),
+            )
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.map_basemap_retry)) }
+        }
+    } else {
+        // The picture is small, the thing to press is not: a whole touch target around the words.
+        Box(
+            modifier
+                .minimumInteractiveComponentSize()
+                .clickable(
+                    onClickLabel = action,
+                    role = Role.Button,
+                    onClick = { opener.open(BasemapStyle.COPYRIGHT_URL) },
+                )
+                .testTag("map:attribution"),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                stringResource(R.string.map_attribution),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier =
+                    Modifier.background(color, MaterialTheme.shapes.extraSmall)
+                        .padding(horizontal = Spacing.xs, vertical = 2.dp),
+            )
+        }
+    }
 }
 
 /** The style of a map with nothing on it, but the colour of the page. */
@@ -311,4 +398,7 @@ private const val MAX_ZOOM = 19.0
 private const val TINY_SPAN = 1e-5
 private const val SINGLE_PLACE_ZOOM = 16.0
 private const val FIT_PADDING_DP = 40
-private const val ATTRIBUTION_MARGIN_DP = 28
+private const val ATTRIBUTION_MARGIN_DP = 8
+private const val CAPTION_PADDING_DP = 4
+private const val CAPTION_ALPHA = 0.85f
+private const val DARK_LUMINANCE = 0.5f

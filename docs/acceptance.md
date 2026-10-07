@@ -24,7 +24,7 @@
 | Люди, подписки | `GET /users/{ref}`, `GET /users/{ref}/followers`, `PUT`/`DELETE /users/{id}/follow` | `PeopleFlowTest`, `PeopleTest` | нет | подписка на тестовый аккаунт |
 | Лента, журнал, сохранённое | `GET /me/feed`, `GET /bikes/{id}/journal`, `GET /journal/{id}`, `PUT`/`DELETE /journal/{id}/save` | `FeedFlowTest`, `FeedTest`, `FeedRepositoryTest` | нет | сохранение записи |
 | Комментарии | `GET`/`POST`/`PATCH`/`DELETE …/comments`, ответы, `focus` | `CommentsFlowTest`, `CommentsTest`, `CommentsRepositoryTest` (`Idempotency-Key`: повтор не даёт второго комментария) | нет | запись и ответ тестовым аккаунтом |
-| Покатушки, карта, разбор | `GET /rides`, `GET /rides/{id}`, `GET /rides/{id}/analysis`, личные списки | `RidesFlowTest`, `RidesTest`, `AnalysisChartsTest` | `RouteMapRenderTest` (маршрут на настоящей карте в обеих темах) | **ждёт владельца**: источник тайлов `colabike.mapStyleUrl` |
+| Покатушки, карта, разбор | `GET /rides`, `GET /rides/{id}`, `GET /rides/{id}/analysis`, личные списки | `RidesFlowTest`, `RidesTest`, `AnalysisChartsTest` | `RouteMapRenderTest` (маршрут на настоящей карте в обеих темах) | **ждёт владельца**: OSM-подложка и Яндекс на устройстве, [ADR 0024](adr/0024-map-basemap.md) |
 | Уведомления | `GET /me/notifications`, `GET /me/notifications/count` | `NotificationsFlowTest`, `NotificationsTest`, `NotificationsRepositoryTest` | нет | колокольчик с настоящими событиями |
 | Личные сообщения | `POST /chat/token`, `POST /chat/channels`, `GET /chat/people`; дальше SDK Stream Chat напрямую | `MessagesFlowTest`, `ChatSessionTest`, `NewConversationTest`, `WriteViewModelTest`, `ChatRepositoryTest` | нет: в CI SDK к провайдеру не подключается | **ждёт владельца**: два подтверждённых аккаунта, обмен, переподключение ([ADR 0011](adr/0011-messenger.md)) |
 | Выход и смена аккаунта | `DELETE /auth/sessions/current` | `SignOutsTest`, `SessionScopeTest`, `SessionStoresTest`, `DevicesTest` | `LiveSmokeTest` (выход) | вход вторым аккаунтом после первого |
@@ -91,6 +91,6 @@ Macrobenchmark и Baseline Profile добавляются для путей, г�
 ## Оставшиеся ограничения
 
 - Живой обмен сообщениями, authenticated live-smoke и вход через Яндекс ID проверяет владелец (данные и секреты у него).
-- Карта рисует маршрут без подложки, пока не выбран источник тайлов.
+- Карта по умолчанию показывает OSM-подложку (OpenFreeMap, [ADR 0024](adr/0024-map-basemap.md)); вид тайлов в сетях пользователей проверяет владелец на устройстве, в CI подложка пустая.
 - Подписанный release-кандидат (ключ у владельца) и публикация в RuStore — отдельное решение владельца (keystore, отпечаток для App Link). Условия Stream License (аккаунт клиента Stream, ограничения на открытое ПО и конкурентов) прочитать и подтвердить тоже ему: см. [ADR 0011](adr/0011-messenger.md).
 - Push: код, регистрация и показ готовы, а живую доставку (проект владельца в RuStore, подписанный APK, два аккаунта, Doze, перезагрузка) проверяет владелец ([ADR 0017](adr/0017-push-registration-and-rustore.md)). Не делается: полноценный offline-first режим, GPS-рекордер, офлайн-карты.

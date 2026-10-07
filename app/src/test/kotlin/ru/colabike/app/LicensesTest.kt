@@ -33,6 +33,8 @@ class LicensesTest {
                 "Apache License 2.0",
                 "MapLibre Native",
                 "Redistribution and use in source and binary forms",
+                "OpenStreetMap, OpenMapTiles и OpenFreeMap",
+                "openstreetmap.org/copyright",
                 "Stream Chat SDK",
                 "github.com/GetStream/stream-chat-android/blob/main/LICENSE",
             )

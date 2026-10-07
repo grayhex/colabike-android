@@ -13,6 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import ru.colabike.app.rides.map.BasemapStyle
 import ru.colabike.app.rides.map.MapLibreRoute
 import ru.colabike.app.rides.map.MapProbe
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
@@ -60,6 +61,30 @@ class RouteMapRenderTest {
 
         assertTrue("the route layer is on the style", probe.routeShown)
         assertNull("the map failed: ${probe.failure}", probe.failure)
+    }
+
+    /**
+     * The built-in OpenStreetMap style asks the network for its tiles. With the network the route
+     * is on the style, without it the route is on the plain background the map falls back to;
+     * either way the route is there, and nothing here depends on the provider being up.
+     */
+    @Test
+    fun theRouteIsThereWithTheBuiltInStyleWhetherOrNotTheTilesCome() {
+        val probe = MapProbe()
+        compose.setContent {
+            ColaBikeTheme {
+                MapLibreRoute(
+                    route,
+                    BasemapStyle.choose(override = null, dark = false),
+                    Modifier.fillMaxSize(),
+                    probe,
+                )
+            }
+        }
+
+        compose.waitUntil(60_000) { probe.routeShown }
+
+        assertTrue("the route layer is on the style", probe.routeShown)
     }
 
     @Test
