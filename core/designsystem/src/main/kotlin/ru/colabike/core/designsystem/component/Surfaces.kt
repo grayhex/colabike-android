@@ -76,19 +76,29 @@ fun Eyebrow(
     )
 }
 
-/** A short fact in a hairline pill, optionally with a thin icon: a place, a state, a count. */
+/**
+ * A short fact in a hairline pill, optionally with a thin icon: a place, a state, a count. With
+ * [accent] it is the one that says what the page is in the accent colour: "took place".
+ */
 @Composable
 fun PillBadge(
     text: String,
     modifier: Modifier = Modifier,
     @DrawableRes icon: Int? = null,
     iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    accent: Boolean = false,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val content = if (accent) scheme.onPrimaryContainer else scheme.onSurfaceVariant
     Surface(
         modifier = modifier,
         shape = PillShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = if (accent) scheme.primaryContainer else scheme.surfaceContainer,
+        border =
+            BorderStroke(
+                1.dp,
+                if (accent) scheme.primary.copy(alpha = 0.4f) else scheme.outlineVariant,
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s - Spacing.xxs),
@@ -99,7 +109,7 @@ fun PillBadge(
                 Icon(
                     painterResource(icon),
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = if (accent) content else iconTint,
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -107,7 +117,7 @@ fun PillBadge(
             Text(
                 text,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = content,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

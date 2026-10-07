@@ -48,6 +48,8 @@ import ru.colabike.core.designsystem.component.Avatar
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaListItem
+import ru.colabike.core.designsystem.component.ColaRowDivider
+import ru.colabike.core.designsystem.component.ColaRowGroup
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.Eyebrow
@@ -194,6 +196,11 @@ fun ProfileScreen(
                                     )
                                 }
                             }
+                            // The name of the app, quietly, at the foot of the page.
+                            Eyebrow(
+                                stringResource(R.string.app_name),
+                                modifier = Modifier.align(Alignment.CenterHorizontally),
+                            )
                         }
                     }
             }
@@ -256,40 +263,30 @@ private fun MemberSections(
     onOpenBlocked: () -> Unit,
 ) {
     val account = state.account
-    Column(
-        Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.l),
-    ) {
-        Avatar(account.displayName, account.avatarUrl, size = 96.dp)
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.l),
         ) {
-            Text(
-                account.displayName,
-                style = MaterialTheme.typography.displayMedium,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                stringResource(
-                    ru.colabike.core.designsystem.R.string.cola_username,
-                    account.username,
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (account.location.isNotBlank()) {
-            PillBadge(account.location, icon = ColaIcons.Location)
+            Avatar(account.displayName, account.avatarUrl, size = 88.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Text(account.displayName, style = MaterialTheme.typography.headlineLarge)
+                Text(
+                    stringResource(
+                        ru.colabike.core.designsystem.R.string.cola_username,
+                        account.username,
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (account.location.isNotBlank()) {
+                    PillBadge(account.location, icon = ColaIcons.Location)
+                }
+            }
         }
         if (account.bio.isNotBlank()) {
-            Text(
-                account.bio,
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.widthIn(max = ContentWidth),
-            )
+            Text(account.bio, style = MaterialTheme.typography.bodyLarge)
         }
     }
     if (!account.emailVerified) {
@@ -308,63 +305,85 @@ private fun MemberSections(
             }
         }
     }
-    Section(stringResource(R.string.profile_section_account)) {
-        ColaListItem(
-            title = stringResource(R.string.profile_public),
-            supporting = stringResource(R.string.profile_public_hint),
-            icon = ColaIcons.Person,
-            onClick = { onOpenPublicProfile(account.id.value) },
-        )
-        ColaListItem(
-            title = stringResource(R.string.profile_saved),
-            supporting = stringResource(R.string.profile_saved_hint),
-            icon = ColaIcons.Bookmark,
-            onClick = onOpenSaved,
-        )
-        // The market may be switched off by the server: then its saved listings have no row.
-        if (onOpenSavedMarket != null) {
+    // The page of the person as others see it: the one row the reference sets apart, in the accent.
+    ColaListItem(
+        title = stringResource(R.string.profile_public),
+        supporting = stringResource(R.string.profile_public_hint),
+        icon = ColaIcons.Person,
+        onClick = { onOpenPublicProfile(account.id.value) },
+    )
+    Section(stringResource(R.string.profile_section_saved)) {
+        ColaRowGroup {
             ColaListItem(
-                title = stringResource(R.string.profile_saved_market),
-                supporting = stringResource(R.string.profile_saved_market_hint),
-                icon = ColaIcons.Tag,
-                onClick = onOpenSavedMarket,
+                title = stringResource(R.string.profile_saved),
+                icon = ColaIcons.Bookmark,
+                tone = HaloTone.Secondary,
+                onClick = onOpenSaved,
+                grouped = true,
+            )
+            // The market may be switched off by the server: then its saved listings have no row.
+            if (onOpenSavedMarket != null) {
+                ColaRowDivider()
+                ColaListItem(
+                    title = stringResource(R.string.profile_saved_market),
+                    icon = ColaIcons.Tag,
+                    tone = HaloTone.Secondary,
+                    onClick = onOpenSavedMarket,
+                    grouped = true,
+                )
+            }
+        }
+    }
+    Section(stringResource(R.string.profile_section_account)) {
+        ColaRowGroup {
+            ColaListItem(
+                title = stringResource(R.string.profile_notifications),
+                supporting = stringResource(R.string.profile_notifications_hint),
+                icon = ColaIcons.Notifications,
+                tone = HaloTone.Secondary,
+                onClick = onOpenNotifications,
+                grouped = true,
+            )
+            ColaRowDivider()
+            ColaListItem(
+                title = stringResource(R.string.profile_devices),
+                supporting = stringResource(R.string.profile_devices_hint),
+                icon = ColaIcons.Devices,
+                tone = HaloTone.Secondary,
+                onClick = onOpenDevices,
+                grouped = true,
+            )
+            ColaRowDivider()
+            ColaListItem(
+                title = stringResource(R.string.profile_blocked),
+                supporting = stringResource(R.string.profile_blocked_hint),
+                icon = ColaIcons.Block,
+                tone = HaloTone.Secondary,
+                onClick = onOpenBlocked,
+                grouped = true,
+            )
+            ColaRowDivider()
+            ColaListItem(
+                title = stringResource(R.string.profile_manage_web),
+                supporting = stringResource(R.string.profile_manage_web_hint),
+                icon = ColaIcons.Person,
+                tone = HaloTone.Secondary,
+                action = ListItemAction.External,
+                onClick = onManageOnWeb,
+                grouped = true,
+            )
+            // In the app, not only on the site: a store asks for it, and a person who has no
+            // password has no other way (docs/adr/0021).
+            ColaRowDivider()
+            ColaListItem(
+                title = stringResource(R.string.profile_delete_account),
+                supporting = stringResource(R.string.profile_delete_account_hint),
+                icon = ColaIcons.Info,
+                tone = HaloTone.Secondary,
+                onClick = onDeleteAccount,
+                grouped = true,
             )
         }
-        ColaListItem(
-            title = stringResource(R.string.profile_notifications),
-            supporting = stringResource(R.string.profile_notifications_hint),
-            icon = ColaIcons.Notifications,
-            onClick = onOpenNotifications,
-        )
-        ColaListItem(
-            title = stringResource(R.string.profile_devices),
-            supporting = stringResource(R.string.profile_devices_hint),
-            icon = ColaIcons.Devices,
-            onClick = onOpenDevices,
-        )
-        ColaListItem(
-            title = stringResource(R.string.profile_blocked),
-            supporting = stringResource(R.string.profile_blocked_hint),
-            icon = ColaIcons.Block,
-            onClick = onOpenBlocked,
-        )
-        ColaListItem(
-            title = stringResource(R.string.profile_manage_web),
-            supporting = stringResource(R.string.profile_manage_web_hint),
-            icon = ColaIcons.Person,
-            tone = HaloTone.Secondary,
-            action = ListItemAction.External,
-            onClick = onManageOnWeb,
-        )
-        // In the app, not only on the site: a store asks for it, and a person who has no
-        // password has no other way (docs/adr/0021).
-        ColaListItem(
-            title = stringResource(R.string.profile_delete_account),
-            supporting = stringResource(R.string.profile_delete_account_hint),
-            icon = ColaIcons.Info,
-            tone = HaloTone.Secondary,
-            onClick = onDeleteAccount,
-        )
     }
 }
 
@@ -382,6 +401,7 @@ private fun AppearanceAndAbout(
             title = stringResource(R.string.profile_about),
             supporting = stringResource(R.string.profile_about_hint),
             icon = ColaIcons.Info,
+            tone = HaloTone.Secondary,
             onClick = onOpenAbout,
         )
     }

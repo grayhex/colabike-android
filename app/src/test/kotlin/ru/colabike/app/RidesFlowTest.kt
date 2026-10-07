@@ -15,6 +15,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.google.common.truth.Truth.assertThat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import org.junit.Rule
 import org.junit.Test
@@ -245,9 +249,13 @@ class RidesFlowTest {
         openFirstPlan()
 
         compose.onNodeWithText("Воскресный выезд за город").assertIsDisplayed()
-        compose.onNode(hasText("Начало:", substring = true)).assertIsDisplayed()
+        // The date line names the device's zone itself, as the device calls it.
+        val zone =
+            DateTimeFormatter.ofPattern("zzz", Locale.forLanguageTag("ru"))
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.now())
         compose
-            .onNode(hasText("часовому поясу вашего устройства", substring = true))
+            .onNode(hasText("Начало:", substring = true) and hasText(zone, substring = true))
             .assertIsDisplayed()
         compose
             .onNode(hasText("повторяется каждую неделю", ignoreCase = true, substring = true))
@@ -272,7 +280,7 @@ class RidesFlowTest {
         compose.onNodeWithContentDescription("Покатушка 1", substring = true).performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("ДИСТАНЦИЯ").assertIsDisplayed()
+        compose.onNodeWithText("Дистанция").assertIsDisplayed()
         compose.onNode(hasText("32,5", substring = true)).assertIsDisplayed()
         compose.onNodeWithText("Показатели датчиков").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("avgHeartRate").performScrollTo().assertIsDisplayed()

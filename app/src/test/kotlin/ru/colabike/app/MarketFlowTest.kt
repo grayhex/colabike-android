@@ -364,7 +364,7 @@ class MarketFlowTest {
         compose.section("Профиль").performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("Сохранённые объявления").performScrollTo().performClick()
+        compose.onNodeWithText("Объявления").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("listing:l1").assertIsDisplayed()
         compose.onNodeWithTag("listing:l2").assertIsDisplayed()

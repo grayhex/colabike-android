@@ -3,6 +3,7 @@ package ru.colabike.app
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -92,6 +93,26 @@ class IntentsFlowTest {
     // --- creating --------------------------------------------------------------------------------
 
     @Test
+    fun `the main action stays on the bottom edge while the form scrolls, and says what it does`() {
+        start()
+
+        compose.onNodeWithTag("intents:create").performClick()
+        compose.waitForIdle()
+        val before = compose.onNodeWithTag("intent-editor:save").getUnclippedBoundsInRoot()
+        compose.onNodeWithTag("intent-editor:save").assertIsDisplayed()
+        // A private form is only saved.
+        compose.onNodeWithText("Сохранить планы").assertIsDisplayed()
+
+        scrolled("intent-editor:suggestions")
+        val after = compose.onNodeWithTag("intent-editor:save").getUnclippedBoundsInRoot()
+        assertThat(after).isEqualTo(before)
+
+        // A form for the community is published.
+        compose.onNodeWithTag("intent-editor:visibility:community").performClick()
+        compose.onNodeWithText("Опубликовать планы").assertIsDisplayed()
+    }
+
+    @Test
     fun `an intention is made with a time already chosen and only an area typed, private first`() {
         start()
 
@@ -101,7 +122,6 @@ class IntentsFlowTest {
         compose.onNodeWithTag("intent-editor:visibility:private").assertIsSelected()
         scrolled("intent-editor:area")
         compose.onNodeWithTag("intent-editor:area").performTextInput("Парк Горького")
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 
@@ -119,8 +139,6 @@ class IntentsFlowTest {
         start()
         compose.onNodeWithTag("intents:create").performClick()
         compose.waitForIdle()
-
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 
@@ -143,7 +161,6 @@ class IntentsFlowTest {
             .assertIsDisplayed()
         scrolled("intent-editor:area")
         compose.onNodeWithTag("intent-editor:area").performTextInput("Парк")
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 
@@ -160,7 +177,6 @@ class IntentsFlowTest {
         scrolled("intent-editor:area")
         compose.onNodeWithTag("intent-editor:area").performTextInput("Парк")
         intents.failNext = DataError.Rejected(403, "email_verification_required", "")
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 
@@ -257,7 +273,6 @@ class IntentsFlowTest {
         compose.onNodeWithTag("intent-editor").assertIsDisplayed()
         scrolled("intent-editor:visibility:community")
         compose.onNodeWithTag("intent-editor:visibility:community").performClick()
-        scrolled("intent-editor:save")
         compose.onNodeWithTag("intent-editor:save").performClick()
         compose.waitForIdle()
 

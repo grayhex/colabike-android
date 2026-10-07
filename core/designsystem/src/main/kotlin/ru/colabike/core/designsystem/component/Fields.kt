@@ -2,6 +2,8 @@ package ru.colabike.core.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,12 +28,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import ru.colabike.core.designsystem.theme.Spacing
@@ -133,4 +137,56 @@ fun ColaSearchField(
             }
         },
     )
+}
+
+/**
+ * A field that is filled in by choosing, not typing: a date, a time. A raised surface under a
+ * visible edge, a thin icon, the value, and a chevron-down at the end if [dropdown]. The whole row
+ * is the button and at least 52 dp tall.
+ */
+@Composable
+fun ColaSelectField(
+    text: String,
+    @androidx.annotation.DrawableRes icon: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    dropdown: Boolean = false,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.small
+    val content = if (enabled) scheme.onSurface else scheme.onSurface.copy(alpha = 0.5f)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .background(scheme.surfaceContainer, shape)
+            .border(1.dp, scheme.outline, shape)
+            .clip(shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = Spacing.l),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+    ) {
+        Icon(
+            painterResource(icon),
+            contentDescription = null,
+            tint = scheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp),
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = content,
+            modifier = Modifier.weight(1f).padding(vertical = Spacing.s),
+        )
+        if (dropdown) {
+            Icon(
+                painterResource(ColaIcons.ArrowDown),
+                contentDescription = null,
+                tint = scheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
 }

@@ -7,16 +7,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,9 +24,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -44,7 +46,13 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -73,8 +81,8 @@ import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.component.PillBadge
-import ru.colabike.core.designsystem.component.StatTile
 import ru.colabike.core.designsystem.component.UserRow
+import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.CommentCountChange
@@ -178,6 +186,7 @@ fun RideScreen(
                                 else -> R.string.ride_title
                             }
                         ),
+                    compactTitle = true,
                     onBack = if (fullMap) ({ mapOpen = false }) else actions.onBack,
                     actions = if (loaded != null && !fullMap) topActions else ({}),
                 )
@@ -297,18 +306,58 @@ private fun RouteNotes(
     }
 }
 
-/** On a phone: the drawing of the route and the way to the map. */
+/**
+ * On a phone: the drawing of the route in a card with its heading and the way to the real map. The
+ * drawing is low (the card, the figures and the note have to share the first screen).
+ */
 @Composable
 private fun RouteCard(route: RideRoute, onOpenMap: () -> Unit) {
-    Section(stringResource(R.string.route_title)) {
-        ColaCard(Modifier.fillMaxWidth()) {
-            RouteSketch(route, Modifier.fillMaxWidth().height(SketchHeight))
+    ColaCard(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier.padding(Spacing.m),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.route_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                TextButton(onClick = onOpenMap) {
+                    Icon(
+                        painterResource(ColaIcons.Route),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        stringResource(R.string.route_open_map),
+                        modifier = Modifier.padding(start = Spacing.xs),
+                    )
+                }
+            }
+            RouteSketch(
+                route,
+                Modifier.fillMaxWidth().height(SketchHeight).clip(MaterialTheme.shapes.small),
+            )
+            RouteNotes(route, basemapMissing = false)
         }
-        RouteNotes(route, basemapMissing = false)
-        OutlinedButton(onClick = onOpenMap, modifier = Modifier.heightIn(min = Spacing.touch)) {
-            Icon(painterResource(ColaIcons.Route), contentDescription = null)
-            Spacer(Modifier.width(Spacing.s))
-            Text(stringResource(R.string.route_open_map))
+    }
+}
+
+/** A line of text of the person's own in a card: the note of a ride, the words of a plan. */
+@Composable
+private fun NoteCard(label: String, text: String) {
+    ColaCard(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier.padding(Spacing.card),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(text, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -333,37 +382,48 @@ private fun Ride(
     ) {
         Column(
             Modifier.widthIn(max = ContentWidth).fillMaxWidth().padding(Spacing.screen),
-            verticalArrangement = Arrangement.spacedBy(Spacing.l),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
             Text(
                 summary.title,
-                style = MaterialTheme.typography.headlineMedium,
+                style = ColaTheme.textStyles.pageTitle,
                 modifier = Modifier.semantics { heading() },
             )
             val planned = summary.status == RideStatus.Planned
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                PillBadge(
-                    stringResource(
-                        if (planned) ru.colabike.core.designsystem.R.string.cola_ride_planned
-                        else ru.colabike.core.designsystem.R.string.cola_ride_completed
-                    ),
-                    icon = ColaIcons.Route,
-                )
-                if (summary.recurrence == RideRecurrence.Weekly) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                ) {
                     PillBadge(
-                        stringResource(ru.colabike.core.designsystem.R.string.cola_ride_weekly),
-                        icon = ColaIcons.Calendar,
+                        stringResource(
+                            if (planned) ru.colabike.core.designsystem.R.string.cola_ride_planned
+                            else ru.colabike.core.designsystem.R.string.cola_ride_completed
+                        ),
+                        icon = if (planned) ColaIcons.Schedule else ColaIcons.CheckCircle,
+                        accent = !planned,
                     )
+                    if (summary.recurrence == RideRecurrence.Weekly) {
+                        PillBadge(
+                            stringResource(ru.colabike.core.designsystem.R.string.cola_ride_weekly),
+                            icon = ColaIcons.Calendar,
+                        )
+                    }
+                    if (ride.recruitmentClosed) {
+                        PillBadge(stringResource(R.string.ride_recruitment_closed))
+                    }
                 }
-                if (ride.recruitmentClosed) {
-                    PillBadge(stringResource(R.string.ride_recruitment_closed))
-                }
+                When(ride, locale, zone)
             }
-            When(ride, locale, zone)
+            // The route first: on a page of a ride it is what the ride was.
+            if (route != null) RouteCard(route, onOpenMap)
             Metrics(ride, locale)
+            if (ride.description.isNotBlank()) {
+                NoteCard(
+                    stringResource(if (planned) R.string.ride_description else R.string.ride_note),
+                    ride.description,
+                )
+            }
             ride.passport?.let { Passport(it, locale) }
             Meeting(ride)
             summary.participants?.let {
@@ -387,9 +447,6 @@ private fun Ride(
                     )
                 }
             }
-            if (ride.description.isNotBlank()) {
-                Text(ride.description, style = MaterialTheme.typography.bodyLarge)
-            }
             if (ride.features.isNotEmpty()) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.s),
@@ -398,7 +455,6 @@ private fun Ride(
                     ride.features.forEach { PillBadge(it) }
                 }
             }
-            if (route != null) RouteCard(route, onOpenMap)
             AnalysisSection(analysis, onRetry = onLoadAnalysis)
             if (ride.extraMetrics.isNotEmpty()) Sensors(ride.extraMetrics, locale)
             summary.bike?.let { bike ->
@@ -428,39 +484,37 @@ private fun Ride(
     }
 }
 
-/** The day and the hour, in the device's time zone and with its name, so nothing is guessed. */
+/**
+ * The day and the hour, in the device's time zone, with the zone's name in the same line, so
+ * nothing is guessed: "16 сентября 2026 г., 18:28 МСК". A plan says it begins; a ride that took
+ * place is already said so by its badge.
+ */
 @Composable
 private fun When(ride: RideDetail, locale: Locale, zone: ZoneId) {
     val summary = ride.summary
     val planned = summary.status == RideStatus.Planned
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
         summary.time?.let {
+            val moment = "${zoned(it, locale, zone)} ${zoneName(zone, locale)}"
             Text(
-                stringResource(
-                    if (planned) R.string.ride_when_planned else R.string.ride_when_completed,
-                    zoned(it, locale, zone),
-                ),
-                style = MaterialTheme.typography.titleMedium,
+                if (planned) stringResource(R.string.ride_when_planned, moment) else moment,
+                style = MaterialTheme.typography.bodyLarge,
+                color = muted,
             )
         }
         ride.expectedEndAt?.let {
             Text(
                 stringResource(R.string.ride_expected_end, zoned(it, locale, zone)),
                 style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        if (summary.time != null || ride.expectedEndAt != null) {
-            Text(
-                stringResource(R.string.ride_timezone_note, zoneName(zone, locale)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = muted,
             )
         }
         if (summary.recurrence == RideRecurrence.Weekly) {
             Text(
                 stringResource(R.string.ride_weekly_note),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = muted,
             )
         }
     }
@@ -476,8 +530,12 @@ private fun zoned(instant: Instant, locale: Locale, zone: ZoneId): String =
 private fun zoneName(zone: ZoneId, locale: Locale): String =
     DateTimeFormatter.ofPattern("zzz", locale).withZone(zone).format(Instant.now())
 
-/** Two tiles to a row; one at a large font. Only the numbers the ride has. */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * What the ride measured, only the numbers it has. The first two (the distance and the time on the
+ * move) are the figures of the page, large, side by side; the others (all the time, the average
+ * speed, the climb) are three columns in a card under them, a value over its caption. At a large
+ * system font everything stands in one column.
+ */
 @Composable
 private fun Metrics(ride: RideDetail, locale: Locale) {
     val m = ride.summary.metrics
@@ -510,15 +568,107 @@ private fun Metrics(ride: RideDetail, locale: Locale) {
         }
     }
     if (tiles.isEmpty()) return
-    val columns = if (LocalDensity.current.fontScale > LargeFont) 1 else 2
-    FlowRow(
-        maxItemsInEachRow = columns,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-        verticalArrangement = Arrangement.spacedBy(Spacing.m),
-    ) {
-        tiles.forEach { (label, value) -> StatTile(label, value, Modifier.weight(1f)) }
+    val hero = tiles.take(2)
+    val rest = tiles.drop(2)
+    if (LocalDensity.current.fontScale > LargeFont) {
+        ColaCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = Spacing.card, vertical = Spacing.s)) {
+                tiles.forEachIndexed { index, (label, value) ->
+                    if (index > 0) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = Spacing.s).semantics(
+                            mergeDescendants = true
+                        ) {}
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            figure(value, ColaTheme.textStyles.figure),
+                            style = ColaTheme.textStyles.figure,
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        hero.forEachIndexed { index, (label, value) ->
+            if (index > 0) {
+                VerticalDivider(
+                    Modifier.padding(horizontal = Spacing.m),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+            }
+            Column(
+                Modifier.weight(1f).semantics(mergeDescendants = true) {},
+                verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    figure(value, ColaTheme.textStyles.numeral),
+                    style = ColaTheme.textStyles.numeral,
+                    color =
+                        if (index == 0) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+    }
+    if (rest.isNotEmpty()) {
+        ColaCard(Modifier.fillMaxWidth()) {
+            Row(Modifier.padding(vertical = Spacing.m).height(IntrinsicSize.Min)) {
+                rest.forEachIndexed { index, (label, value) ->
+                    if (index > 0) {
+                        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                    Column(
+                        Modifier.weight(1f).padding(horizontal = Spacing.m).semantics(
+                            mergeDescendants = true
+                        ) {},
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
+                    ) {
+                        Text(
+                            figure(value, ColaTheme.textStyles.figure),
+                            style = ColaTheme.textStyles.figure,
+                        )
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
+
+/**
+ * A value with its unit set smaller: "26,5 км", "1 ч 33 мин", "16,9 км/ч". The digits keep the size
+ * of [style]; letters and the slash of a unit are 60 % of it, the spaces keep the size.
+ */
+@Composable
+private fun figure(value: String, style: TextStyle): AnnotatedString {
+    val unit = SpanStyle(fontSize = style.fontSize * UnitScale, fontWeight = FontWeight.Medium)
+    return buildAnnotatedString {
+        value.forEachIndexed { i, c ->
+            val small = c.isLetter() || c == '/'
+            if (small) withStyle(unit) { append(c) } else append(c)
+        }
+    }
+}
+
+private const val UnitScale = 0.6f
 
 @Composable
 private fun duration(seconds: Int): String {
@@ -648,7 +798,7 @@ private val ContentWidth = 720.dp
 /** From this width the map stands beside the page instead of opening on its own screen. */
 private val WidePane = 840.dp
 
-private val SketchHeight = 180.dp
+private val SketchHeight = 140.dp
 
 /** From this font scale on, metric tiles stack. */
 private const val LargeFont = 1.3f

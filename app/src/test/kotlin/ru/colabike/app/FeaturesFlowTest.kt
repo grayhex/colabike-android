@@ -134,12 +134,12 @@ class FeaturesFlowTest {
         compose.section("Профиль").performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("Сохранённое").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Сохранённые объявления").assertDoesNotExist()
+        compose.onNodeWithText("Записи журнала").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Объявления").assertDoesNotExist()
 
         config.set()
         compose.waitForIdle()
-        compose.onNodeWithText("Сохранённые объявления").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Объявления").performScrollTo().assertIsDisplayed()
     }
 
     // --- links and rows into what is off ---------------------------------------------------------

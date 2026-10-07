@@ -926,7 +926,8 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                 Screen.IntentEditor -> {
                     onNodeWithTag("intents:create").performClick()
                     // The findings are shown once the person tried to save without an area.
-                    reveal(onNodeWithTag("intent-editor:save")).performClick()
+                    // The main action is pinned to the bottom edge: nothing to scroll to.
+                    onNodeWithTag("intent-editor:save").performClick()
                 }
                 else -> Unit
             }
@@ -973,7 +974,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         }
         Screen.SavedMarket -> {
             section("Профиль").performClick()
-            reveal(onNodeWithText("Сохранённые объявления")).performClick()
+            reveal(onNodeWithText("Объявления")).performClick()
         }
         Screen.Messages,
         Screen.MessagesGuest -> section("Чаты").performClick()

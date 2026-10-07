@@ -25,6 +25,7 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import com.google.common.truth.Truth.assertThat
+import java.time.Instant
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,35 +33,52 @@ import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ru.colabike.app.ui.AppShell
-import ru.colabike.core.designsystem.component.PreviewData
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
-import ru.colabike.core.model.BikeId
-import ru.colabike.core.model.Page
+import ru.colabike.core.model.RideMetrics
 
 @OptIn(ExperimentalCoilApi::class)
-private val pagePhotos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
+private val ridePhotos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
 
 /**
- * The acceptance of the bike page (issue #42): on a full portrait screen of 412 × 915 dp at the
- * system font of 1.0 the first screen holds, under the photo and the name, the owner, the like and
- * the share, the start of the description, and the facts themselves (not only their heading).
+ * The acceptance of the ride page (issue #42): on a full portrait screen of 412 × 915 dp at the
+ * system font of 1.0, with the bar of the sections under it, the first screen holds the title, the
+ * status and the date, the route, all five figures (the distance, the time on the move, all the
+ * time, the average speed, the climb) and the note.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "ru-w412dp-h915dp-xhdpi")
-class BikePageAcceptanceTest(private val look: Look) {
+class RidePageAcceptanceTest(private val look: Look) {
     @get:Rule val compose = createComposeRule()
 
     @Test
-    fun `the owner, the actions, the description and the facts are on the first screen`() {
-        val bike =
-            PreviewData.bike.copy(id = BikeId("b0"), name = "Canyon Grail CF SLX 8 AXS (2026)")
+    fun `the route, the five figures and the note are on the first screen`() {
+        val base = rideDetail(0)
+        val ride =
+            base.copy(
+                summary =
+                    base.summary.copy(
+                        title = "С Сашей по набережной и обратно",
+                        time = Instant.parse("2026-09-16T15:28:00Z"),
+                        metrics =
+                            RideMetrics(
+                                distanceM = 26_500,
+                                movingTimeS = 5_580,
+                                elapsedTimeS = 7_080,
+                                avgSpeedMps = 16.9 / 3.6,
+                                elevationGainM = 33.0,
+                            ),
+                    ),
+                description = "Тогда у нас был отвал трансмиссии и тормоза",
+                features = emptyList(),
+                extraMetrics = emptyMap(),
+            )
         compose.setContent {
             CompositionLocalProvider(
                 LocalInspectionMode provides true,
                 LocalRippleConfiguration provides null,
-                LocalAsyncImagePreviewHandler provides pagePhotos,
+                LocalAsyncImagePreviewHandler provides ridePhotos,
                 LocalDensity provides Density(LocalDensity.current.density, 1f),
             ) {
                 ColaBikeTheme(darkTheme = look.dark) {
@@ -70,27 +88,31 @@ class BikePageAcceptanceTest(private val look: Look) {
                             .padding(top = StatusBar, bottom = GestureStrip)
                     ) {
                         AppShell(
-                            FakeDependencies(
-                                bikes = FakeBikes(mapOf(null to Page(listOf(bike), null)))
-                            )
+                            FakeDependencies(rides = FakeRides(details = mapOf("ride-0" to ride)))
                         )
                     }
                 }
             }
         }
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("Canyon Grail", substring = true).performClick()
+        compose.section("Покатушки").performClick()
+        compose.onNodeWithText("Состоявшиеся").performClick()
+        compose.onNodeWithContentDescription("Покатушка 0", substring = true).performClick()
         compose.waitForIdle()
         compose.settle()
 
-        val bottom = 915.dp - GestureStrip
-        fun bottomOf(text: String) =
-            compose.onNodeWithText(text, substring = true).getUnclippedBoundsInRoot().bottom
-        assertThat(bottomOf("Поделиться").value).isAtMost(bottom.value)
-        assertThat(bottomOf("Надёжный горный велосипед").value).isAtMost(bottom.value)
-        // The value of a fact, not just the heading of the section.
-        assertThat(bottomOf("14,2 кг").value).isAtMost(bottom.value)
-        compose.captureWhenDrawn("src/test/screenshots/bike_page_${look.file}.png")
+        val bar = compose.section("Покатушки").getUnclippedBoundsInRoot().top
+        fun bottomOf(text: String) = compose.onNodeWithText(text).getUnclippedBoundsInRoot().bottom
+        listOf(
+                "26,5 км",
+                "1 ч 33 мин",
+                "1 ч 58 мин",
+                "16,9 км/ч",
+                "33 м",
+                "Тогда у нас был отвал трансмиссии и тормоза",
+            )
+            .forEach { assertThat(bottomOf(it).value).isAtMost(bar.value) }
+        compose.captureWhenDrawn("src/test/screenshots/ride_page_${look.file}.png")
     }
 
     private companion object {
