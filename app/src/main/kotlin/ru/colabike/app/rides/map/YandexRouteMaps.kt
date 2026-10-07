@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.createBitmap
 import androidx.core.view.doOnLayout
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -256,7 +257,7 @@ private fun dot(fill: Int, ring: Int, density: Float): Bitmap {
     val radius = END_RADIUS_DP * density
     val stroke = END_STROKE_DP * density
     val size = ((radius + stroke) * 2).toInt() + 2
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(size, size)
     val canvas = Canvas(bitmap)
     val center = size / 2f
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)

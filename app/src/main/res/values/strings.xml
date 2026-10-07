@@ -499,9 +499,9 @@
     <string name="map_yandex_keep_osm">Оставить OpenStreetMap</string>
     <string name="profile_section_map">Карта</string>
     <string name="map_choice_osm">OpenStreetMap — по умолчанию</string>
-    <string name="map_choice_osm_hint">Подложка OpenFreeMap на данных OpenStreetMap</string>
+    <string name="map_choice_osm_hint">Открытые данные OpenStreetMap</string>
     <string name="map_choice_yandex">Яндекс Карты</string>
-    <string name="map_choice_yandex_hint">Если Яндекс Карты недоступны, откроется OpenStreetMap</string>
+    <string name="map_choice_yandex_hint">Если недоступна, откроется OpenStreetMap</string>
     <string name="bike_rides">Покатушки велосипеда</string>
     <string name="bike_rides_hint">Состоявшиеся публичные поездки</string>
     <string name="market_open">Объявления</string>

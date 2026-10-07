@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,7 +17,9 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import coil3.ColorImage
@@ -29,8 +32,10 @@ import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.ui.AppShell
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
+import ru.colabike.core.model.RideRoute
 
 @OptIn(ExperimentalCoilApi::class)
 private val formPhotos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
@@ -47,7 +52,7 @@ private val formPhotos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3)
 class FormAndProfileAcceptanceTest(private val look: Look) {
     @get:Rule val compose = createComposeRule()
 
-    private fun show() {
+    private fun show(dependencies: FakeDependencies = FakeDependencies()) {
         compose.setContent {
             CompositionLocalProvider(
                 LocalInspectionMode provides true,
@@ -61,7 +66,7 @@ class FormAndProfileAcceptanceTest(private val look: Look) {
                             .background(MaterialTheme.colorScheme.background)
                             .padding(top = StatusBar, bottom = GestureStrip)
                     ) {
-                        AppShell(FakeDependencies())
+                        AppShell(dependencies)
                     }
                 }
             }
@@ -90,6 +95,26 @@ class FormAndProfileAcceptanceTest(private val look: Look) {
         compose.settle()
 
         compose.captureWhenDrawn("src/test/screenshots/profile_page_${look.file}.png")
+    }
+
+    /** The build has the owner's key for the Yandex map: the profile offers the two maps. */
+    @Test
+    fun `the profile offers the two maps when the build has the Yandex key`() {
+        show(FakeDependencies(maps = MapsWithYandex))
+        compose.section("Профиль").performClick()
+        compose.waitForIdle()
+        compose.settle()
+        compose.onNodeWithText("Яндекс Карты").performScrollTo().assertIsDisplayed()
+        compose.settle()
+
+        compose.captureWhenDrawn("src/test/screenshots/profile_map_setting_${look.file}.png")
+    }
+
+    private object MapsWithYandex : RouteMaps {
+        override val hasBasemap: Boolean = true
+        override val offersYandex: Boolean = true
+
+        @Composable override fun Map(route: RideRoute, modifier: Modifier) = Unit
     }
 
     private companion object {
