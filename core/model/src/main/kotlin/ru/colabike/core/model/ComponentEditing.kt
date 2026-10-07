@@ -59,18 +59,21 @@ fun BikeComponent.toDraft(): ComponentDraft =
     )
 
 /**
- * The site's own groups of parts and the categories in each (cola `lib/garage-layout.ts`,
- * `defaultGroups`). The API has no dictionary endpoint, so this is a snapshot: a category the
- * site's operator added is simply not offered as a suggestion, and a part with it is grouped by its
- * category, which the page already does for a part with no group.
+ * The built-in copy of the site's groups of parts and the categories in each (cola
+ * `lib/garage-layout.ts`, `defaultGroups`). The app reads the live ones from the site
+ * ([SiteCatalog.components]); this stands in until it has, and for a person who has never been
+ * online. A category the site's operator added is simply not in it: a part with it is grouped by
+ * its category, which the page already does for a part with no group.
  */
 object ComponentCatalog {
-    data class Group(val id: String, val name: String, val categories: List<String>)
-
-    val groups: List<Group> =
+    val groups: List<ComponentDictionary.Group> =
         listOf(
-            Group("frame", "Рама и подвеска", listOf("Рама", "Вилка", "Амортизатор")),
-            Group(
+            ComponentDictionary.Group(
+                "frame",
+                "Рама и подвеска",
+                listOf("Рама", "Вилка", "Амортизатор"),
+            ),
+            ComponentDictionary.Group(
                 "drivetrain",
                 "Трансмиссия",
                 listOf(
@@ -92,7 +95,7 @@ object ComponentCatalog {
                     "Измеритель мощности",
                 ),
             ),
-            Group(
+            ComponentDictionary.Group(
                 "brakes",
                 "Тормоза",
                 listOf(
@@ -105,7 +108,7 @@ object ComponentCatalog {
                     "Задний ротор",
                 ),
             ),
-            Group(
+            ComponentDictionary.Group(
                 "wheels",
                 "Колёса",
                 listOf(
@@ -124,7 +127,7 @@ object ComponentCatalog {
                     "Камеры / бескамерка",
                 ),
             ),
-            Group(
+            ComponentDictionary.Group(
                 "cockpit",
                 "Управление и посадка",
                 listOf(
@@ -138,12 +141,12 @@ object ComponentCatalog {
                     "Подседельный зажим",
                 ),
             ),
-            Group(
+            ComponentDictionary.Group(
                 "electric",
                 "Электрооборудование",
                 listOf("Мотор", "Батарея", "Дисплей", "Зарядное устройство"),
             ),
-            Group(
+            ComponentDictionary.Group(
                 "equipment",
                 "Оборудование и аксессуары",
                 listOf(
@@ -166,47 +169,39 @@ object ComponentCatalog {
             ),
         )
 
-    private val accessoryCategories: Set<String> =
-        groups.first { it.id == "equipment" }.categories.toSet()
-
-    private val every: List<String> = groups.flatMap { it.categories }
+    private val accessoryCategories: List<String> = groups.first { it.id == "equipment" }.categories
 
     /**
-     * The site's spelling of a category the person typed in any case ("звонок" is "Звонок"); the
-     * text as typed, trimmed, for a category of the person's own.
+     * The built-in copy of the site's dictionary of parts, which stands in until the app has read
+     * the site's own (`GET /catalog`): the same groups, no names to suggest.
      */
-    fun canonical(category: String): String {
-        val text = category.trim()
-        return every.firstOrNull { it.equals(text, ignoreCase = true) } ?: text
-    }
+    val dictionary: ComponentDictionary =
+        ComponentDictionary(
+            groups = groups,
+            buildCategories = groups.filter { it.id != "equipment" }.flatMap { it.categories },
+            accessoryCategories = accessoryCategories,
+            names = emptyMap(),
+        )
 
-    /** The group a category belongs to, in any case; empty for a category of the person's own. */
-    fun groupIdOf(category: String): String {
-        val known = canonical(category)
-        return groups.firstOrNull { known in it.categories }?.id.orEmpty()
-    }
+    /** See [ComponentDictionary.canonical]. */
+    fun canonical(category: String): String = dictionary.canonical(category)
 
-    /** `accessories` for the site's equipment categories, `build` for the rest. */
-    fun sectionOf(category: String): String =
-        if (canonical(category) in accessoryCategories) SECTION_ACCESSORIES else SECTION_BUILD
+    /** See [ComponentDictionary.groupIdOf]. */
+    fun groupIdOf(category: String): String = dictionary.groupIdOf(category)
 
-    /** The name of a group by its key, or null for a key (or a category) that is not the site's. */
-    fun groupName(key: String): String? = groups.firstOrNull { it.id == key }?.name
+    /** See [ComponentDictionary.sectionOf]. */
+    fun sectionOf(category: String): String = dictionary.sectionOf(category)
 
-    /** Known categories that contain what was typed, the ones that start with it first. */
-    fun suggestions(typed: String, limit: Int = MAX_SUGGESTIONS): List<String> {
-        val text = typed.trim()
-        if (text.isEmpty()) return emptyList()
-        val (starts, contains) =
-            every
-                .filter { it.contains(text, ignoreCase = true) && !it.equals(text, true) }
-                .partition { it.startsWith(text, ignoreCase = true) }
-        return (starts + contains).take(limit)
-    }
+    /** See [ComponentDictionary.groupName]. */
+    fun groupName(key: String): String? = dictionary.groupName(key)
 
-    const val SECTION_BUILD = "build"
-    const val SECTION_ACCESSORIES = "accessories"
-    const val MAX_SUGGESTIONS = 6
+    /** See [ComponentDictionary.suggestions]. */
+    fun suggestions(typed: String, limit: Int = MAX_SUGGESTIONS): List<String> =
+        dictionary.suggestions(typed, limit)
+
+    const val SECTION_BUILD = ComponentDictionary.SECTION_BUILD
+    const val SECTION_ACCESSORIES = ComponentDictionary.SECTION_ACCESSORIES
+    const val MAX_SUGGESTIONS = ComponentDictionary.MAX_SUGGESTIONS
 }
 
 /** What is wrong with a part form, in the server's own terms. */

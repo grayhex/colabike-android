@@ -16,6 +16,7 @@ import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.ComponentCatalog
+import ru.colabike.core.model.ComponentDictionary
 import ru.colabike.core.model.DataError
 
 /** A group of the build that has a key of its own, in the order the page shows it. */
@@ -46,8 +47,12 @@ sealed interface BikePartsUiState {
  * is added and changed on a screen of its own; this one reads the bike again whenever the build
  * changed, so it never shows what the server no longer holds.
  */
-class BikePartsViewModel(private val repository: BikesRepository, private val id: BikeId) :
-    ViewModel() {
+class BikePartsViewModel(
+    private val repository: BikesRepository,
+    private val id: BikeId,
+    /** The site's dictionary of parts in force now: the names of the groups. */
+    private val dictionary: () -> ComponentDictionary = { ComponentCatalog.dictionary },
+) : ViewModel() {
     private val mutable = MutableStateFlow<BikePartsUiState>(BikePartsUiState.Loading)
     val state: StateFlow<BikePartsUiState> = mutable.asStateFlow()
 
@@ -125,7 +130,7 @@ class BikePartsViewModel(private val repository: BikesRepository, private val id
         if (error.code == EMAIL_NOT_VERIFIED) UiText.Res(R.string.part_needs_email)
         else error.toUiText()
 
-    private fun ready(bike: BikeDetail) = BikePartsUiState.Ready(bike, groupsOf(bike))
+    private fun ready(bike: BikeDetail) = BikePartsUiState.Ready(bike, groupsOf(bike, dictionary()))
 
     private companion object {
         const val EMAIL_NOT_VERIFIED = "email_verification_required"
@@ -137,12 +142,15 @@ class BikePartsViewModel(private val repository: BikesRepository, private val id
  * owner's order within. A group with no key (parts grouped by their own category) cannot be put in
  * order: the server takes keys only, so it is not listed.
  */
-internal fun groupsOf(bike: BikeDetail): List<PartGroup> {
+internal fun groupsOf(
+    bike: BikeDetail,
+    dictionary: ComponentDictionary = ComponentCatalog.dictionary,
+): List<PartGroup> {
     val ordered = orderComponents(bike.components, bike.groupOrder).flatMap { it.components }
     return ordered
         .filter { it.groupId.isNotBlank() }
         .groupBy { it.groupId }
         .map { (key, parts) ->
-            PartGroup(key, ComponentCatalog.groupName(key) ?: parts.first().category, parts.size)
+            PartGroup(key, dictionary.groupName(key) ?: parts.first().category, parts.size)
         }
 }

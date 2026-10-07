@@ -1,10 +1,11 @@
 package ru.colabike.app
 
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -18,6 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import ru.colabike.app.catalog.CatalogState
 import ru.colabike.app.ui.ColaBikeApp
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
@@ -43,10 +45,15 @@ class BikeEditorFlowTest {
             "\"v1\"",
         )
 
-    private fun start(bikes: FakeBikes, signedIn: Boolean = true): FakeDependencies {
+    private fun start(
+        bikes: FakeBikes,
+        signedIn: Boolean = true,
+        catalog: FakeCatalog = FakeCatalog(),
+    ): FakeDependencies {
         val dependencies =
             FakeDependencies(
                 bikes = bikes,
+                catalog = catalog,
                 auth = FakeAuth(if (signedIn) AuthState.SignedIn(account) else AuthState.SignedOut),
                 settings = FakeSettings(guest = !signedIn),
             )
@@ -64,6 +71,14 @@ class BikeEditorFlowTest {
         compose.onNodeWithTag("bike-editor:$tag").performScrollTo().performTextInput(text)
     }
 
+    /** A value of a list: the field is opened by its tag, the value is tapped in the list. */
+    private fun pick(tag: String, name: String) {
+        compose.onNodeWithTag("bike-editor:$tag").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNode(hasText(name) and hasAnyAncestor(isPopup())).performClick()
+        compose.waitForIdle()
+    }
+
     private fun click(tag: String) {
         compose.onNodeWithTag("bike-editor:$tag").performScrollTo().performClick()
         compose.waitForIdle()
@@ -74,48 +89,6 @@ class BikeEditorFlowTest {
         start(FakeBikes(), signedIn = false)
 
         compose.onNodeWithTag("bikes:add").assertDoesNotExistCompat()
-    }
-
-    @Test
-    fun `a bike is added from the garage and its page opens`() {
-        val bikes = FakeBikes(mapOf(null to Page(emptyList(), null)))
-        start(bikes)
-
-        compose.onNodeWithTag("bikes:add").performClick()
-        compose.waitForIdle()
-        compose.onNodeWithTag("bike-editor").assertIsDisplayed()
-        type("name", "Новый гравел")
-        type("year", "2024")
-        click("category:road_gravel")
-        click("subtype:gravel")
-        click("save")
-
-        val (draft, key) = bikes.created.single()
-        assertThat(draft.name).isEqualTo("Новый гравел")
-        assertThat(draft.year).isEqualTo(2024)
-        assertThat(draft.classification.category).isEqualTo("road_gravel")
-        assertThat(draft.classification.subtype).isEqualTo("gravel")
-        assertThat(draft.isPublic).isFalse()
-        assertThat(key).isNotEmpty()
-        // The new bike's own page, not the form.
-        compose.onNodeWithTag("bike-editor").assertDoesNotExistCompat()
-        compose.onNodeWithText("Новый гравел").assertIsDisplayed()
-    }
-
-    @Test
-    fun `a form that is not good says what is missing and sends nothing`() {
-        val bikes = FakeBikes()
-        start(bikes)
-
-        compose.onNodeWithTag("bikes:add").performClick()
-        compose.waitForIdle()
-        click("save")
-
-        assertThat(bikes.created).isEmpty()
-        compose.onNodeWithText("Назовите велосипед.").assertIsDisplayed()
-        compose.onNodeWithText("Укажите год выпуска.").assertIsDisplayed()
-        // Said where the type is chosen, and with the other findings next to the button.
-        compose.onAllNodesWithText("Выберите категорию.").assertCountEquals(2)
     }
 
     @Test
@@ -187,24 +160,211 @@ class BikeEditorFlowTest {
         compose.onNodeWithTag("bike-editor").assertIsDisplayed()
     }
 
-    @Test
-    fun `publishing without a confirmed address says so and keeps the form`() {
-        val bikes = FakeBikes()
-        start(bikes)
+    // --- the dictionaries of the site
+    // -------------------------------------------------------------
+
+    /**
+     * The form of a new bike is the last step of the wizard: here it is reached by hand (no search,
+     * no parts), so that the fields are the ones of the editor.
+     */
+    private fun openNewForm(
+        catalog: FakeCatalog = FakeCatalog()
+    ): Pair<FakeBikeWizard, FakeDependencies> {
+        val bikes = FakeBikes(mapOf(null to Page(emptyList(), null)))
+        val dependencies = start(bikes, catalog = catalog)
         compose.onNodeWithTag("bikes:add").performClick()
         compose.waitForIdle()
-        type("name", "Публичный")
-        type("year", "2022")
-        click("category:mtb")
-        click("audience:public")
-        bikes.writeError = DataError.Rejected(403, "email_verification_required", "")
+        compose.onNodeWithTag("wizard:manual").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("wizard:next").performScrollTo().performClick()
+        compose.waitForIdle()
+        return dependencies.wizard to dependencies
+    }
 
-        click("save")
+    private fun save() {
+        compose.onNodeWithTag("wizard:save").performScrollTo().performClick()
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `the form asks for the dictionaries when it opens`() {
+        val catalog = FakeCatalog()
+
+        openNewForm(catalog)
+
+        assertThat(catalog.loads).isAtLeast(1)
+    }
+
+    @Test
+    fun `the type is two lists, the rest of it is one tap away`() {
+        openNewForm()
+
+        compose.onNodeWithTag("bike-editor:category").assertIsDisplayed()
+        compose.onNodeWithTag("bike-editor:subtype").assertIsDisplayed()
+        // Nothing of the features takes room until they are asked for.
+        compose.onNodeWithTag("bike-editor:suspension:rigid").assertDoesNotExistCompat()
+        compose.onNodeWithTag("bike-editor:electric").assertDoesNotExistCompat()
+
+        click("features")
+
+        compose.onNodeWithTag("bike-editor:suspension:rigid").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("bike-editor:electric").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a bike that has features shows them from the start`() {
+        val bikes = ownBikes()
+        val withFeatures =
+            own.fromDraft(
+                BikeId("b-own"),
+                own.toDraft()
+                    .copy(
+                        classification =
+                            own.toDraft()
+                                .classification
+                                .copy(suspension = "hardtail", electric = true)
+                    ),
+                "\"v1\"",
+            )
+        bikes.details = mapOf("b-own" to withFeatures)
+        start(bikes)
+        compose.onNodeWithContentDescription("Мой трейл", substring = true).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("bike:edit").performClick()
+        compose.waitForIdle()
 
         compose
-            .onNodeWithText("Чтобы показать велосипед всем", substring = true)
+            .onNodeWithTag("bike-editor:suspension:hardtail")
+            .performScrollTo()
             .assertIsDisplayed()
-        compose.onNodeWithTag("bike-editor:name").assertTextContains("Публичный")
+        compose.onNodeWithTag("bike-editor:electric").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a subtype of another category is dropped when the category changes`() {
+        val (wizard, _) = openNewForm()
+        type("name", "Гравел")
+        type("year", "2024")
+        pick("category", "Шоссе / гравел")
+        pick("subtype", "Gravel")
+        pick("category", "MTB")
+        save()
+
+        val draft = wizard.made.single().draft
+        assertThat(draft.classification.category).isEqualTo("mtb")
+        assertThat(draft.classification.subtype).isNull()
+    }
+
+    @Test
+    fun `a subtype is taken back by choosing none`() {
+        val (wizard, _) = openNewForm()
+        type("name", "Без подтипа")
+        type("year", "2024")
+        pick("category", "MTB")
+        pick("subtype", "Trail")
+        pick("subtype", "Не выбрано")
+        save()
+
+        assertThat(wizard.made.single().draft.classification.subtype).isNull()
+    }
+
+    @Test
+    fun `the words and the subtypes are the site's, not the app's`() {
+        val catalog = FakeCatalog().apply { site(SiteCatalogFixtures.renamed()) }
+        val (wizard, _) = openNewForm(catalog)
+        type("name", "Фэт")
+        type("year", "2024")
+
+        pick("category", "Горные")
+        pick("subtype", "Фэтбайк")
+        save()
+
+        val draft = wizard.made.single().draft
+        assertThat(draft.classification.category).isEqualTo("mtb")
+        assertThat(draft.classification.subtype).isEqualTo("fat")
+    }
+
+    @Test
+    fun `a brand is completed from the site's list and a brand of one's own is as good`() {
+        val catalog = FakeCatalog().apply { site() }
+        val (wizard, _) = openNewForm(catalog)
+        type("name", "Мой")
+        type("year", "2024")
+        pick("category", "MTB")
+
+        type("brand", "can")
+        compose.waitForIdle()
+        compose.onNode(hasText("Canyon") and hasAnyAncestor(isPopup())).assertIsDisplayed()
+        compose.onNode(hasText("Cannondale") and hasAnyAncestor(isPopup())).assertIsDisplayed()
+        compose.onNode(hasText("Giant") and hasAnyAncestor(isPopup())).assertDoesNotExistCompat()
+        compose.onNode(hasText("Canyon") and hasAnyAncestor(isPopup())).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("bike-editor:brand").assertTextContains("Canyon")
+
+        // The model is offered from this brand's list only.
+        type("model", "gr")
+        compose.waitForIdle()
+        compose.onNode(hasText("Grizl") and hasAnyAncestor(isPopup())).assertIsDisplayed()
+        compose.onNode(hasText("Neuron") and hasAnyAncestor(isPopup())).assertDoesNotExistCompat()
+        compose.onNode(hasText("Grizl") and hasAnyAncestor(isPopup())).performClick()
+        save()
+
+        val draft = wizard.made.single().draft
+        assertThat(draft.brand).isEqualTo("Canyon")
+        assertThat(draft.model).isEqualTo("Grizl")
+    }
+
+    @Test
+    fun `what is typed is the value, whether the lists know it or not`() {
+        val catalog = FakeCatalog().apply { site() }
+        val (wizard, _) = openNewForm(catalog)
+        type("name", "Самоделка")
+        type("year", "2024")
+        pick("category", "Специальный")
+
+        type("brand", "Мастерская Иванова")
+        type("model", "Первая")
+        type("size", "54 см")
+        save()
+
+        val draft = wizard.made.single().draft
+        assertThat(draft.brand).isEqualTo("Мастерская Иванова")
+        assertThat(draft.model).isEqualTo("Первая")
+        assertThat(draft.size).isEqualTo("54 см")
+    }
+
+    @Test
+    fun `a frame size is chosen from the site's sizes`() {
+        val catalog = FakeCatalog().apply { site() }
+        val (wizard, _) = openNewForm(catalog)
+        type("name", "Размерный")
+        type("year", "2024")
+        pick("category", "MTB")
+
+        compose.onNodeWithTag("bike-editor:size").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNode(hasText("L") and hasAnyAncestor(isPopup())).performClick()
+        compose.waitForIdle()
+        save()
+
+        assertThat(wizard.made.single().draft.size).isEqualTo("L")
+    }
+
+    @Test
+    fun `without the site's lists the form still works with the ones the app has`() {
+        val (wizard, _) =
+            openNewForm(FakeCatalog(CatalogState(loaded = true, refreshFailed = true)))
+        type("name", "Без сети")
+        type("year", "2024")
+
+        pick("category", "Город / туризм")
+        pick("subtype", "Touring")
+        type("brand", "Любой")
+        save()
+
+        val draft = wizard.made.single().draft
+        assertThat(draft.classification.subtype).isEqualTo("touring")
+        assertThat(draft.brand).isEqualTo("Любой")
     }
 }
 

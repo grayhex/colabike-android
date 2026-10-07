@@ -17,6 +17,7 @@ import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.ComponentCatalog
+import ru.colabike.core.model.ComponentDictionary
 import ru.colabike.core.model.ComponentDraft
 import ru.colabike.core.model.ComponentProblem
 import ru.colabike.core.model.ComponentRules
@@ -44,7 +45,10 @@ data class PartForm(
      * another category it gets the site's group for it, or none (then it is grouped by its
      * category).
      */
-    fun toDraft(original: BikeComponent?): Pair<ComponentDraft, List<ComponentProblem>> {
+    fun toDraft(
+        original: BikeComponent?,
+        dictionary: ComponentDictionary = ComponentCatalog.dictionary,
+    ): Pair<ComponentDraft, List<ComponentProblem>> {
         val problems = mutableListOf<ComponentProblem>()
         val priceText = price.trim()
         val parsedPrice =
@@ -59,12 +63,11 @@ data class PartForm(
         // A category left as it was stays as it was, with its group; one that was changed is the
         // site's spelling when it is a site's category ("звонок" is "Звонок"), else as typed.
         val unchanged = original != null && original.category == category.trim()
-        val group = if (unchanged) original!!.groupId else ComponentCatalog.groupIdOf(category)
+        val group = if (unchanged) original!!.groupId else dictionary.groupIdOf(category)
         val draft =
             ComponentDraft(
                 section = section,
-                category =
-                    if (unchanged) original!!.category else ComponentCatalog.canonical(category),
+                category = if (unchanged) original!!.category else dictionary.canonical(category),
                 name = name,
                 notes = notes,
                 priceRub = parsedPrice,
@@ -107,6 +110,8 @@ sealed interface PartEditorUiState {
         /** The part being changed, as the server last gave it; null for a new one. */
         val editing: BikeComponent? = null,
         val suggestions: List<String> = emptyList(),
+        /** The names the site knows in the category typed, to complete the name of the part. */
+        val nameSuggestions: List<String> = emptyList(),
         val saving: Boolean = false,
         val problems: List<ComponentProblem> = emptyList(),
         val problem: UiText? = null,
@@ -128,6 +133,8 @@ class BikePartEditorViewModel(
     private val repository: BikesRepository,
     private val bikeId: BikeId,
     private val componentId: String?,
+    /** The site's dictionary of parts in force now (the built-in one until it has been read). */
+    private val dictionary: () -> ComponentDictionary = { ComponentCatalog.dictionary },
     private val newKey: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
     private val mutable = MutableStateFlow<PartEditorUiState>(PartEditorUiState.Loading)
@@ -167,7 +174,8 @@ class BikePartEditorViewModel(
                 val form = transform(it.form)
                 it.copy(
                     form = form,
-                    suggestions = ComponentCatalog.suggestions(form.category),
+                    suggestions = dictionary().suggestions(form.category),
+                    nameSuggestions = dictionary().nameSuggestions(form.category, form.name),
                     problems = emptyList(),
                     problem = null,
                     canReload = false,
@@ -182,8 +190,8 @@ class BikePartEditorViewModel(
         it.copy(
             category = category,
             section =
-                if (it.sectionChosen || ComponentCatalog.groupIdOf(category).isEmpty()) it.section
-                else ComponentCatalog.sectionOf(category),
+                if (it.sectionChosen || dictionary().groupIdOf(category).isEmpty()) it.section
+                else dictionary().sectionOf(category),
         )
     }
 
@@ -209,7 +217,7 @@ class BikePartEditorViewModel(
         val current = mutable.value as? PartEditorUiState.Editing ?: return
         if (current.saving || current.deleting) return
         val original = current.editing
-        val (draft, unreadable) = current.form.toDraft(original)
+        val (draft, unreadable) = current.form.toDraft(original, dictionary())
         val problems = (unreadable + ComponentRules.check(draft)).distinct()
         if (problems.isNotEmpty()) {
             mutable.value = current.copy(problems = problems, problem = null, canReload = false)

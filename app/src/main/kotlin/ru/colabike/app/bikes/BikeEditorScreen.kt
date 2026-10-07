@@ -1,13 +1,17 @@
 package ru.colabike.app.bikes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -15,27 +19,41 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ru.colabike.app.R
+import ru.colabike.app.catalog.BuiltinCatalog
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaCard
+import ru.colabike.core.designsystem.component.ColaChoice
+import ru.colabike.core.designsystem.component.ColaComboField
+import ru.colabike.core.designsystem.component.ColaDropdownField
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaRadioRow
@@ -47,9 +65,11 @@ import ru.colabike.core.designsystem.component.Eyebrow
 import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.component.colaTextFieldColors
 import ru.colabike.core.designsystem.theme.Spacing
-import ru.colabike.core.model.BikeCatalog
 import ru.colabike.core.model.BikeProblem
+import ru.colabike.core.model.CatalogOption
+import ru.colabike.core.model.ClassificationDraft
 import ru.colabike.core.model.PriceVisibility
+import ru.colabike.core.model.SiteCatalog
 
 /** What the form can ask for; the route wires each to the ViewModel. */
 data class BikeEditorActions(
@@ -93,7 +113,12 @@ private val ContentWidth = 600.dp
  * never what saving does by default.
  */
 @Composable
-fun BikeEditorScreen(state: BikeEditorUiState, editing: Boolean, actions: BikeEditorActions) {
+fun BikeEditorScreen(
+    state: BikeEditorUiState,
+    editing: Boolean,
+    actions: BikeEditorActions,
+    catalog: SiteCatalog = BuiltinCatalog.value,
+) {
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -120,14 +145,19 @@ fun BikeEditorScreen(state: BikeEditorUiState, editing: Boolean, actions: BikeEd
                         onAction = actions.onOpenGarage,
                         modifier = Modifier.fillMaxSize().testTag("bike-editor:unavailable"),
                     )
-                is BikeEditorUiState.Editing -> Form(state, editing, actions)
+                is BikeEditorUiState.Editing -> Form(state, editing, actions, catalog)
             }
         }
     }
 }
 
 @Composable
-private fun Form(state: BikeEditorUiState.Editing, editing: Boolean, actions: BikeEditorActions) {
+private fun Form(
+    state: BikeEditorUiState.Editing,
+    editing: Boolean,
+    actions: BikeEditorActions,
+    catalog: SiteCatalog,
+) {
     LazyColumn(
         Modifier.fillMaxSize().imePadding().testTag("bike-editor"),
         contentPadding = PaddingValues(horizontal = Spacing.screen, vertical = Spacing.s),
@@ -138,9 +168,9 @@ private fun Form(state: BikeEditorUiState.Editing, editing: Boolean, actions: Bi
                 Modifier.widthIn(max = ContentWidth).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.l),
             ) {
-                MainCard(state, actions)
-                TypeCard(state, actions)
-                DetailsCard(state, actions)
+                MainCard(state, actions, catalog)
+                TypeCard(state, actions, catalog)
+                DetailsCard(state, actions, catalog)
                 PriceCard(state, actions)
                 AudienceCard(state, actions)
                 // Next to the button that was just pressed: at the top of a form this long the
@@ -238,7 +268,11 @@ private fun Outcome(state: BikeEditorUiState.Editing, actions: BikeEditorActions
 }
 
 @Composable
-private fun MainCard(state: BikeEditorUiState.Editing, actions: BikeEditorActions) {
+internal fun MainCard(
+    state: BikeEditorUiState.Editing,
+    actions: BikeEditorActions,
+    catalog: SiteCatalog,
+) {
     val form = state.form
     val idle = !state.saving && !state.deleting
     Section(R.string.bike_section_main) {
@@ -250,55 +284,102 @@ private fun MainCard(state: BikeEditorUiState.Editing, actions: BikeEditorAction
             idle,
             state.has(BikeProblem.NoName, BikeProblem.NameTooLong),
         )
-        Field(
+        // The brand and the model are the site's lists, typed into: what is not in them is as good.
+        Combo(
             R.string.bike_field_brand,
             form.brand,
             actions.onBrand,
             "brand",
             idle,
             state.has(BikeProblem.BrandTooLong),
+            suggestions = catalog.brandSuggestions(form.brand).withoutExact(form.brand),
         )
-        Field(
+        Combo(
             R.string.bike_field_model,
             form.model,
             actions.onModel,
             "model",
             idle,
             state.has(BikeProblem.ModelTooLong),
+            suggestions = catalog.modelSuggestions(form.brand, form.model).withoutExact(form.model),
         )
-        Field(
-            R.string.bike_field_trim,
-            form.trim,
-            actions.onTrim,
-            "trim",
-            idle,
-            state.has(BikeProblem.TrimTooLong),
-        )
-        Field(
-            R.string.bike_field_year,
-            form.year,
-            actions.onYear,
-            "year",
-            idle,
-            state.has(BikeProblem.NoYear, BikeProblem.YearOutOfRange),
-            keyboard = KeyboardType.Number,
+        FieldPair(
+            first = {
+                Field(
+                    R.string.bike_field_trim,
+                    form.trim,
+                    actions.onTrim,
+                    "trim",
+                    idle,
+                    state.has(BikeProblem.TrimTooLong),
+                )
+            },
+            second = {
+                Field(
+                    R.string.bike_field_year,
+                    form.year,
+                    actions.onYear,
+                    "year",
+                    idle,
+                    state.has(BikeProblem.NoYear, BikeProblem.YearOutOfRange),
+                    keyboard = KeyboardType.Number,
+                )
+            },
         )
     }
 }
 
+/** The kind of bike and its subtype side by side; the rest of the type is one tap away. */
 @Composable
-private fun TypeCard(state: BikeEditorUiState.Editing, actions: BikeEditorActions) {
+internal fun TypeCard(
+    state: BikeEditorUiState.Editing,
+    actions: BikeEditorActions,
+    catalog: SiteCatalog,
+) {
     val type = state.form.classification
     val idle = !state.saving && !state.deleting
+    val types = catalog.classification
+    // What the bike already says stays in sight; the form starts shut only when it says nothing.
+    var more by rememberSaveable { mutableStateOf(type.hasFeatures()) }
     Section(R.string.bike_section_type) {
-        Chooser(
-            title = R.string.bike_type_category,
-            keys = BikeCatalog.categories,
-            selected = setOf(type.category),
-            label = { BikeLabels.category(it).orEmpty() },
-            tag = "category",
-            enabled = idle,
-            onChoose = actions.onCategory,
+        FieldPair(
+            // A half of a phone's width cannot show "Шоссе / гравел" beside the chevron.
+            sideBySideFrom = TypePairWidth,
+            first = {
+                ColaDropdownField(
+                    label = stringResource(R.string.bike_type_category),
+                    value = type.category.ifEmpty { null },
+                    choices =
+                        types.categories
+                            .map { ColaChoice(it.key, it.name) }
+                            .keeping(type.category) {
+                                BikeLabels.category(it) ?: it
+                            },
+                    onChoose = { key -> key?.let(actions.onCategory) },
+                    enabled = idle,
+                    isError = state.has(BikeProblem.NoCategory),
+                    modifier = Modifier.testTag("bike-editor:category"),
+                )
+            },
+            second = {
+                ColaDropdownField(
+                    label = stringResource(R.string.bike_type_subtype),
+                    value = type.subtype,
+                    choices =
+                        types
+                            .subtypesOf(type.category)
+                            .map { ColaChoice(it.key, it.name) }
+                            .keeping(type.subtype.orEmpty(), BikeLabels::subtype),
+                    // Choosing the one that is chosen again would take it back: it is left alone.
+                    onChoose = { key ->
+                        if (key == null) type.subtype?.let(actions.onSubtype)
+                        else if (key != type.subtype) actions.onSubtype(key)
+                    },
+                    enabled = idle && types.subtypesOf(type.category).isNotEmpty(),
+                    clearLabel = stringResource(R.string.bike_type_none),
+                    modifier = Modifier.testTag("bike-editor:subtype"),
+                )
+            },
         )
         if (state.has(BikeProblem.NoCategory)) {
             Text(
@@ -307,64 +388,65 @@ private fun TypeCard(state: BikeEditorUiState.Editing, actions: BikeEditorAction
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        val subtypes = BikeCatalog.subtypes[type.category].orEmpty()
-        if (subtypes.isNotEmpty()) {
+        Disclosure(
+            title = stringResource(R.string.bike_type_features),
+            summary = type.featuresSummary(),
+            expanded = more,
+            onToggle = { more = !more },
+            modifier = Modifier.testTag("bike-editor:features"),
+        )
+        if (more) {
             Chooser(
-                title = R.string.bike_type_subtype,
-                keys = subtypes,
-                selected = setOfNotNull(type.subtype),
-                label = BikeLabels::subtype,
-                tag = "subtype",
+                title = R.string.bike_type_suspension,
+                keys = types.suspensions.map { it.key },
+                selected = setOfNotNull(type.suspension),
+                label = { key -> types.suspensions.nameOf(key) ?: BikeLabels.suspension(key) },
+                tag = "suspension",
                 enabled = idle,
-                onChoose = actions.onSubtype,
+                onChoose = actions.onSuspension,
+            )
+            Chooser(
+                title = R.string.bike_type_construction,
+                keys = types.constructions.map { it.key },
+                selected = setOfNotNull(type.construction),
+                label = { key -> types.constructions.nameOf(key) ?: BikeLabels.construction(key) },
+                tag = "construction",
+                enabled = idle,
+                onChoose = actions.onConstruction,
+            )
+            Chooser(
+                title = R.string.bike_type_uses,
+                keys = types.uses.map { it.key },
+                selected = type.uses.toSet(),
+                label = { key -> types.uses.nameOf(key) ?: BikeLabels.use(key) },
+                tag = "use",
+                enabled = idle,
+                onChoose = actions.onUse,
+            )
+            ColaSwitchRow(
+                title = stringResource(R.string.bike_type_electric),
+                checked = type.electric,
+                onCheckedChange = actions.onElectric,
+                enabled = idle,
+                modifier = Modifier.testTag("bike-editor:electric"),
+            )
+            ColaSwitchRow(
+                title = stringResource(R.string.bike_type_fatbike),
+                checked = type.fatbike,
+                onCheckedChange = actions.onFatbike,
+                enabled = idle,
+                modifier = Modifier.testTag("bike-editor:fatbike"),
             )
         }
-        Chooser(
-            title = R.string.bike_type_suspension,
-            keys = BikeCatalog.suspensions,
-            selected = setOfNotNull(type.suspension),
-            label = BikeLabels::suspension,
-            tag = "suspension",
-            enabled = idle,
-            onChoose = actions.onSuspension,
-        )
-        Chooser(
-            title = R.string.bike_type_construction,
-            keys = BikeCatalog.constructions,
-            selected = setOfNotNull(type.construction),
-            label = BikeLabels::construction,
-            tag = "construction",
-            enabled = idle,
-            onChoose = actions.onConstruction,
-        )
-        Chooser(
-            title = R.string.bike_type_uses,
-            keys = BikeCatalog.uses,
-            selected = type.uses.toSet(),
-            label = BikeLabels::use,
-            tag = "use",
-            enabled = idle,
-            onChoose = actions.onUse,
-        )
-        ColaSwitchRow(
-            title = stringResource(R.string.bike_type_electric),
-            checked = type.electric,
-            onCheckedChange = actions.onElectric,
-            enabled = idle,
-            modifier = Modifier.testTag("bike-editor:electric"),
-        )
-        ColaSwitchRow(
-            title = stringResource(R.string.bike_type_fatbike),
-            checked = type.fatbike,
-            onCheckedChange = actions.onFatbike,
-            enabled = idle,
-            modifier = Modifier.testTag("bike-editor:fatbike"),
-        )
     }
 }
 
 @Composable
-private fun DetailsCard(state: BikeEditorUiState.Editing, actions: BikeEditorActions) {
+internal fun DetailsCard(
+    state: BikeEditorUiState.Editing,
+    actions: BikeEditorActions,
+    catalog: SiteCatalog,
+) {
     val form = state.form
     val idle = !state.saving && !state.deleting
     Section(R.string.bike_section_details) {
@@ -385,13 +467,18 @@ private fun DetailsCard(state: BikeEditorUiState.Editing, actions: BikeEditorAct
             idle,
             state.has(BikeProblem.ColorTooLong),
         )
-        Field(
+        Combo(
             R.string.bike_field_size,
             form.size,
             actions.onSize,
             "size",
             idle,
             state.has(BikeProblem.SizeTooLong),
+            // The frame sizes of the site, all of them while nothing is typed.
+            suggestions =
+                catalog.sizes
+                    .filter { form.size.isBlank() || it.contains(form.size.trim(), true) }
+                    .withoutExact(form.size),
         )
         Field(
             R.string.bike_field_weight,
@@ -425,7 +512,7 @@ private fun DetailsCard(state: BikeEditorUiState.Editing, actions: BikeEditorAct
 }
 
 @Composable
-private fun PriceCard(state: BikeEditorUiState.Editing, actions: BikeEditorActions) {
+internal fun PriceCard(state: BikeEditorUiState.Editing, actions: BikeEditorActions) {
     val form = state.form
     val idle = !state.saving && !state.deleting
     val shown = form.priceVisibility
@@ -465,7 +552,7 @@ private fun PriceCard(state: BikeEditorUiState.Editing, actions: BikeEditorActio
 }
 
 @Composable
-private fun AudienceCard(state: BikeEditorUiState.Editing, actions: BikeEditorActions) {
+internal fun AudienceCard(state: BikeEditorUiState.Editing, actions: BikeEditorActions) {
     val form = state.form
     val idle = !state.saving && !state.deleting
     Section(R.string.bike_section_audience) {
@@ -530,9 +617,125 @@ private fun Field(
     )
 }
 
+@Composable
+internal fun Combo(
+    label: Int,
+    value: String,
+    onChange: (String) -> Unit,
+    tag: String,
+    enabled: Boolean,
+    error: Boolean,
+    suggestions: List<String>,
+) {
+    ColaComboField(
+        label = stringResource(label),
+        value = value,
+        onValueChange = onChange,
+        suggestions = suggestions,
+        enabled = enabled,
+        isError = error,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        modifier = Modifier.fillMaxWidth().testTag("bike-editor:$tag"),
+    )
+}
+
+/**
+ * Two fields side by side; with a large font, or in a width where a half of it cannot show the
+ * words of a list ([sideBySideFrom]), one under the other, whole.
+ */
+@Composable
+internal fun FieldPair(
+    first: @Composable () -> Unit,
+    second: @Composable () -> Unit,
+    sideBySideFrom: Dp = 0.dp,
+) {
+    BoxWithConstraints {
+        if (LocalDensity.current.fontScale >= LargeFont || maxWidth < sideBySideFrom)
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                first()
+                second()
+            }
+        else
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                Box(Modifier.weight(1f)) { first() }
+                Box(Modifier.weight(1f)) { second() }
+            }
+    }
+}
+
+/**
+ * A line that opens and shuts what follows it; [summary] says what is in there while it is shut.
+ */
+@Composable
+internal fun Disclosure(
+    title: String,
+    summary: String?,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val state =
+        stringResource(if (expanded) R.string.bike_type_expanded else R.string.bike_type_collapsed)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClick = onToggle)
+            .semantics { stateDescription = state },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            if (!expanded && summary != null)
+                Text(
+                    summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+        }
+        Icon(
+            painterResource(if (expanded) ColaIcons.ArrowUp else ColaIcons.ArrowDown),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** What the person typed leaves the list: a line equal to the text is not worth offering. */
+private fun List<String>.withoutExact(typed: String): List<String> = filterNot {
+    it.equals(typed.trim(), ignoreCase = true)
+}
+
+/** A value the bike has that the list no longer knows stays a choice: an edit must not drop it. */
+private fun List<ColaChoice>.keeping(key: String, label: (String) -> String): List<ColaChoice> =
+    if (key.isEmpty() || any { it.key == key }) this else this + ColaChoice(key, label(key))
+
+private fun List<CatalogOption>.nameOf(key: String): String? = firstOrNull { it.key == key }?.name
+
+private fun ClassificationDraft.hasFeatures(): Boolean =
+    suspension != null || construction != null || uses.isNotEmpty() || electric || fatbike
+
+private fun ClassificationDraft.featuresSummary(): String? =
+    listOfNotNull(
+            suspension?.let(BikeLabels::suspension),
+            construction?.let(BikeLabels::construction),
+            *uses.map(BikeLabels::use).toTypedArray(),
+            "E-bike".takeIf { electric },
+            "Fatbike".takeIf { fatbike },
+        )
+        .takeIf { it.isNotEmpty() }
+        ?.joinToString(" · ")
+
+/** The width of a form from which the kind of bike and its subtype stand side by side. */
+private val TypePairWidth = 420.dp
+
+/** From this font scale on the pairs of fields stand one under the other. */
+private const val LargeFont = 1.3f
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Chooser(
+internal fun Chooser(
     title: Int,
     keys: List<String>,
     selected: Set<String>,
@@ -562,23 +765,27 @@ private fun Chooser(
 }
 
 @Composable
-private fun Section(title: Int, content: @Composable () -> Unit) {
+internal fun Section(title: Int, content: @Composable () -> Unit) {
     ColaCard(Modifier.fillMaxWidth()) {
         Column(
             Modifier.padding(Spacing.l),
             verticalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
-            Eyebrow(stringResource(title), modifier = Modifier.semantics { heading() })
+            Eyebrow(
+                stringResource(title),
+                maxLines = 2,
+                modifier = Modifier.semantics { heading() },
+            )
             content()
         }
     }
 }
 
-private fun BikeEditorUiState.Editing.has(vararg found: BikeProblem): Boolean = problems.any {
+internal fun BikeEditorUiState.Editing.has(vararg found: BikeProblem): Boolean = problems.any {
     it in found
 }
 
-private fun BikeProblem.message(): Int =
+internal fun BikeProblem.message(): Int =
     when (this) {
         BikeProblem.NoName -> R.string.bike_problem_no_name
         BikeProblem.NameTooLong -> R.string.bike_problem_name_long

@@ -11,18 +11,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.colabike.app.R
+import ru.colabike.app.catalog.BuiltinCatalog
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
-import ru.colabike.core.model.BikeCatalog
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeDraft
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeProblem
 import ru.colabike.core.model.BikeRules
 import ru.colabike.core.model.BikesRepository
+import ru.colabike.core.model.ClassificationCatalog
 import ru.colabike.core.model.ClassificationDraft
 import ru.colabike.core.model.DataError
 import ru.colabike.core.model.PriceVisibility
+import ru.colabike.core.model.SiteCatalog
 import ru.colabike.core.model.diff
 import ru.colabike.core.model.toDraft
 
@@ -192,8 +194,13 @@ sealed interface BikeEditorUiState {
 class BikeEditorViewModel(
     private val repository: BikesRepository,
     private val id: BikeId?,
+    /** The site's dictionaries in force now: a key outside them is not taken from a pick. */
+    private val catalog: () -> SiteCatalog = { BuiltinCatalog.value },
     private val newKey: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
+    private val types: ClassificationCatalog
+        get() = catalog().classification
+
     private val mutable = MutableStateFlow<BikeEditorUiState>(BikeEditorUiState.Loading)
     val state: StateFlow<BikeEditorUiState> = mutable.asStateFlow()
 
@@ -246,105 +253,62 @@ class BikeEditorViewModel(
         }
     }
 
-    fun setName(value: String) = edit { it.copy(name = value.take(BikeRules.MAX_NAME + 1)) }
+    fun setName(value: String) = edit { it.withName(value) }
 
-    fun setBrand(value: String) = edit { it.copy(brand = value.take(BikeRules.MAX_BRAND + 1)) }
+    fun setBrand(value: String) = edit { it.withBrand(value) }
 
-    fun setModel(value: String) = edit { it.copy(model = value.take(BikeRules.MAX_MODEL + 1)) }
+    fun setModel(value: String) = edit { it.withModel(value) }
 
-    fun setTrim(value: String) = edit { it.copy(trim = value.take(BikeRules.MAX_TRIM + 1)) }
+    fun setTrim(value: String) = edit { it.withTrim(value) }
 
-    fun setYear(value: String) = edit { it.copy(year = value.take(MAX_NUMBER_TEXT)) }
+    fun setYear(value: String) = edit { it.withYear(value) }
 
-    fun setDescription(value: String) = edit {
-        it.copy(description = value.take(BikeRules.MAX_DESCRIPTION + 1))
-    }
+    fun setDescription(value: String) = edit { it.withDescription(value) }
 
-    fun setColor(value: String) = edit { it.copy(color = value.take(BikeRules.MAX_COLOR + 1)) }
+    fun setColor(value: String) = edit { it.withColor(value) }
 
-    fun setSize(value: String) = edit { it.copy(size = value.take(BikeRules.MAX_SIZE + 1)) }
+    fun setSize(value: String) = edit { it.withSize(value) }
 
-    fun setWeight(value: String) = edit { it.copy(weight = value.take(MAX_NUMBER_TEXT)) }
+    fun setWeight(value: String) = edit { it.withWeight(value) }
 
-    fun setMileage(value: String) = edit { it.copy(mileage = value.take(MAX_NUMBER_TEXT)) }
+    fun setMileage(value: String) = edit { it.withMileage(value) }
 
-    fun setManufacturerUrl(value: String) = edit {
-        it.copy(manufacturerUrl = value.take(BikeRules.MAX_LINK + 1))
-    }
+    fun setManufacturerUrl(value: String) = edit { it.withManufacturerUrl(value) }
 
-    fun setPrice(value: String) = edit { it.copy(price = value.take(MAX_NUMBER_TEXT)) }
+    fun setPrice(value: String) = edit { it.withPrice(value) }
 
-    fun setPriceVisibility(value: PriceVisibility) = edit { it.copy(priceVisibility = value) }
+    fun setPriceVisibility(value: PriceVisibility) = edit { it.withPriceVisibility(value) }
 
-    fun setFormer(value: Boolean) = edit { it.copy(isFormer = value) }
+    fun setFormer(value: Boolean) = edit { it.withFormer(value) }
 
-    fun setPublic(value: Boolean) = edit { it.copy(isPublic = value) }
+    fun setPublic(value: Boolean) = edit { it.withPublic(value) }
 
     /** A new category takes its own subtypes: one of another category is not kept. */
     fun setCategory(key: String) = edit {
-        val current = it.classification
-        if (key == current.category || key !in BikeCatalog.categories) it
-        else
-            it.copy(
-                classification =
-                    current.copy(
-                        category = key,
-                        subtype =
-                            current.subtype?.takeIf { s ->
-                                s in BikeCatalog.subtypes[key].orEmpty()
-                            },
-                    )
-            )
+        it.copy(classification = it.classification.withCategory(key, types))
     }
 
     /** Choosing the same subtype again takes it back: none is a choice too. */
     fun setSubtype(key: String) = edit {
-        val current = it.classification
-        if (key !in BikeCatalog.subtypes[current.category].orEmpty()) it
-        else
-            it.copy(
-                classification = current.copy(subtype = key.takeIf { k -> k != current.subtype })
-            )
+        it.copy(classification = it.classification.withSubtype(key, types))
     }
 
     fun setSuspension(key: String) = edit {
-        val current = it.classification
-        if (key !in BikeCatalog.suspensions) it
-        else
-            it.copy(
-                classification =
-                    current.copy(suspension = key.takeIf { k -> k != current.suspension })
-            )
+        it.copy(classification = it.classification.withSuspension(key, types))
     }
 
     fun setConstruction(key: String) = edit {
-        val current = it.classification
-        if (key !in BikeCatalog.constructions) it
-        else
-            it.copy(
-                classification =
-                    current.copy(construction = key.takeIf { k -> k != current.construction })
-            )
+        it.copy(classification = it.classification.withConstruction(key, types))
     }
 
     /** Up to three uses; a fourth is not added, and a chosen one is taken back by choosing it. */
     fun toggleUse(key: String) = edit {
-        val current = it.classification
-        when {
-            key !in BikeCatalog.uses -> it
-            key in current.uses -> it.copy(classification = current.copy(uses = current.uses - key))
-            current.uses.size >= BikeCatalog.MAX_USES -> it
-            else -> it.copy(classification = current.copy(uses = current.uses + key))
-        }
+        it.copy(classification = it.classification.withUseToggled(key, types))
     }
 
-    fun setElectric(value: Boolean) = edit {
-        it.copy(classification = it.classification.copy(electric = value))
-    }
+    fun setElectric(value: Boolean) = edit { it.withElectric(value) }
 
-    fun setFatbike(value: Boolean) = edit {
-        it.copy(classification = it.classification.copy(fatbike = value))
-    }
+    fun setFatbike(value: Boolean) = edit { it.withFatbike(value) }
 
     // --- saving ----------------------------------------------------------------------------------
 
@@ -464,8 +428,5 @@ class BikeEditorViewModel(
     private companion object {
         /** The server's code for "publishing needs a confirmed address". */
         const val EMAIL_NOT_VERIFIED = "email_verification_required"
-
-        /** A number field never needs more characters than the biggest value it can hold. */
-        const val MAX_NUMBER_TEXT = 14
     }
 }

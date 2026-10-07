@@ -15,6 +15,8 @@ import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.auth.AuthController
 import ru.colabike.app.bikes.ContentPhotoFiles
 import ru.colabike.app.bikes.PhotoFiles
+import ru.colabike.app.catalog.CatalogController
+import ru.colabike.app.catalog.CatalogSource
 import ru.colabike.app.comments.CommentDrafts
 import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.config.AppConfigController
@@ -60,6 +62,7 @@ import ru.colabike.core.auth.signOuts
 import ru.colabike.core.model.AccountDeletionRepository
 import ru.colabike.core.model.AccountRepository
 import ru.colabike.core.model.AccountSessionsRepository
+import ru.colabike.core.model.BikeWizardRepository
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.ChatRepository
 import ru.colabike.core.model.CommentsRepository
@@ -78,8 +81,8 @@ import ru.colabike.core.model.PeopleRepository
 import ru.colabike.core.model.RidesRepository
 import ru.colabike.core.model.SafetyRepository
 import ru.colabike.core.network.ApiConfig
-import ru.colabike.core.network.AppConfigCache
 import ru.colabike.core.network.ColaBikeApi
+import ru.colabike.core.network.DocumentCache
 import ru.colabike.core.network.FileConfigAssets
 import ru.colabike.core.network.HttpClients
 import ru.colabike.core.network.MediaUrls
@@ -103,6 +106,7 @@ import ru.colabike.core.network.NetworkPeopleRepository
 import ru.colabike.core.network.NetworkPushDeviceRepository
 import ru.colabike.core.network.NetworkRidesRepository
 import ru.colabike.core.network.NetworkSafetyRepository
+import ru.colabike.core.network.NetworkSiteCatalogRepository
 
 /** What screens get: repositories and auth actions, never HTTP clients (AGENTS.md). */
 interface AppDependencies {
@@ -171,6 +175,12 @@ interface AppDependencies {
     /** The pictures of the config, kept on the device apart from the image cache. */
     val configAssets: ConfigAssets
 
+    /** The search for a build and the making of a bike with it. */
+    val wizard: BikeWizardRepository
+
+    /** The dictionaries of the site (types, brands, sizes, parts) that the forms offer. */
+    val catalog: CatalogSource
+
     /** Unsent comment text, in memory for this session only. */
     val drafts: CommentDrafts
     val sessions: AccountSessionsRepository
@@ -228,14 +238,17 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
 
     private val api = ColaBikeApi(config, httpClient)
 
-    override val bikes: BikesRepository =
+    private val networkBikes =
         NetworkBikesRepository(
             api.bikes,
             api.search,
             media,
             clearing = api::bikesWithNulls,
             uploading = api::bikesUploading,
+            resolving = api::bikesResolving,
         )
+    override val bikes: BikesRepository = networkBikes
+    override val wizard: BikeWizardRepository = networkBikes.wizard
     override val account: AccountRepository = NetworkAccountRepository(api.account, media)
     override val accountDeletion: AccountDeletionRepository =
         NetworkAccountDeletionRepository(api.account)
@@ -280,12 +293,23 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
                 NetworkAppConfigRepository(
                     api = api.app,
                     media = media,
-                    cache = AppConfigCache(File(context.filesDir, "app-config/app-config.json")),
+                    cache = DocumentCache(File(context.filesDir, "app-config/app-config.json")),
                     assets = configAssets,
                 ),
             scope = scope,
         )
     override val appConfig: AppConfigSource = appConfigController
+
+    // The dictionaries are the same for everybody, like the config: kept apart from the session.
+    override val catalog: CatalogSource =
+        CatalogController(
+            repository =
+                NetworkSiteCatalogRepository(
+                    api = api.bikes,
+                    cache = DocumentCache(File(context.filesDir, "catalog/site-catalog.json")),
+                ),
+            scope = scope,
+        )
     override val chat: ChatRepository = NetworkChatRepository(api.chat, api::chatWithKey, media)
     override val chatSession: ChatSession = ChatSession(chat, StreamChatGateway(context), scope)
     override val chatScreens: ChatScreens = StreamChatScreens

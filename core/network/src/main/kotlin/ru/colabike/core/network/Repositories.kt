@@ -67,11 +67,23 @@ class NetworkBikesRepository(
         { _, _ ->
             api
         },
+    /** The bikes API for a search of a build: a call that may take over a minute, to stop it. */
+    private val resolving: (onCall: (Call) -> Unit) -> BikesApi = { api },
 ) : BikesRepository {
     private val likes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
     override val likeChanges: SharedFlow<LikeChange> = likes.asSharedFlow()
     private val saved = MutableSharedFlow<BikeChange>(extraBufferCapacity = 16)
     override val changes: SharedFlow<BikeChange> = saved.asSharedFlow()
+
+    /** The wizard of a new bike; a bike it makes is announced like any other that was saved. */
+    val wizard: NetworkBikeWizardRepository =
+        NetworkBikeWizardRepository(
+            api = api,
+            media = media,
+            resolving = resolving,
+            created = { saved.tryEmit(BikeChange.Saved(it)) },
+            dispatcher = dispatcher,
+        )
 
     override suspend fun bikes(query: BikeQuery, cursor: String?, limit: Int): Page<BikeSummary> =
         apiCall(dispatcher) {

@@ -62,6 +62,7 @@ class DestinationSerializationTest {
             Destination.Licenses,
             Destination.Blocked,
             Destination.BikeEditor(),
+            Destination.BikeWizard,
             Destination.BikeParts("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31"),
             Destination.BikePhotos("6f1c2b9e-3a1d-4f2e-9a6b-0c8d7e5f4a31"),
             Destination.JournalPhotos("c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f"),

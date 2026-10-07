@@ -19,6 +19,8 @@ import ru.colabike.app.auth.YandexFailure
 import ru.colabike.app.auth.YandexReauth
 import ru.colabike.app.bikes.PhotoFiles
 import ru.colabike.app.bikes.PhotoImportException
+import ru.colabike.app.catalog.CatalogSource
+import ru.colabike.app.catalog.CatalogState
 import ru.colabike.app.comments.InMemoryCommentDrafts
 import ru.colabike.app.config.AppConfigSource
 import ru.colabike.app.config.AppConfigState
@@ -69,8 +71,14 @@ import ru.colabike.core.model.BikeQuery
 import ru.colabike.core.model.BikeRef
 import ru.colabike.core.model.BikeSearch
 import ru.colabike.core.model.BikeSummary
+import ru.colabike.core.model.BikeWizardRepository
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.BlockChange
+import ru.colabike.core.model.BuildCandidate
+import ru.colabike.core.model.BuildPart
+import ru.colabike.core.model.BuildQuality
+import ru.colabike.core.model.BuildQuery
+import ru.colabike.core.model.BuildResolution
 import ru.colabike.core.model.CategorySetting
 import ru.colabike.core.model.ChannelCid
 import ru.colabike.core.model.ChannelFlag
@@ -176,6 +184,9 @@ import ru.colabike.core.model.ReportReason
 import ru.colabike.core.model.ReportTarget
 import ru.colabike.core.model.RequestedDate
 import ru.colabike.core.model.RequestedDateStatus
+import ru.colabike.core.model.ResolutionStatus
+import ru.colabike.core.model.ResolveRequest
+import ru.colabike.core.model.ResolvedBuild
 import ru.colabike.core.model.RideAgreement
 import ru.colabike.core.model.RideAnalysis
 import ru.colabike.core.model.RideDetail
@@ -196,6 +207,10 @@ import ru.colabike.core.model.SellerListings
 import ru.colabike.core.model.ServiceLinks
 import ru.colabike.core.model.SessionKind
 import ru.colabike.core.model.SessionPlatform
+import ru.colabike.core.model.SiteCatalog
+import ru.colabike.core.model.SourceKind
+import ru.colabike.core.model.SourcesChecked
+import ru.colabike.core.model.SuggestedDetails
 import ru.colabike.core.model.UpcomingRide
 import ru.colabike.core.model.UserId
 import ru.colabike.core.model.ViewerRole
@@ -443,8 +458,12 @@ class FakeBikes(
         hold?.await()
         failWrite()
         created += draft to key
-        val bike =
-            PreviewData.bikeDetail.fromDraft(BikeId("b-new-${created.size}"), draft, "\"v1\"")
+        return made(draft, "b-new-${created.size}")
+    }
+
+    /** A bike the server has made from [draft]: it is in the lists and has its page. */
+    fun made(draft: BikeDraft, id: String): BikeDetail {
+        val bike = PreviewData.bikeDetail.fromDraft(BikeId(id), draft, "\"v1\"")
         details = details + (bike.summary.id.value to bike)
         pages = pages + (null to Page(listOf(bike.summary) + pages[null]?.items.orEmpty(), null))
         savedFlow.tryEmit(BikeChange.Saved(bike))
@@ -540,6 +559,155 @@ class FakeBikes(
         return LikeState(liked, (current + if (liked) 1 else -1).coerceAtLeast(0)).also {
             likeFlow.tryEmit(LikeChange(id, it))
         }
+    }
+}
+
+/**
+ * The search for a build and the making of a bike with it, scripted: [answers] are what the search
+ * says, one for each request, in order (with none left it finds nothing).
+ */
+class FakeBikeWizard(private val bikes: FakeBikes = FakeBikes()) : BikeWizardRepository {
+    class Made(
+        val draft: BikeDraft,
+        val parts: List<ComponentDraft>,
+        val previewId: String?,
+        val identityConfirmed: Boolean,
+        val key: String,
+    )
+
+    val requests = mutableListOf<ResolveRequest>()
+    val answers = ArrayDeque<suspend (ResolveRequest) -> BuildResolution>()
+    val made = mutableListOf<Made>()
+
+    /** What making a bike does, one for each attempt, in order; none left: it is made. */
+    val outcomes = ArrayDeque<suspend () -> Unit>()
+
+    override suspend fun resolve(request: ResolveRequest): BuildResolution {
+        requests += request
+        val answer = answers.removeFirstOrNull()
+        return answer?.invoke(request) ?: notFound(request.query)
+    }
+
+    override suspend fun create(
+        draft: BikeDraft,
+        parts: List<ComponentDraft>,
+        previewId: String?,
+        identityConfirmed: Boolean,
+        key: String,
+    ): BikeDetail {
+        made += Made(draft, parts, previewId, identityConfirmed, key)
+        outcomes.removeFirstOrNull()?.invoke()
+        return bikes.made(draft, "b-wizard-${made.size}")
+    }
+
+    companion object {
+        fun notFound(query: BuildQuery) =
+            BuildResolution(
+                status = ResolutionStatus.NotFound,
+                query = query,
+                cached = false,
+                retryable = false,
+                reason = null,
+                previewId = null,
+                previewExpiresAt = null,
+                candidates = emptyList(),
+                build = null,
+                sourcesChecked = null,
+            )
+
+        fun part(category: String, name: String, group: String = "", section: String = "build") =
+            BuildPart(section, category, name, "", group)
+
+        fun build(
+            query: BuildQuery,
+            name: String = query.line,
+            year: Int? = query.year,
+            sourceYear: Int? = year,
+            identityMismatch: Boolean = false,
+            yearMismatch: Boolean = false,
+            parts: List<BuildPart> =
+                listOf(
+                    part("Рама", "ALUXX aluminium", "frame"),
+                    part("Седло", "Giant Contact", "cockpit"),
+                ),
+            suggested: SuggestedDetails = SuggestedDetails(9.8, "Black", null, null, null),
+        ) =
+            ResolvedBuild(
+                name = name,
+                brand = query.brand,
+                model = query.model,
+                trim = query.trim,
+                year = year,
+                sourceYear = sourceYear,
+                sourceUrl = "https://www.giant.example/contend",
+                sourceHost = "www.giant.example",
+                sourceKind = SourceKind.Manufacturer,
+                sourceName = "Giant",
+                manualSelection = false,
+                identityMismatch = identityMismatch,
+                yearMismatch = yearMismatch,
+                warnings = emptyList(),
+                quality =
+                    BuildQuality(
+                        complete = true,
+                        recognizedComponents = parts.size,
+                        coverage = 1.0,
+                    ),
+                parts = parts,
+                unrecognized = emptyList(),
+                suggested = suggested,
+            )
+
+        fun resolved(
+            query: BuildQuery,
+            build: ResolvedBuild = build(query),
+            preview: String? = "pv-1",
+        ) =
+            notFound(query)
+                .copy(
+                    status = ResolutionStatus.Resolved,
+                    previewId = preview,
+                    previewExpiresAt = Instant.parse("2026-10-03T22:00:00Z"),
+                    build = build,
+                )
+
+        fun candidate(
+            id: String?,
+            name: String,
+            year: Int? = null,
+            kind: SourceKind = SourceKind.Store,
+            source: String = "Bikeinn",
+        ) =
+            BuildCandidate(
+                candidateId = id,
+                name = name,
+                brand = "Giant",
+                year = year,
+                url = "https://shop.example/$name",
+                sourceHost = "shop.example",
+                sourceKind = kind,
+                sourceName = source,
+                drivetrain = "Shimano 105",
+                quality = BuildQuality(complete = true, recognizedComponents = 12, coverage = 0.9),
+                warnings = emptyList(),
+                selectable = id != null,
+                otherHosts = emptyList(),
+            )
+
+        fun offered(query: BuildQuery, vararg candidates: BuildCandidate) =
+            notFound(query)
+                .copy(
+                    status = ResolutionStatus.Ambiguous,
+                    candidates = candidates.toList(),
+                    sourcesChecked = SourcesChecked(asked = 3, answered = 2, complete = false),
+                )
+
+        fun failed(
+            query: BuildQuery,
+            status: ResolutionStatus,
+            reason: String? = null,
+            retryable: Boolean = false,
+        ) = notFound(query).copy(status = status, reason = reason, retryable = retryable)
     }
 }
 
@@ -2029,6 +2197,31 @@ class FakeMarket(
 }
 
 /** The config in memory: a state to set, and a count of the times the app asked to look again. */
+/** The dictionaries of the site: what is in [state] now, and how often they were asked for. */
+class FakeCatalog(initial: CatalogState = CatalogState(loaded = true)) : CatalogSource {
+    override val state = MutableStateFlow(initial)
+    var loads = 0
+    var forced = 0
+
+    override fun load() {
+        loads++
+    }
+
+    override fun refreshNow() {
+        forced++
+    }
+
+    /** The site's own dictionaries are in force. */
+    fun site(catalog: SiteCatalog = SiteCatalogFixtures.catalog) {
+        state.value = CatalogState(catalog = catalog, loaded = true, fromSite = true)
+    }
+
+    /** The last request came to nothing; whatever is in force stays. */
+    fun failed() {
+        state.value = state.value.copy(refreshing = false, refreshFailed = true)
+    }
+}
+
 class FakeAppConfig(initial: AppConfigState = AppConfigState(loaded = true)) : AppConfigSource {
     override val state = MutableStateFlow(initial)
     var refreshes = 0
@@ -2692,6 +2885,8 @@ class FakeDependencies(
     override val appConfig: FakeAppConfig = FakeAppConfig(),
     override val versionCode: Int = 1,
     override val configAssets: ConfigAssets = FakeConfigAssets(),
+    override val catalog: FakeCatalog = FakeCatalog(),
+    override val wizard: FakeBikeWizard = FakeBikeWizard(bikes),
     override val chat: FakeChat = FakeChat(),
     val chatGateway: FakeChatGateway = FakeChatGateway(),
     override val chatSession: ChatSession =

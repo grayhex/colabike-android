@@ -18,13 +18,16 @@ sealed class DataError(message: String, cause: Throwable? = null) : Exception(me
 
     /**
      * The server refused the request; [code] is the API error code, [userMessage] its text and
-     * [requestId] (`X-Request-ID`) what support needs when the text says nothing.
+     * [requestId] (`X-Request-ID`) what support needs when the text says nothing. [field] is the
+     * field of the request that the refusal is about, when the server names one
+     * (`details[0].path`).
      */
     class Rejected(
         val status: Int,
         val code: String,
         val userMessage: String,
         val requestId: String? = null,
+        val field: String? = null,
     ) : DataError("Rejected: $status $code")
 
     /** A server fault; [requestId] (`X-Request-ID`) is what support needs. */

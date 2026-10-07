@@ -46,7 +46,7 @@ import ru.colabike.core.model.UpdateMode
 class NetworkAppConfigRepository(
     private val api: AppApi,
     private val media: MediaUrls,
-    private val cache: AppConfigCache,
+    private val cache: DocumentCache,
     private val assets: ConfigAssets,
     private val clock: Clock = Clock.systemUTC(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -86,7 +86,7 @@ class NetworkAppConfigRepository(
                     // The kept config is confirmed as of now.
                     if (kept == null) return AppConfigRefresh.Failed(DataError.Unexpected(null))
                     withContext(dispatcher) {
-                        cache.write(AppConfigCache.Entry(kept.body, kept.etag, now.toEpochMilli()))
+                        cache.write(DocumentCache.Entry(kept.body, kept.etag, now.toEpochMilli()))
                     }
                     return AppConfigRefresh.NotModified(now)
                 }
@@ -99,7 +99,7 @@ class NetworkAppConfigRepository(
             return AppConfigRefresh.Failed(DataError.Offline(IOException("pictures of the config")))
         }
         withContext(dispatcher) {
-            cache.write(AppConfigCache.Entry(encode(fresh.dto), fresh.etag, now.toEpochMilli()))
+            cache.write(DocumentCache.Entry(encode(fresh.dto), fresh.etag, now.toEpochMilli()))
         }
         // The new config is the kept one now; the pictures of the old one can go.
         assets.retainOnly(config.assetUrls())

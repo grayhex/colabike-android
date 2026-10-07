@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.colabike.app.catalog.CatalogSource
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
 
@@ -13,14 +14,22 @@ import ru.colabike.core.model.BikesRepository
 @Composable
 fun BikePartsRoute(
     repository: BikesRepository,
+    catalog: CatalogSource,
     bikeId: String,
     onBack: () -> Unit,
     onAdd: () -> Unit,
     onOpenPart: (String) -> Unit,
     onOpenGarage: () -> Unit,
 ) {
+    LaunchedEffect(catalog) { catalog.load() }
     val viewModel =
-        viewModel(key = "bike-parts:$bikeId") { BikePartsViewModel(repository, BikeId(bikeId)) }
+        viewModel(key = "bike-parts:$bikeId") {
+            BikePartsViewModel(
+                repository,
+                BikeId(bikeId),
+                dictionary = { catalog.state.value.catalog.components },
+            )
+        }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val actions =
         remember(viewModel) {
@@ -43,15 +52,22 @@ fun BikePartsRoute(
 @Composable
 fun BikePartEditorRoute(
     repository: BikesRepository,
+    catalog: CatalogSource,
     bikeId: String,
     componentId: String?,
     onBack: () -> Unit,
     onDone: () -> Unit,
     onOpenGarage: () -> Unit,
 ) {
+    LaunchedEffect(catalog) { catalog.load() }
     val viewModel =
         viewModel(key = "bike-part-editor:$bikeId:${componentId ?: "new"}") {
-            BikePartEditorViewModel(repository, BikeId(bikeId), componentId)
+            BikePartEditorViewModel(
+                repository,
+                BikeId(bikeId),
+                componentId,
+                dictionary = { catalog.state.value.catalog.components },
+            )
         }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val editing = state as? PartEditorUiState.Editing

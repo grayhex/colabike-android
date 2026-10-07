@@ -105,6 +105,8 @@ data class ApiFailure(
     val code: String,
     val message: String,
     val requestId: String?,
+    /** The field the refusal is about (`details[0].path`), when the server names one. */
+    val field: String? = null,
 )
 
 fun ClientException.failure(): ApiFailure {
@@ -121,6 +123,7 @@ fun ClientException.failure(): ApiFailure {
         code = error?.error?.code ?: "unknown",
         message = error?.error?.message.orEmpty(),
         requestId = response?.headers.orEmpty().first(REQUEST_ID),
+        field = error?.error?.details?.firstOrNull()?.path?.takeIf { it.isNotBlank() },
     )
 }
 
@@ -132,7 +135,14 @@ internal fun ClientException.toDataError(): DataError {
         failure.status == 404 -> DataError.NotFound()
         failure.status == 429 ->
             DataError.RateLimited(retryAfterSeconds(headers.first(RETRY_AFTER)))
-        else -> DataError.Rejected(failure.status, failure.code, failure.message, failure.requestId)
+        else ->
+            DataError.Rejected(
+                failure.status,
+                failure.code,
+                failure.message,
+                failure.requestId,
+                failure.field,
+            )
     }
 }
 
