@@ -69,7 +69,7 @@ private const val NavFontScale = 1.15f
  * written whole, at the 12 sp of the other small labels it would be cut.
  */
 @Composable
-private fun NavLabelStyle() =
+private fun navLabelStyle() =
     MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp)
 
 /**
@@ -137,7 +137,7 @@ private fun RowScope.BarItem(item: ColaNavItem, selected: Boolean, onClick: () -
         }
         Text(
             item.label,
-            style = NavLabelStyle(),
+            style = navLabelStyle(),
             color = label,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
