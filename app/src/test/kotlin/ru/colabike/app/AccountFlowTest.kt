@@ -199,7 +199,7 @@ class AccountFlowTest {
 
         compose.onNodeWithText("Google Pixel 9").assertIsDisplayed()
         // The badge is set in capitals, as the reference sets its captions.
-        compose.onNodeWithText("ЭТО УСТРОЙСТВО").assertIsDisplayed()
+        compose.onNodeWithText("Это устройство").assertIsDisplayed()
         compose.onNodeWithText("Chrome · Windows").assertIsDisplayed()
         // One "end" action: for the browser, none for this device.
         compose
@@ -322,9 +322,9 @@ class AccountFlowTest {
 
         // The texts are read from the resources on a background thread.
         compose.waitUntil(10_000) {
-            compose.onAllNodesWithText("Lora").fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText("Inter").fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithText("Lora").assertIsDisplayed()
+        compose.onNodeWithText("Inter").assertIsDisplayed()
         // The cards are long (the whole licence text); the rest are one scroll away.
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Apache License 2.0"))
         compose.onNodeWithText("Apache License 2.0").assertIsDisplayed()

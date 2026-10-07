@@ -124,10 +124,15 @@ class CommentsFlowTest {
     }
 
     @Test
-    fun `the floating bar steps aside for the box and comes back with Back`() {
+    fun `the bar steps aside for the box and for the bike's page, and comes back at the list`() {
         start(dependencies())
         openDiscussion()
 
+        compose.section("Лента").assertDoesNotExist()
+
+        // Back to the page of the bike: the approved design shows it without the bar as well.
+        compose.onNodeWithContentDescription("Назад").performClick()
+        compose.waitForIdle()
         compose.section("Лента").assertDoesNotExist()
 
         compose.onNodeWithContentDescription("Назад").performClick()

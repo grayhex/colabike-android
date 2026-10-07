@@ -7,126 +7,121 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-// Twilight Stillness (docs/design/twilight-stillness.md). The dark values are the reference
-// DESIGN.md verbatim; the light ones are our adaptation, derived from the same hues and checked
-// for contrast (4.5:1 text, 3:1 icons and field borders). Components never use the palette
-// directly; they use MaterialTheme.colorScheme and ColaColors.
+// Graphite and lime (docs/design/graphite-lime.md, ADR 0023). The dark values are the approved
+// tokens of 06.10.2026; the light ones are the same structure in daylight, checked for contrast
+// (4.5:1 text, 3:1 icons). Components never use the palette directly; they use
+// MaterialTheme.colorScheme and ColaColors.
 internal object Palette {
-    // Reference, dark.
-    val Charcoal = Color(0xFF151413) // background
-    val CharcoalRaised = Color(0xFF1F1E1D) // surface (cards)
-    val CharcoalHigh = Color(0xFF2A2927) // surface-alt, and the hairline border
-    val Parchment = Color(0xFFEAE6DB) // on-surface: warm, never pure white
-    val ParchmentMuted = Color(0xFF9A9893) // on-surface-variant
-    val Sand = Color(0xFFC9BBA5) // primary: the single warm point of focus
-    val Sage = Color(0xFF8C9A8D) // accent: a rare second categorical colour
-    val Oxblood = Color(0xFF7F1D1D) // destructive
+    // Approved, dark.
+    val Graphite = Color(0xFF0B0E11) // background
+    val GraphiteRaised = Color(0xFF171B20) // cards and fields
+    val Hairline = Color(0xFF2A3037) // dividers, card edges
+    val Snow = Color(0xFFF3F5F7) // text
+    val SnowMuted = Color(0xFFA1ABB7) // secondary text
+    val Lime = Color(0xFFD2FF00) // the one accent: main action, choice, active tab
 
-    // Dark, derived: tints of a point colour at 16-20 % over the canvas, as the reference
-    // "tinted icon halo" recipe, and the steps between the reference surfaces.
-    val CharcoalStep = Color(0xFF1A1918)
-    val CharcoalHighest = Color(0xFF34322F)
-    val SandHalo = Color(0xFF393530) // Sand 20 % over Charcoal
-    val SageHalo = Color(0xFF2D2F2B) // Sage 20 % over Charcoal
-    val BrandHaloDark = Color(0xFF392E14) // brand yellow 16 % over Charcoal
-    val OutlineDark = Color(0xFF6B6964) // text field border, 3:1 on the canvas
-    val RoseDark = Color(0xFFE5958B) // error and like: readable on the canvas
-    val RoseOnOxblood = Color(0xFFF7DDD9)
-    val PeachDark = Color(0xFFD9B89A) // reference illus-glow-peach: warnings
+    // Dark, derived: steps between the approved surfaces and a lime wash for the active tab.
+    val GraphiteStep = Color(0xFF11151A)
+    val GraphiteHigh = Color(0xFF1E2329)
+    val GraphiteHighest = Color(0xFF252B32)
+    val LimeHalo = Color(0xFF2B350E) // lime 16 % over graphite: the soft plate under an active icon
+    val OutlineDark = Color(0xFF566170) // text field border, 3:1 on the canvas
+    val CoralDark = Color(0xFFFF8A80) // error: readable on graphite
+    val CoralContainerDark = Color(0xFF3A1614)
+    val CoralOnContainerDark = Color(0xFFFFD9D5)
+    val LikeDark = Color(0xFFFF6F7D)
+    val AmberDark = Color(0xFFFFC857)
+    val OxbloodDark = Color(0xFF7F1D1D) // filled destructive actions
 
-    // Light, our adaptation: warm paper instead of parchment on charcoal.
-    val Paper = Color(0xFFF6F2EA)
-    val PaperRaised = Color(0xFFFBF9F4)
-    val PaperLowest = Color(0xFFFDFBF7)
-    val PaperStep = Color(0xFFF9F6EF)
-    val PaperHigh = Color(0xFFECE6DA)
-    val PaperHighest = Color(0xFFE2DBCD)
-    val Ink = Color(0xFF1F1E1D)
-    val InkMuted = Color(0xFF605C55)
-    val Umber = Color(0xFF5F5039) // Sand deepened until it reads as text and icons on paper
-    val SandPale = Color(0xFFE5DBC6)
-    val SandInk = Color(0xFF3B3122)
-    val SageDeep = Color(0xFF566557)
-    val SagePale = Color(0xFFDCE3DA)
-    val SageInk = Color(0xFF2F3A31)
-    val OutlineLight = Color(0xFF8C877C)
-    val HairlineLight = Color(0xFFDDD6C8)
-    val RoseLight = Color(0xFFA33B32)
-    val RosePale = Color(0xFFF6DAD6)
-    val RoseInk = Color(0xFF5B1A14)
-    val LikeLight = Color(0xFFB3423A)
-    val AmberLight = Color(0xFF8A5A1F)
-    val OxbloodLight = Color(0xFF8E2B24)
+    // Light: the same structure on a cool paper.
+    val Paper = Color(0xFFF4F6F8)
+    val PaperRaised = Color(0xFFFFFFFF)
+    val PaperStep = Color(0xFFF8F9FB)
+    val PaperHigh = Color(0xFFE9EDF1)
+    val PaperHighest = Color(0xFFDDE2E8)
+    val Ink = Color(0xFF0B0E11)
+    val InkMuted = Color(0xFF566170)
+    val Olive =
+        Color(0xFF486500) // lime deepened until it reads as text and as a fill for white text
+    val OutlineLight = Color(0xFF8A94A1)
+    val HairlineLight = Color(0xFFDDE2E8)
+    val CoralLight = Color(0xFFB3261E)
+    val CoralContainerLight = Color(0xFFFBDAD6)
+    val CoralOnContainerLight = Color(0xFF5B130F)
+    val LikeLight = Color(0xFFD6334A)
+    val AmberLight = Color(0xFF8A5A00)
+    val GreenLight = Color(0xFF3F6B00)
 
     // The ColaBike yellow survives only as the brand mark (logo tile, launcher, splash).
     val Brand = Color(0xFFF3B51B)
     val BrandHaloLight = Color(0xFFFBEBC4)
     val BrandInkLight = Color(0xFF6B4E08)
+    val BrandHaloDark = Color(0xFF392E14)
     val BrandInkDark = Color(0xFFF5C03D)
 }
 
 /**
- * Dark is the reference as is. Sand is the only warm point (primary action, selection, focus),
- * never a surface; sage is secondary and rare.
+ * Dark is the approved design as is. Lime is the only point colour (main action, choice, active
+ * tab), never a surface of a page; cards are one step above the canvas and edged by a hairline.
  */
 internal val DarkColors: ColorScheme =
     darkColorScheme(
-        primary = Palette.Sand,
-        onPrimary = Palette.Charcoal,
-        primaryContainer = Palette.SandHalo,
-        onPrimaryContainer = Palette.Sand,
-        inversePrimary = Palette.Umber,
-        secondary = Palette.Sage,
-        onSecondary = Palette.Charcoal,
-        secondaryContainer = Palette.SageHalo,
-        onSecondaryContainer = Palette.Sage,
+        primary = Palette.Lime,
+        onPrimary = Palette.Graphite,
+        primaryContainer = Palette.LimeHalo,
+        onPrimaryContainer = Palette.Lime,
+        inversePrimary = Palette.Olive,
+        secondary = Palette.SnowMuted,
+        onSecondary = Palette.Graphite,
+        secondaryContainer = Palette.GraphiteHigh,
+        onSecondaryContainer = Palette.Snow,
         tertiary = Palette.Brand,
-        onTertiary = Palette.Charcoal,
+        onTertiary = Palette.Graphite,
         tertiaryContainer = Palette.BrandHaloDark,
         onTertiaryContainer = Palette.BrandInkDark,
-        background = Palette.Charcoal,
-        onBackground = Palette.Parchment,
-        surface = Palette.Charcoal,
-        onSurface = Palette.Parchment,
-        surfaceVariant = Palette.CharcoalHigh,
-        onSurfaceVariant = Palette.ParchmentMuted,
-        surfaceTint = Palette.Sand,
-        inverseSurface = Palette.Parchment,
-        inverseOnSurface = Palette.Charcoal,
-        error = Palette.RoseDark,
-        onError = Palette.Charcoal,
-        errorContainer = Palette.Oxblood,
-        onErrorContainer = Palette.RoseOnOxblood,
+        background = Palette.Graphite,
+        onBackground = Palette.Snow,
+        surface = Palette.Graphite,
+        onSurface = Palette.Snow,
+        surfaceVariant = Palette.GraphiteHigh,
+        onSurfaceVariant = Palette.SnowMuted,
+        surfaceTint = Palette.Lime,
+        inverseSurface = Palette.Snow,
+        inverseOnSurface = Palette.Graphite,
+        error = Palette.CoralDark,
+        onError = Palette.Graphite,
+        errorContainer = Palette.CoralContainerDark,
+        onErrorContainer = Palette.CoralOnContainerDark,
         outline = Palette.OutlineDark,
-        outlineVariant = Palette.CharcoalHigh,
+        outlineVariant = Palette.Hairline,
         scrim = Color.Black,
-        surfaceBright = Palette.CharcoalHighest,
-        surfaceDim = Palette.Charcoal,
-        surfaceContainerLowest = Palette.Charcoal,
-        surfaceContainerLow = Palette.CharcoalStep,
-        surfaceContainer = Palette.CharcoalRaised,
-        surfaceContainerHigh = Palette.CharcoalHigh,
-        surfaceContainerHighest = Palette.CharcoalHighest,
+        surfaceBright = Palette.GraphiteHighest,
+        surfaceDim = Palette.Graphite,
+        surfaceContainerLowest = Palette.Graphite,
+        surfaceContainerLow = Palette.GraphiteStep,
+        surfaceContainer = Palette.GraphiteRaised,
+        surfaceContainerHigh = Palette.GraphiteHigh,
+        surfaceContainerHighest = Palette.GraphiteHighest,
     )
 
 /**
- * The reference has no light theme. Same roles, same restraint: umber (sand deepened to be readable
- * on paper) is the point colour, cards are one step lighter than the canvas, hairlines instead of
- * shadows.
+ * The approved design is dark; daylight keeps its structure. Lime does not read on white, so text
+ * and fills that need weight use olive (lime deepened), and lime stays where it is a plate behind
+ * dark ink: the soft plate of the active tab.
  */
 internal val LightColors: ColorScheme =
     lightColorScheme(
-        primary = Palette.Umber,
-        onPrimary = Palette.Paper,
-        primaryContainer = Palette.SandPale,
-        onPrimaryContainer = Palette.SandInk,
-        inversePrimary = Palette.Sand,
-        secondary = Palette.SageDeep,
-        onSecondary = Palette.Paper,
-        secondaryContainer = Palette.SagePale,
-        onSecondaryContainer = Palette.SageInk,
+        primary = Palette.Olive,
+        onPrimary = Palette.PaperRaised,
+        primaryContainer = Palette.Lime,
+        onPrimaryContainer = Palette.Ink,
+        inversePrimary = Palette.Lime,
+        secondary = Palette.InkMuted,
+        onSecondary = Palette.PaperRaised,
+        secondaryContainer = Palette.PaperHigh,
+        onSecondaryContainer = Palette.Ink,
         tertiary = Palette.Brand,
-        onTertiary = Palette.Charcoal,
+        onTertiary = Palette.Graphite,
         tertiaryContainer = Palette.BrandHaloLight,
         onTertiaryContainer = Palette.BrandInkLight,
         background = Palette.Paper,
@@ -135,19 +130,19 @@ internal val LightColors: ColorScheme =
         onSurface = Palette.Ink,
         surfaceVariant = Palette.PaperHigh,
         onSurfaceVariant = Palette.InkMuted,
-        surfaceTint = Palette.Umber,
+        surfaceTint = Palette.Olive,
         inverseSurface = Palette.Ink,
-        inverseOnSurface = Palette.Parchment,
-        error = Palette.RoseLight,
+        inverseOnSurface = Palette.Snow,
+        error = Palette.CoralLight,
         onError = Palette.PaperRaised,
-        errorContainer = Palette.RosePale,
-        onErrorContainer = Palette.RoseInk,
+        errorContainer = Palette.CoralContainerLight,
+        onErrorContainer = Palette.CoralOnContainerLight,
         outline = Palette.OutlineLight,
         outlineVariant = Palette.HairlineLight,
         scrim = Color.Black,
         surfaceBright = Palette.PaperRaised,
         surfaceDim = Palette.PaperHighest,
-        surfaceContainerLowest = Palette.PaperLowest,
+        surfaceContainerLowest = Palette.PaperRaised,
         surfaceContainerLow = Palette.PaperStep,
         surfaceContainer = Palette.PaperRaised,
         surfaceContainerHigh = Palette.PaperHigh,
@@ -164,7 +159,7 @@ data class ColaColors(
     /** The ColaBike yellow: the logo tile only, never a surface or text. */
     val brand: Color,
     val onBrand: Color,
-    /** Filled destructive actions (the reference "deep oxblood"). */
+    /** Filled destructive actions. */
     val destructive: Color,
     val onDestructive: Color,
 )
@@ -172,23 +167,23 @@ data class ColaColors(
 internal val LightColaColors =
     ColaColors(
         like = Palette.LikeLight,
-        success = Palette.SageDeep,
+        success = Palette.GreenLight,
         warning = Palette.AmberLight,
         brand = Palette.Brand,
-        onBrand = Palette.Charcoal,
-        destructive = Palette.OxbloodLight,
+        onBrand = Palette.Graphite,
+        destructive = Palette.CoralLight,
         onDestructive = Palette.PaperRaised,
     )
 
 internal val DarkColaColors =
     ColaColors(
-        like = Palette.RoseDark,
-        success = Palette.Sage,
-        warning = Palette.PeachDark,
+        like = Palette.LikeDark,
+        success = Palette.Lime,
+        warning = Palette.AmberDark,
         brand = Palette.Brand,
-        onBrand = Palette.Charcoal,
-        destructive = Palette.Oxblood,
-        onDestructive = Palette.RoseOnOxblood,
+        onBrand = Palette.Graphite,
+        destructive = Palette.OxbloodDark,
+        onDestructive = Palette.CoralOnContainerDark,
     )
 
 val LocalColaColors = staticCompositionLocalOf { LightColaColors }

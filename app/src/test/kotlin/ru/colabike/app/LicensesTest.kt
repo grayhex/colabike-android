@@ -24,12 +24,12 @@ class LicensesTest {
         compose.setContent { ColaBikeTheme { LicensesRoute(onBack = {}) } }
         // The texts are read off the main thread.
         compose.waitUntil(timeoutMillis = 10_000) {
-            compose.onAllNodesWithText("Lora").fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText("Inter").fetchSemanticsNodes().isNotEmpty()
         }
 
         val list = compose.onNodeWithTag("licenses:list")
         listOf(
-                "Source Sans 3",
+                "SIL Open Font License",
                 "Apache License 2.0",
                 "MapLibre Native",
                 "Redistribution and use in source and binary forms",

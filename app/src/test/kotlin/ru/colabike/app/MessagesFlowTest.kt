@@ -84,7 +84,7 @@ class MessagesFlowTest {
     }
 
     private fun openMessages() {
-        compose.section("Сообщения").performClick()
+        compose.section("Чаты").performClick()
         compose.waitForIdle()
     }
 

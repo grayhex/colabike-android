@@ -7,27 +7,24 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 /**
- * The reference radii: 16 for thumbnails and small tiles, 20 for list rows (its 22), 24 for cards,
- * 32 for hero frames; nothing sharper than 16. The reference's CSS "squircle" is a browser
- * superellipse (rendered radius is its token times 2.5); Compose has no stable equivalent, so the
- * corners are circular at the token value.
+ * The approved radii, moderate: 12 for fields and small tiles, 16 for cards and photos, 20 for the
+ * few large frames. Nothing rounder than a card except the pill.
  */
 internal val ColaShapes =
     Shapes(
-        extraSmall = RoundedCornerShape(16.dp),
-        small = RoundedCornerShape(16.dp),
-        medium = RoundedCornerShape(20.dp),
-        large = RoundedCornerShape(24.dp),
-        extraLarge = RoundedCornerShape(32.dp),
+        extraSmall = RoundedCornerShape(8.dp),
+        small = RoundedCornerShape(12.dp),
+        medium = RoundedCornerShape(16.dp),
+        large = RoundedCornerShape(16.dp),
+        extraLarge = RoundedCornerShape(20.dp),
     )
 
-/** Chips, buttons, badges, the floating bar: anything holding a single line of label. */
+/** Chips, badges, the plate of the active tab: anything holding a single line of label. */
 val PillShape: Shape = CircleShape
 
 /**
- * The 4 dp grid. Screens use these, not ad-hoc numbers. The reference is airy (24 gutter, 40
- * between sections, 24 inside cards); on a 360 dp phone that would spend a seventh of the width on
- * gutters, so the values are 20 / 32 / 20.
+ * The 4 dp grid. Screens use these, not ad-hoc numbers. A 16 dp gutter and 12 dp inside cards: the
+ * approved screens are compact, a catalog shows two full cards at once.
  */
 object Spacing {
     val xxs = 2.dp
@@ -39,13 +36,13 @@ object Spacing {
     val xxl = 32.dp
 
     /** Side padding of a screen; wider windows get the pane gutters of Material adaptive. */
-    val screen = 20.dp
+    val screen = 16.dp
 
     /** Vertical gap between the sections of a screen. */
-    val section = 32.dp
+    val section = 24.dp
 
     /** Padding inside a card or a stat tile. */
-    val card = 20.dp
+    val card = 16.dp
 
     /** The smallest touch target (48 dp), also the smallest height of a button or a row. */
     val touch = 48.dp

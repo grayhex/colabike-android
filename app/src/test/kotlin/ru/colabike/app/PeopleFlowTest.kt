@@ -154,7 +154,7 @@ class PeopleFlowTest {
         start(dependencies)
         openAuthorFromBike()
 
-        compose.onNodeWithText("ЭТО ВЫ").assertIsDisplayed()
+        compose.onNodeWithText("Это вы").assertIsDisplayed()
         compose.onNodeWithContentDescription("Подписаться на Тестовый Райдер").assertDoesNotExist()
 
         compose.onNodeWithText("Мой аккаунт").performClick()
@@ -186,7 +186,7 @@ class PeopleFlowTest {
         compose.waitForIdle()
 
         assertThat(dependencies.people.profileCalls).containsExactly("u1")
-        compose.onNodeWithText("ЭТО ВЫ").assertIsDisplayed()
+        compose.onNodeWithText("Это вы").assertIsDisplayed()
     }
 
     // --- the lists behind the numbers -----------------------------------------------------

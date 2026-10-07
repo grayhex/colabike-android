@@ -8,7 +8,7 @@
 | `core:model` | Kotlin/JVM | модели приложения (`BikeSummary`, `BikeDetail`, `Account`, `Person`, `RideSummary`, `Page`), интерфейсы репозиториев, `DataError` | — |
 | `core:network` | Kotlin/JVM | снимок контракта, сгенерированный клиент `ru.colabike.api`, `HttpClients`, `ColaBikeApi`, `apiCall`, `MediaUrls`, маппинг DTO → модели, сетевые репозитории | `core:model` |
 | `core:auth` | Android library | `DeviceSession`, `AuthInterceptor`, хранение секретов (`EncryptedFileStore` + `KeystoreTokenCipher`), PKCE и вход через Яндекс ID | `core:network` |
-| `core:designsystem` | Android library + Compose | `ColaBikeTheme` (направление [Twilight Stillness](design/twilight-stillness.md)), палитра, шрифты Lora и Source Sans 3, формы, `ColaMotion`, `ColaCanvas`, компоненты и навигационные панели | `core:model` |
+| `core:designsystem` | Android library + Compose | `ColaBikeTheme` (направление [«Графит и лайм»](design/graphite-lime.md)), палитра, шрифт Inter, формы, `ColaMotion`, `ColaCanvas`, компоненты и навигационные панели | `core:model` |
 
 `core:model` и `core:network` не знают об Android: их тесты быстрые и идут на JVM. Feature-модули появятся вместе с вертикальными срезами. Тогда экран, его ViewModel и репозиторий переедут из `app` в `feature:<имя>`.
 

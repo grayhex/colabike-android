@@ -54,20 +54,6 @@ class ShellNavigationTest {
         compose.onNodeWithContentDescription("Велосипед $number", substring = true)
 
     @Test
-    fun `a bike stays open, and is not loaded again, after a visit to another section`() {
-        bike(1).performClick()
-        compose.onNodeWithText("Описание").assertIsDisplayed()
-
-        section("Профиль").performClick()
-        compose.onNodeWithText("Тестовый Райдер").assertIsDisplayed()
-        compose.onNodeWithText("Описание").assertDoesNotExist()
-
-        section("Велосипеды").performClick()
-        compose.onNodeWithText("Описание").assertIsDisplayed()
-        assertThat(bikes.detailCalls).isEqualTo(1)
-    }
-
-    @Test
     fun `the list keeps its place after a visit to another section`() {
         compose.onNodeWithTag("bikes:grid").performScrollToIndex(6)
         bike(6).assertIsDisplayed()
@@ -79,17 +65,6 @@ class ShellNavigationTest {
     }
 
     @Test
-    fun `a tap on the current section closes the bike`() {
-        bike(1).performClick()
-        compose.onNodeWithText("Описание").assertIsDisplayed()
-
-        section("Велосипеды").performClick()
-
-        compose.onNodeWithText("Описание").assertDoesNotExist()
-        bike(0).assertIsDisplayed()
-    }
-
-    @Test
     fun `a second tap on the current section scrolls the list to the top`() {
         compose.onNodeWithTag("bikes:grid").performScrollToIndex(6)
 
@@ -97,17 +72,6 @@ class ShellNavigationTest {
         compose.waitForIdle()
 
         bike(0).assertIsDisplayed()
-    }
-
-    @Test
-    fun `back from another section returns to the start section with its bike`() {
-        bike(1).performClick()
-        section("Профиль").performClick()
-
-        Espresso.pressBack()
-        compose.waitForIdle()
-
-        compose.onNodeWithText("Описание").assertIsDisplayed()
     }
 
     @Test
@@ -132,6 +96,65 @@ class ShellNavigationTest {
                 hasText("Велосипеды") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
             )
             .assertIsDisplayed()
+    }
+}
+
+/**
+ * The same, on a window wide enough for the rail: on a phone the bar steps aside for the page of a
+ * bike, so a visit to another section from an open bike is made at the side.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "ru-w700dp-h900dp-xhdpi")
+class ShellNavigationRailTest {
+    @get:Rule val compose = createComposeRule()
+
+    private val bikes = FakeBikes(mapOf(null to Page(bikes(0, 8), null)))
+
+    @Before
+    fun start() {
+        compose.setContent { ColaBikeTheme { AppShell(FakeDependencies(bikes = bikes)) } }
+        compose.waitForIdle()
+    }
+
+    private fun section(name: String) = compose.section(name)
+
+    private fun bike(number: Int) =
+        compose.onNodeWithContentDescription("Велосипед $number", substring = true)
+
+    @Test
+    fun `a bike stays open, and is not loaded again, after a visit to another section`() {
+        bike(1).performClick()
+        compose.onNodeWithText("Описание").assertIsDisplayed()
+
+        section("Профиль").performClick()
+        compose.onNodeWithText("Тестовый Райдер").assertIsDisplayed()
+        compose.onNodeWithText("Описание").assertDoesNotExist()
+
+        section("Велосипеды").performClick()
+        compose.onNodeWithText("Описание").assertIsDisplayed()
+        assertThat(bikes.detailCalls).isEqualTo(1)
+    }
+
+    @Test
+    fun `a tap on the current section closes the bike`() {
+        bike(1).performClick()
+        compose.onNodeWithText("Описание").assertIsDisplayed()
+
+        section("Велосипеды").performClick()
+
+        compose.onNodeWithText("Описание").assertDoesNotExist()
+        bike(0).assertIsDisplayed()
+    }
+
+    @Test
+    fun `back from another section returns to the start section with its bike`() {
+        bike(1).performClick()
+        section("Профиль").performClick()
+
+        Espresso.pressBack()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Описание").assertIsDisplayed()
     }
 }
 

@@ -963,15 +963,15 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithText("Сохранённые объявления").performScrollTo().performClick()
         }
         Screen.Messages,
-        Screen.MessagesGuest -> section("Сообщения").performClick()
+        Screen.MessagesGuest -> section("Чаты").performClick()
         Screen.Conversation -> {
-            section("Сообщения").performClick()
+            section("Чаты").performClick()
             // Not a touch: on a wide window the row stays in the picture, and a pressed or
             // focused row is drawn at a moment of the platform's own clock.
             onNodeWithTag("chat:open:dm-1").performSemanticsAction(SemanticsActions.OnClick)
         }
         Screen.NewConversation -> {
-            section("Сообщения").performClick()
+            section("Чаты").performClick()
             onNodeWithContentDescription("Новое сообщение").performClick()
         }
         Screen.JournalList -> openJournal()
