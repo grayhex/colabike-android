@@ -67,7 +67,7 @@ android {
         // (docs/install.md). The owner sets -Pcolabike.versionCode=N for a build to hand out.
         versionCode =
             providers.gradleProperty("colabike.versionCode").map { it.toInt() }.orElse(1).get()
-        versionName = "0.1.0"
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
         buildConfigField("String", "NATIVE_AUTH_RETURN_URL", "\"$siteUrl/app/auth\"")
