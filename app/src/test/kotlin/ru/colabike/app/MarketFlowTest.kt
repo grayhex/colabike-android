@@ -70,7 +70,7 @@ class MarketFlowTest {
     }
 
     private fun openMarket() {
-        compose.onNodeWithContentDescription("Объявления").performClick()
+        compose.section("Рынок").performClick()
         compose.waitForIdle()
     }
 
@@ -95,7 +95,7 @@ class MarketFlowTest {
     // --- the list ----------------------------------------------------------------------------
 
     @Test
-    fun `the bikes screen opens the market, which lists the listings with price and place`() {
+    fun `the market tab lists the listings with price and place`() {
         start()
 
         openMarket()

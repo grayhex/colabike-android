@@ -3,9 +3,10 @@ package ru.colabike.app
 import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -62,11 +63,19 @@ class RidesFlowTest {
         compose.waitForIdle()
     }
 
-    private fun chip(name: String) = compose.onNode(hasText(name) and hasClickAction())
+    /** A list of the section is chosen in the drop-down above the search. */
+    private fun segment(name: String) = compose.choose("rides:segment", name)
 
-    private fun openRides() {
+    /** The section as it opens: on what took place. */
+    private fun openRidesAsItOpens() {
         compose.section("Покатушки").performClick()
         compose.waitForIdle()
+    }
+
+    /** The section, on the plans ahead: since #57 that is a choice, not where it opens. */
+    private fun openRides() {
+        openRidesAsItOpens()
+        segment("Ближайшие")
     }
 
     private fun waitForSearch() {
@@ -77,7 +86,26 @@ class RidesFlowTest {
     // --- the lists -----------------------------------------------------------------------------
 
     @Test
-    fun `the section opens on the plans ahead, said with their hour and how many answered`() {
+    fun `the section opens on the completed rides, and the plans ahead are a choice away`() {
+        start(dependencies())
+
+        openRidesAsItOpens()
+
+        compose.onNodeWithContentDescription("Покатушка 1", substring = true).assertIsDisplayed()
+        compose
+            .onNodeWithContentDescription("Воскресный выезд за город", substring = true)
+            .assertDoesNotExist()
+        compose.onNodeWithTag("rides:segment").assertIsDisplayed()
+
+        segment("Ближайшие")
+
+        compose
+            .onNodeWithContentDescription("Воскресный выезд за город", substring = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `the plans ahead are said with their hour and how many answered`() {
         start(dependencies())
 
         openRides()
@@ -92,6 +120,24 @@ class RidesFlowTest {
     }
 
     @Test
+    fun `the chosen list and the search stay when a ride is left`() {
+        start(dependencies())
+        openRides()
+        compose
+            .onNodeWithContentDescription("Воскресный выезд за город", substring = true)
+            .performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithContentDescription("Назад").performClick()
+        compose.waitForIdle()
+
+        // Not the default again: the list the person chose.
+        compose
+            .onNodeWithContentDescription("Воскресный выезд за город", substring = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun `the completed rides are another list and a search narrows it after a pause`() {
         val rides = FakeRides()
         rides.answer = { query, _ ->
@@ -100,7 +146,7 @@ class RidesFlowTest {
         start(dependencies(rides = rides))
         openRides()
 
-        chip("Состоявшиеся").performClick()
+        segment("Состоявшиеся")
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Покатушка 1", substring = true).assertIsDisplayed()
 
@@ -118,7 +164,7 @@ class RidesFlowTest {
         rides.answer = { query, _ -> Page(if (query == null) rides(0, 2) else emptyList(), null) }
         start(dependencies(rides = rides))
         openRides()
-        chip("Состоявшиеся").performClick()
+        segment("Состоявшиеся")
 
         compose.onNodeWithText("Название, автор, велосипед").performTextInput("бромптон")
         waitForSearch()
@@ -133,12 +179,16 @@ class RidesFlowTest {
     fun `a guest has the two public lists and no personal ones`() {
         start(dependencies(signedIn = false))
 
-        openRides()
+        openRidesAsItOpens()
+        compose.onNodeWithTag("rides:segment").performClick()
+        compose.waitForIdle()
 
-        chip("Ближайшие").assertIsDisplayed()
-        chip("Состоявшиеся").assertIsDisplayed()
-        chip("Мои планы").assertDoesNotExist()
-        chip("Мои поездки").assertDoesNotExist()
+        fun item(name: String) = compose.onNode(hasText(name) and hasAnyAncestor(isPopup()))
+        item("Ближайшие").assertIsDisplayed()
+        item("Состоявшиеся").assertIsDisplayed()
+        item("Мои планы").assertDoesNotExist()
+        item("Мои поездки").assertDoesNotExist()
+        compose.onNodeWithTag("rides:intents").assertDoesNotExist()
     }
 
     @Test
@@ -161,7 +211,7 @@ class RidesFlowTest {
         start(dependencies(rides = rides))
         openRides()
 
-        chip("Мои планы").performClick()
+        segment("Мои планы")
         compose.waitForIdle()
 
         compose.onNodeWithContentDescription("План 1", substring = true).assertIsDisplayed()
@@ -196,7 +246,7 @@ class RidesFlowTest {
         start(dependencies(rides = rides))
         openRides()
 
-        chip("Мои поездки").performClick()
+        segment("Мои поездки")
         compose.waitForIdle()
 
         compose.onNodeWithContentDescription("Покатушка 1", substring = true).assertIsDisplayed()
@@ -211,7 +261,7 @@ class RidesFlowTest {
         openRides()
 
         compose.onNodeWithText("Ближайших планов нет").assertIsDisplayed()
-        chip("Мои планы").performClick()
+        segment("Мои планы")
         compose.waitForIdle()
         compose.onNodeWithText("Планов нет").assertIsDisplayed()
     }
@@ -222,13 +272,11 @@ class RidesFlowTest {
         rides.nextError = ru.colabike.core.model.DataError.Offline(java.io.IOException())
         start(dependencies(rides = rides))
 
-        openRides()
+        openRidesAsItOpens()
         compose.onNodeWithText("Повторить").performClick()
         compose.waitForIdle()
 
-        compose
-            .onNodeWithContentDescription("Воскресный выезд за город", substring = true)
-            .assertIsDisplayed()
+        compose.onNodeWithContentDescription("Покатушка 1", substring = true).assertIsDisplayed()
     }
 
     // --- a ride
@@ -275,7 +323,7 @@ class RidesFlowTest {
     fun `a completed ride page shows its numbers, the sensor numbers and its route`() {
         start(dependencies())
         openRides()
-        chip("Состоявшиеся").performClick()
+        segment("Состоявшиеся")
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Покатушка 1", substring = true).performClick()
         compose.waitForIdle()
@@ -387,7 +435,7 @@ class RidesFlowTest {
     private fun openCompleted(rides: FakeRides = FakeRides()) {
         start(dependencies(rides = rides))
         openRides()
-        chip("Состоявшиеся").performClick()
+        segment("Состоявшиеся")
         compose.onNodeWithContentDescription("Покатушка 0", substring = true).performClick()
         compose.waitForIdle()
     }
@@ -457,7 +505,7 @@ class RidesFlowTest {
         rides.nextError = null
         start(dependencies(rides = rides))
         openRides()
-        chip("Состоявшиеся").performClick()
+        segment("Состоявшиеся")
         compose.waitForIdle()
         // The page loads, then the series fail once.
         rides.failAnalysisOnce = true

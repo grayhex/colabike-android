@@ -89,15 +89,21 @@ class NavigatorFeaturesTest {
     }
 
     @Test
-    fun `a ride opens in Rides, a conversation in Messages`() {
+    fun `a ride opens in Rides, a conversation over the section where the person is`() {
         navigator.go(Destination.Ride("r1"))
         assertThat(state.topLevelRoute).isEqualTo(rides)
         assertThat(state.currentStack).containsExactly(rides, Destination.Ride("r1")).inOrder()
 
+        // The chats are no section: the conversation opens here, the list of them beneath it.
         navigator.go(Destination.Conversation("messaging:dm-1"))
-        assertThat(state.topLevelRoute).isEqualTo(messages)
+        assertThat(state.topLevelRoute).isEqualTo(rides)
         assertThat(state.currentStack)
-            .containsExactly(messages, Destination.Conversation("messaging:dm-1"))
+            .containsExactly(
+                rides,
+                Destination.Ride("r1"),
+                Destination.Messages,
+                Destination.Conversation("messaging:dm-1"),
+            )
             .inOrder()
         assertThat(unavailable).isEqualTo(0)
     }
@@ -191,13 +197,14 @@ class NavigatorFeaturesTest {
     fun `the tabs follow the flags, and Bikes, the start, is always there`() {
         assertThat(TopLevel.shown(FeatureAvailability.AllOn)).isEqualTo(TopLevel.shown)
         assertThat(TopLevel.shown(FeatureAvailability(mapOf("rides" to false))))
-            .containsExactly(TopLevel.Feed, TopLevel.Bikes, TopLevel.Messages, TopLevel.Profile)
+            .containsExactly(TopLevel.Feed, TopLevel.Bikes, TopLevel.Market, TopLevel.Profile)
             .inOrder()
-        assertThat(TopLevel.shown(FeatureAvailability(mapOf("rides" to false, "chat" to false))))
+        assertThat(TopLevel.shown(FeatureAvailability(mapOf("rides" to false, "market" to false))))
             .containsExactly(TopLevel.Feed, TopLevel.Bikes, TopLevel.Profile)
             .inOrder()
-        // Flags that are not about a tab change none.
-        assertThat(TopLevel.shown(FeatureAvailability(mapOf("market" to false))))
+        // Flags that are not about a tab change none: the chats are a button beside the bell, not
+        // a tab, and their flag takes the button away, not a place in the bar.
+        assertThat(TopLevel.shown(FeatureAvailability(mapOf("chat" to false))))
             .isEqualTo(TopLevel.shown)
     }
 }

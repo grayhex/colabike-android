@@ -85,7 +85,7 @@ class ProcessDeathTest {
     @Test
     fun `a conversation is still open, and so is the box around it`() {
         start()
-        compose.section("Чаты").performClick()
+        compose.openChats()
         compose.onNodeWithTag("chat:open:dm-1").performClick()
         compose.onNodeWithTag("chat:conversation").assertIsDisplayed()
 

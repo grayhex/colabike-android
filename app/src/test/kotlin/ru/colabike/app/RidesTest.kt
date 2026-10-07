@@ -40,13 +40,13 @@ class RidesViewModelTest {
     private fun RidesViewModel.ids() = state.value.page.items.map { it.key }
 
     @Test
-    fun `the section opens on the plans ahead and asks for nothing else`() = runTest {
+    fun `the section opens on the rides that took place and asks for nothing else`() = runTest {
         val vm = vm()
 
-        assertThat(vm.state.value.segment).isEqualTo(RideSegment.Upcoming)
-        assertThat(vm.ids()).containsExactly("r2")
-        assertThat(repository.upcomingCalls).containsExactly(null to null)
-        assertThat(repository.completedCalls).isEmpty()
+        assertThat(vm.state.value.segment).isEqualTo(RideSegment.Completed)
+        assertThat(vm.ids()).containsExactly("ride-0", "ride-1", "ride-2").inOrder()
+        assertThat(repository.completedCalls).containsExactly(null to null)
+        assertThat(repository.upcomingCalls).isEmpty()
         assertThat(repository.myUpcomingCalls).isEqualTo(0)
     }
 
@@ -54,6 +54,7 @@ class RidesViewModelTest {
     fun `an answer taken on a plan makes the list read again`() = runTest {
         val changes = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 4)
         val vm = RidesViewModel(repository, debounceMs = 400, participationChanges = changes)
+        vm.select(RideSegment.Upcoming)
         assertThat(repository.upcomingCalls).hasSize(1)
 
         changes.tryEmit("r2")
@@ -65,23 +66,21 @@ class RidesViewModelTest {
     @Test
     fun `each segment is its own list and none is mixed with another`() = runTest {
         val vm = vm()
-
-        vm.select(RideSegment.Completed)
         assertThat(vm.ids()).containsExactly("ride-0", "ride-1", "ride-2").inOrder()
 
         vm.select(RideSegment.Upcoming)
         assertThat(vm.ids()).containsExactly("r2")
-        assertThat(repository.upcomingCalls).hasSize(2)
+        assertThat(repository.upcomingCalls).hasSize(1)
     }
 
     @Test
     fun `choosing the segment that is chosen asks nothing`() = runTest {
         val vm = vm()
-        val before = repository.upcomingCalls.size
+        val before = repository.completedCalls.size
 
-        vm.select(RideSegment.Upcoming)
+        vm.select(RideSegment.Completed)
 
-        assertThat(repository.upcomingCalls).hasSize(before)
+        assertThat(repository.completedCalls).hasSize(before)
     }
 
     @Test
@@ -102,17 +101,17 @@ class RidesViewModelTest {
     fun `typing waits for a pause and asks once with the whole text, in the public lists`() =
         runTest {
             val vm = vm()
-            repository.upcomingCalls.clear()
+            repository.completedCalls.clear()
 
             vm.onSearchText("в")
             advanceTimeBy(200)
             vm.onSearchText("вечер ")
             assertThat(vm.state.value.typed).isEqualTo("вечер ")
-            assertThat(repository.upcomingCalls).isEmpty()
+            assertThat(repository.completedCalls).isEmpty()
             advanceTimeBy(401)
             runCurrent()
 
-            assertThat(repository.upcomingCalls).containsExactly("вечер" to null)
+            assertThat(repository.completedCalls).containsExactly("вечер" to null)
             assertThat(vm.state.value.query).isEqualTo("вечер")
         }
 
@@ -122,8 +121,7 @@ class RidesViewModelTest {
         repository.answer = { query, _ ->
             if (query == null) first.await() else Page(rides(7, 1), null)
         }
-        val vm = vm()
-        vm.select(RideSegment.Completed) // asks without text and waits
+        val vm = vm() // asks without text and waits
 
         vm.onSearchText("рама")
         advanceTimeBy(401)
@@ -195,10 +193,8 @@ class RidesViewModelTest {
 
     @Test
     fun `a failed first page is a screen error and a retry asks for the same list`() = runTest {
-        val vm = vm()
         repository.nextError = DataError.Offline(java.io.IOException())
-
-        vm.select(RideSegment.Completed)
+        val vm = vm()
 
         assertThat(vm.state.value.page.error).isEqualTo(UiText.Res(R.string.error_offline))
         vm.retry()

@@ -84,8 +84,7 @@ class MessagesFlowTest {
     }
 
     private fun openMessages() {
-        compose.section("Чаты").performClick()
-        compose.waitForIdle()
+        compose.openChats()
     }
 
     private fun settle() {
@@ -94,7 +93,7 @@ class MessagesFlowTest {
     }
 
     @Test
-    fun `the tab connects the chat and shows the conversations, and nothing connected before`() {
+    fun `the button connects the chat and shows the conversations, and nothing connected before`() {
         val dependencies = dependencies()
         start(dependencies)
         assertThat(dependencies.chat.credentialCalls).isEqualTo(0)

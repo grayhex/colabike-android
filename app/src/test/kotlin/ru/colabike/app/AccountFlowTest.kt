@@ -11,6 +11,7 @@ import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -82,7 +83,7 @@ class AccountFlowTest {
         assertThat(dependencies.settings.browsingAsGuest.value).isTrue()
         compose.onNodeWithContentDescription("Велосипед 0", substring = true).assertIsDisplayed()
         // "Mine" needs an account.
-        compose.onNodeWithText("Мои").assertDoesNotExist()
+        compose.onNodeWithTag("bikes:scope").assertDoesNotExist()
         // A guest asked nothing of the account.
         assertThat(dependencies.bikes.calls.map { it.first.scope })
             .containsExactly(ru.colabike.core.model.BikeScope.Public)
@@ -162,12 +163,12 @@ class AccountFlowTest {
     fun `a member sees the account choice on bikes, a guest who signs in gets it`() {
         val dependencies = guestApp()
         start(dependencies)
-        compose.onNodeWithText("Мои").assertDoesNotExist()
+        compose.onNodeWithTag("bikes:scope").assertDoesNotExist()
 
         dependencies.auth.state.value = AuthState.SignedIn(account)
         compose.waitForIdle()
 
-        compose.onNodeWithText("Мои").assertIsDisplayed()
+        compose.onNodeWithTag("bikes:scope").assertIsDisplayed()
     }
 
     @Test

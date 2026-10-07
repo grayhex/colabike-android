@@ -21,6 +21,7 @@ import ru.colabike.core.designsystem.component.BikeCardSkeleton
 import ru.colabike.core.designsystem.component.BrandMark
 import ru.colabike.core.designsystem.component.ChartPoint
 import ru.colabike.core.designsystem.component.ChartSeries
+import ru.colabike.core.designsystem.component.ColaDropdownChip
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaListItem
@@ -348,6 +349,17 @@ class ComponentScreenshotTest {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
                     ColaFilterChip(selected = true, onClick = {}, label = "Все")
                     ColaFilterChip(selected = false, onClick = {}, label = "Мои")
+                }
+                // Filters that open a list: the usual value, a chosen one, a long one cut to a
+                // line.
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                    ColaDropdownChip(label = "Все") {}
+                    ColaDropdownChip(label = "Мои", active = true) {}
+                    ColaDropdownChip(
+                        label = "Шоссе, Гравийные, Городские и ещё 3",
+                        active = true,
+                        modifier = Modifier.weight(1f, fill = false),
+                    ) {}
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
                     PillBadge("Москва", icon = ColaIcons.Location)

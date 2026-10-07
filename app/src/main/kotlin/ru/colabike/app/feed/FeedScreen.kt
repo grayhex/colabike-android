@@ -46,7 +46,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
-import ru.colabike.app.notifications.NotificationsBell
+import ru.colabike.app.ui.HeaderActions
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.resolve
@@ -118,7 +118,7 @@ fun FeedGuestScreen(onSignIn: () -> Unit, onBrowse: () -> Unit) {
         topBar = {
             ColaTopBar(
                 title = stringResource(R.string.feed_title),
-                actions = { NotificationsBell() },
+                actions = { HeaderActions() },
             )
         },
     ) { padding ->
@@ -157,7 +157,7 @@ fun FeedScreen(
         topBar = {
             ColaTopBar(
                 title = stringResource(R.string.feed_title),
-                actions = { NotificationsBell() },
+                actions = { HeaderActions() },
             )
         },
     ) { padding ->

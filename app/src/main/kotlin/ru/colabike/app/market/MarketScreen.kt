@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.app.R
+import ru.colabike.app.ui.HeaderActions
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
@@ -79,7 +80,7 @@ import ru.colabike.core.model.MarketRepository
 fun MarketRoute(
     repository: MarketRepository,
     seller: String?,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpen: (ListingId) -> Unit,
 ) {
     val viewModel =
@@ -136,7 +137,7 @@ class MarketActions(
 fun MarketScreen(
     state: MarketUiState,
     seller: String?,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     actions: MarketActions = MarketActions(),
     filtersOpen: Boolean = false,
 ) {
@@ -149,6 +150,9 @@ fun MarketScreen(
                 title = stringResource(R.string.market_title),
                 subtitle = seller?.let { stringResource(R.string.market_seller_subtitle, it) },
                 onBack = onBack,
+                // The section's own page has the chats and the bell; a seller's listings, opened
+                // over it, have the way back.
+                actions = { if (seller == null) HeaderActions() },
             )
         },
     ) { padding ->

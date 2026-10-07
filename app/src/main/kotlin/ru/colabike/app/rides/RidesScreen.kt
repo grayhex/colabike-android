@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -47,11 +46,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
-import ru.colabike.app.notifications.NotificationsBell
+import ru.colabike.app.ui.HeaderActions
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
+import ru.colabike.core.designsystem.component.ColaDropdownChip
+import ru.colabike.core.designsystem.component.ColaDropdownItem
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaSearchField
@@ -156,25 +157,39 @@ fun RidesScreen(
         topBar = {
             ColaTopBar(
                 title = stringResource(R.string.rides_title),
-                actions = { NotificationsBell() },
+                actions = { HeaderActions() },
             )
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
+            // Every filter of the section on one line above the search: which list, and the way to
+            // "I want to ride". The lists are a drop-down, not a row of chips. With a large font
+            // the two go to two lines, whole, rather than one being cut to its first letter.
             FlowRow(
-                Modifier.padding(horizontal = Spacing.screen).selectableGroup(),
+                Modifier.fillMaxWidth().padding(horizontal = Spacing.screen),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                 verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                itemVerticalAlignment = Alignment.CenterVertically,
             ) {
-                RideSegment.entries
-                    .filter { personal || !it.personal }
-                    .forEach { segment ->
-                        ColaFilterChip(
-                            selected = state.segment == segment,
-                            onClick = { onSegment(segment) },
-                            label = stringResource(segment.label()),
-                        )
-                    }
+                val current = stringResource(state.segment.label())
+                ColaDropdownChip(
+                    label = current,
+                    active = state.segment != RideSegment.Default,
+                    description = stringResource(R.string.rides_segment_filter, current),
+                    modifier = Modifier.testTag("rides:segment"),
+                ) { close ->
+                    RideSegment.entries
+                        .filter { personal || !it.personal }
+                        .forEach { segment ->
+                            ColaDropdownItem(
+                                stringResource(segment.label()),
+                                state.segment == segment,
+                            ) {
+                                onSegment(segment)
+                                close()
+                            }
+                        }
+                }
                 // Not a list of the section but a place of its own: "I want to ride" is a member's.
                 if (personal && onOpenIntents != null) {
                     ColaFilterChip(

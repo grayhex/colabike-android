@@ -269,6 +269,7 @@ class ParticipationFlowTest {
         }
         compose.waitForIdle()
         compose.section("Покатушки").performClick()
+        compose.choose("rides:segment", "Ближайшие")
         compose
             .onNodeWithContentDescription("Воскресный выезд за город", substring = true)
             .performClick()
@@ -297,6 +298,7 @@ class ParticipationFlowTest {
         }
         compose.waitForIdle()
         compose.section("Покатушки").performClick()
+        compose.choose("rides:segment", "Ближайшие")
         compose
             .onNodeWithContentDescription("Воскресный выезд за город", substring = true)
             .performClick()

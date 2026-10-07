@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ru.colabike.app.R
 import ru.colabike.app.links.LocalLinkOpener
@@ -44,7 +43,7 @@ fun AboutRoute(
     val support = service.support
     AboutScreen(
         versionName = info.versionName,
-        build = stringResource(R.string.about_build, info.versionCode, info.contractVersion),
+        build = stringResource(R.string.about_build, info.versionCode),
         onBack = onBack,
         onTerms = { opener.open(service.terms ?: links.terms) },
         onPrivacy = { opener.open(service.privacy ?: links.privacy) },
@@ -96,17 +95,11 @@ fun AboutScreen(
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    // What support asks for first: the build and the API contract it was made for.
+                    // What support asks for first: the build, in one short line.
                     Text(
                         build,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        stringResource(R.string.about_tagline),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
                     )
                 }
                 Column(

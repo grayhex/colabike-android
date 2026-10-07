@@ -66,20 +66,34 @@ class FeaturesFlowTest {
     fun `all the tabs are there when the server switches nothing off`() {
         start(dependencies())
 
-        for (name in listOf("Лента", "Велосипеды", "Покатушки", "Чаты", "Профиль")) {
+        for (name in listOf("Лента", "Велосипеды", "Покатушки", "Рынок", "Профиль")) {
             assertThat(hasSection(name)).isTrue()
         }
+        // The chats are not a tab: a button beside the bell.
+        assertThat(hasSection("Чаты")).isFalse()
+        compose.onNodeWithContentDescription("Чаты").assertIsDisplayed()
     }
 
     @Test
     fun `a function that is off has no tab`() {
         val config =
-            FakeAppConfig().apply { set(features = featuresOff(Feature.Rides, Feature.Chat)) }
+            FakeAppConfig().apply { set(features = featuresOff(Feature.Rides, Feature.Market)) }
         start(dependencies(config))
 
         assertThat(hasSection("Покатушки")).isFalse()
-        assertThat(hasSection("Чаты")).isFalse()
+        assertThat(hasSection("Рынок")).isFalse()
         for (name in listOf("Лента", "Велосипеды", "Профиль")) {
+            assertThat(hasSection(name)).isTrue()
+        }
+    }
+
+    @Test
+    fun `a chat that is off has no button, and no tab was there to lose`() {
+        val config = FakeAppConfig().apply { set(features = featuresOff(Feature.Chat)) }
+        start(dependencies(config))
+
+        compose.onNodeWithContentDescription("Чаты").assertDoesNotExist()
+        for (name in listOf("Лента", "Велосипеды", "Покатушки", "Рынок", "Профиль")) {
             assertThat(hasSection(name)).isTrue()
         }
     }
@@ -88,14 +102,16 @@ class FeaturesFlowTest {
     fun `a change of flags while the app is open leaves the tabs, and hides the entry points`() {
         val config = FakeAppConfig()
         start(dependencies(config))
-        compose.onNodeWithContentDescription("Объявления").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Чаты").assertIsDisplayed()
 
-        config.set(features = featuresOff(Feature.Rides, Feature.Market))
+        config.set(features = featuresOff(Feature.Rides, Feature.Market, Feature.Chat))
         compose.waitForIdle()
 
         // The tab a person may be standing in does not vanish under them; the next start drops it.
         assertThat(hasSection("Покатушки")).isTrue()
-        compose.onNodeWithContentDescription("Объявления").assertDoesNotExist()
+        assertThat(hasSection("Рынок")).isTrue()
+        // The button is an entry point inside the screen, and goes at once.
+        compose.onNodeWithContentDescription("Чаты").assertDoesNotExist()
         compose.onNodeWithContentDescription("Каталог компонентов").assertIsDisplayed()
     }
 
@@ -114,7 +130,7 @@ class FeaturesFlowTest {
     // --- the entry points ----------------------------------------------------------------------
 
     @Test
-    fun `the catalog and the market have their icons only while their functions are on`() {
+    fun `the catalog and the chats have their buttons only while their functions are on`() {
         val config =
             FakeAppConfig().apply {
                 set(features = featuresOff(Feature.ComponentCatalog, Feature.Market))
@@ -122,7 +138,7 @@ class FeaturesFlowTest {
         start(dependencies(config))
 
         compose.onNodeWithContentDescription("Каталог компонентов").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Объявления").assertDoesNotExist()
+        assertThat(hasSection("Рынок")).isFalse()
         // Search and the other tools are not about those functions.
         compose.onNodeWithContentDescription("Поиск").assertIsDisplayed()
     }

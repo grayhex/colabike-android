@@ -137,11 +137,66 @@ class NavigatorTest {
                 TopLevel.Feed,
                 TopLevel.Bikes,
                 TopLevel.Rides,
-                TopLevel.Messages,
+                TopLevel.Market,
                 TopLevel.Profile,
             )
             .inOrder()
         assertThat(TopLevel.shown).contains(TopLevel.start)
+    }
+
+    @Test
+    fun `the chats open over the screen the person is on, and Back returns to it`() {
+        navigator.openBike("b1")
+
+        navigator.open(Destination.Messages)
+
+        assertThat(state.topLevelRoute).isEqualTo(bikes)
+        assertThat(state.currentStack)
+            .containsExactly(bikes, Destination.Bike("b1"), Destination.Messages)
+            .inOrder()
+        navigator.back()
+        assertThat(state.currentStack).containsExactly(bikes, Destination.Bike("b1")).inOrder()
+    }
+
+    @Test
+    fun `a link to a conversation opens where the person is, with the list of conversations beneath`() {
+        navigator.select(profile)
+
+        navigator.go(Destination.Conversation("messaging:a-b"))
+
+        assertThat(state.topLevelRoute).isEqualTo(profile)
+        assertThat(state.currentStack)
+            .containsExactly(
+                profile,
+                Destination.Messages,
+                Destination.Conversation("messaging:a-b"),
+            )
+            .inOrder()
+        // Once the list is there it is not opened again for the next conversation.
+        navigator.go(Destination.Conversation("messaging:c-d"))
+        assertThat(state.currentStack.count { it == Destination.Messages }).isEqualTo(1)
+    }
+
+    @Test
+    fun `a link to a listing goes to the market section`() {
+        val market = Destination.Market()
+        val withMarket =
+            NavigationState(
+                startRoute = bikes,
+                topLevelRoute = mutableStateOf<NavKey>(bikes),
+                backStacks =
+                    mapOf(
+                        bikes to mutableListOf<NavKey>(bikes),
+                        market to mutableListOf<NavKey>(market),
+                    ),
+            )
+
+        Navigator(withMarket).go(Destination.Listing("l1"))
+
+        assertThat(withMarket.topLevelRoute).isEqualTo(market)
+        assertThat(withMarket.currentStack)
+            .containsExactly(market, Destination.Listing("l1"))
+            .inOrder()
     }
 
     @Test

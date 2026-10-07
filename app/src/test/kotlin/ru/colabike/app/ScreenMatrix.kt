@@ -146,7 +146,9 @@ enum class Screen(val file: String) {
     Comments("comments"),
     CommentsGuest("comments_guest"),
 
-    /** The Rides section as it opens (plans ahead), a plan's page, and a completed ride's page. */
+    /**
+     * The Rides section as it opens (what took place), a plan's page, and a completed ride's page.
+     */
     Rides("rides"),
     RidePlan("ride_plan"),
     RideCompleted("ride_completed"),
@@ -837,6 +839,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.Rides -> section("Покатушки").performClick()
         Screen.RidePlan -> {
             section("Покатушки").performClick()
+            choose("rides:segment", "Ближайшие")
             onNodeWithContentDescription("Воскресный выезд за город", substring = true)
                 .performClick()
         }
@@ -981,14 +984,14 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                 settle()
             }
         }
-        Screen.Market -> onNodeWithContentDescription("Объявления").performClick()
+        Screen.Market -> section("Рынок").performClick()
         Screen.MarketFilters -> {
-            onNodeWithContentDescription("Объявления").performClick()
+            section("Рынок").performClick()
             onNodeWithTag("market:filters").performClick()
         }
         Screen.Listing,
         Screen.ListingContact -> {
-            onNodeWithContentDescription("Объявления").performClick()
+            section("Рынок").performClick()
             onNodeWithTag("listing:l1").performClick()
             if (screen == Screen.ListingContact) {
                 reveal(onNodeWithTag("listing:contact_show")).performClick()
@@ -999,15 +1002,15 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             reveal(onNodeWithText("Объявления")).performClick()
         }
         Screen.Messages,
-        Screen.MessagesGuest -> section("Чаты").performClick()
+        Screen.MessagesGuest -> openChats()
         Screen.Conversation -> {
-            section("Чаты").performClick()
+            openChats()
             // Not a touch: on a wide window the row stays in the picture, and a pressed or
             // focused row is drawn at a moment of the platform's own clock.
             onNodeWithTag("chat:open:dm-1").performSemanticsAction(SemanticsActions.OnClick)
         }
         Screen.NewConversation -> {
-            section("Чаты").performClick()
+            openChats()
             onNodeWithContentDescription("Новое сообщение").performClick()
         }
         Screen.JournalList -> openJournal()

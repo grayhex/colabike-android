@@ -40,9 +40,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.app.AppDependencies
 import ru.colabike.app.R
 import ru.colabike.app.links.LocalLinkOpener
-import ru.colabike.app.notifications.NotificationsBell
 import ru.colabike.app.settings.MapProvider
 import ru.colabike.app.settings.ThemeMode
+import ru.colabike.app.ui.HeaderActions
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.Avatar
@@ -138,7 +138,7 @@ fun ProfileScreen(
         topBar = {
             ColaTopBar(
                 title = stringResource(R.string.profile_title),
-                actions = { NotificationsBell() },
+                actions = { HeaderActions() },
             )
         },
     ) { padding ->
