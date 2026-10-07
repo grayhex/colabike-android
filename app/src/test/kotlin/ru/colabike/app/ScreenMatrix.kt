@@ -28,6 +28,8 @@ import coil3.compose.LocalAsyncImagePreviewHandler
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
+import ru.colabike.app.about.BuildInfo
+import ru.colabike.app.about.LocalBuildInfo
 import ru.colabike.app.bikes.BikePhotosScreen
 import ru.colabike.app.bikes.BikePhotosUiState
 import ru.colabike.app.bikes.PendingPhoto
@@ -323,6 +325,9 @@ private fun announcing(
         versionCode = 10,
     )
 
+private val ReferenceBuild =
+    BuildInfo(versionName = "1.2.3", versionCode = 4, contractVersion = "1.0.0 (abcd1234)")
+
 @OptIn(ExperimentalCoilApi::class)
 private val photos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
 
@@ -352,6 +357,8 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             LocalAsyncImagePreviewHandler provides photos,
             LocalRippleConfiguration provides null,
             LocalDensity provides Density(LocalDensity.current.density, look.fontScale),
+            // Not the build's own numbers: raising the version must not change a reference picture.
+            LocalBuildInfo provides ReferenceBuild,
         ) {
             ColaBikeTheme(darkTheme = look.dark) {
                 when (screen) {

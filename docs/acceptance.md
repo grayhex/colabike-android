@@ -70,7 +70,7 @@
 - **Манифест release.** Разрешения: `INTERNET`, `ACCESS_NETWORK_STATE`, `WAKE_LOCK` (WorkManager), `POST_NOTIFICATIONS` (запрашивается после объяснения, [ADR 0016](adr/0016-notification-settings.md)) и `ACCESS_COARSE_LOCATION` (приблизительное место один раз, по жесту человека, для района «рядом», [ADR 0018](adr/0018-nearby-rides.md)). Экспортируются `MainActivity`, `ColaPushService` (сюда доставляет RuStore) и один приёмник SDK RuStore; микрофона, камеры, точного и фонового местоположения, автозапуска, foreground-службы и экспортируемого `PreviewActivity` нет ([ADR 0017](adr/0017-push-registration-and-rustore.md), `ManifestPermissionsTest`, `PushSdkTest`).
 - **Размер.** Release 53 МБ без подписи, в основном четыре ABI библиотеки карты. Фильтры ABI — решение владельца ([архитектура](architecture.md)).
 - **16 КБ страницы.** В `arm64-v8a` и `x86_64` все сегменты `LOAD` выровнены на 16 КБ и `zipalign -P 16` проходит; на каждом PR это проверяет job `release` (`scripts/check-native-alignment.sh`), он же сохраняет `mapping.txt`. В 32-битных `armeabi-v7a` и `x86` `libmaplibre.so` выровнена на 4 КБ: требование 16 КБ к 32-битным ABI не предъявляется.
-- **Версии и установка.** `versionName = 0.1.0` в `app/build.gradle.kts`, `versionCode` по умолчанию 1 (`-Pcolabike.versionCode=N` для раздаваемой сборки). Как поставить и обновить APK, где ключ и отпечаток для App Link, как читать стек по `mapping.txt` — [install.md](install.md).
+- **Версии и установка.** `versionName = 0.2.0` в `app/build.gradle.kts`, `versionCode` по умолчанию 1 (`-Pcolabike.versionCode=N` для раздаваемой сборки). Как поставить и обновить APK, где ключ и отпечаток для App Link, как читать стек по `mapping.txt` — [install.md](install.md).
 
 ## Диагностика без утечек
 
