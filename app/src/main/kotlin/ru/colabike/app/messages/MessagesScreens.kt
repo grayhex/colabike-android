@@ -21,7 +21,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -51,6 +50,7 @@ import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaSearchField
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
@@ -320,26 +320,12 @@ fun NewConversationScreen(
 @Composable
 private fun Field(text: String, onText: (String) -> Unit, onClear: () -> Unit) {
     val focus = LocalFocusManager.current
-    OutlinedTextField(
+    ColaSearchField(
         value = text,
         onValueChange = onText,
-        placeholder = { Text(stringResource(R.string.chat_people_hint)) },
-        leadingIcon = { Icon(painterResource(ColaIcons.Search), contentDescription = null) },
-        trailingIcon = {
-            if (text.isNotEmpty()) {
-                IconButton(onClick = onClear) {
-                    Icon(
-                        painterResource(ColaIcons.Close),
-                        contentDescription = stringResource(R.string.bikes_search_clear),
-                    )
-                }
-            }
-        },
-        singleLine = true,
-        shape = colaFieldShape,
-        colors = colaTextFieldColors(),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+        placeholder = stringResource(R.string.chat_people_hint),
+        clearLabel = stringResource(R.string.bikes_search_clear),
+        onClear = onClear,
         modifier =
             Modifier.fillMaxWidth()
                 .padding(horizontal = Spacing.screen)

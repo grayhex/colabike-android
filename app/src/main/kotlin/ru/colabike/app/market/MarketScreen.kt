@@ -22,8 +22,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -44,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -60,6 +57,7 @@ import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaSearchField
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
@@ -219,30 +217,16 @@ private fun Scrollable(content: @Composable () -> Unit) {
 @Composable
 private fun SearchField(text: String, onText: (String) -> Unit, onClear: () -> Unit) {
     val focus = LocalFocusManager.current
-    OutlinedTextField(
+    ColaSearchField(
         value = text,
         onValueChange = onText,
-        placeholder = { Text(stringResource(R.string.market_search_hint)) },
-        leadingIcon = { Icon(painterResource(ColaIcons.Search), contentDescription = null) },
-        trailingIcon = {
-            if (text.isNotEmpty()) {
-                IconButton(onClick = onClear) {
-                    Icon(
-                        painterResource(ColaIcons.Close),
-                        contentDescription = stringResource(R.string.bikes_search_clear),
-                    )
-                }
-            }
-        },
-        singleLine = true,
-        shape = colaFieldShape,
-        colors = colaTextFieldColors(),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+        placeholder = stringResource(R.string.market_search_hint),
+        clearLabel = stringResource(R.string.bikes_search_clear),
+        onClear = onClear,
         modifier =
             Modifier.fillMaxWidth()
                 .padding(horizontal = Spacing.screen)
-                .padding(top = Spacing.s, bottom = Spacing.s)
+                .padding(vertical = Spacing.s)
                 .testTag("market:search"),
     )
 }

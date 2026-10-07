@@ -19,13 +19,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,12 +37,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -57,12 +50,11 @@ import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.BikeCard
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaSearchField
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.UserRow
-import ru.colabike.core.designsystem.component.colaFieldShape
-import ru.colabike.core.designsystem.component.colaTextFieldColors
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
@@ -164,33 +156,16 @@ private fun Field(text: String, tab: SearchTab, onText: (String) -> Unit, onClea
     val focus = LocalFocusManager.current
     val requester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { requester.requestFocus() } }
-    OutlinedTextField(
+    ColaSearchField(
         value = text,
         onValueChange = onText,
-        placeholder = {
-            Text(
-                stringResource(
-                    if (tab == SearchTab.Bikes) R.string.search_hint_bikes
-                    else R.string.search_hint_people
-                )
-            )
-        },
-        leadingIcon = { Icon(painterResource(ColaIcons.Search), contentDescription = null) },
-        trailingIcon = {
-            if (text.isNotEmpty()) {
-                IconButton(onClick = onClear) {
-                    Icon(
-                        painterResource(ColaIcons.Close),
-                        contentDescription = stringResource(R.string.bikes_search_clear),
-                    )
-                }
-            }
-        },
-        singleLine = true,
-        shape = colaFieldShape,
-        colors = colaTextFieldColors(),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+        placeholder =
+            stringResource(
+                if (tab == SearchTab.Bikes) R.string.search_hint_bikes
+                else R.string.search_hint_people
+            ),
+        clearLabel = stringResource(R.string.bikes_search_clear),
+        onClear = onClear,
         modifier =
             Modifier.fillMaxWidth()
                 .padding(horizontal = Spacing.screen)
