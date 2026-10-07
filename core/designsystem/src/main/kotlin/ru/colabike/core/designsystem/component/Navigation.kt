@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ru.colabike.core.designsystem.theme.PillShape
 import ru.colabike.core.designsystem.theme.Spacing
 
@@ -64,6 +65,14 @@ private fun CappedFontScale(content: @Composable () -> Unit) {
 private const val NavFontScale = 1.15f
 
 /**
+ * "Велосипеды" is the longest section name, and a fifth of a 360 dp phone is 72 dp: at 11 sp it is
+ * written whole, at the 12 sp of the other small labels it would be cut.
+ */
+@Composable
+private fun NavLabelStyle() =
+    MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp)
+
+/**
  * The bottom bar of a phone: embedded in the bottom edge under a hairline, not floating. Every
  * section shows its label, always. The selected one is lime, with a soft muted plate under its
  * icon. Each item keeps its label for TalkBack (role tab, selected state). The caller reports a tap
@@ -86,7 +95,7 @@ fun ColaNavigationBar(
         HorizontalDivider(color = scheme.outlineVariant)
         CappedFontScale {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = Spacing.xs).selectableGroup(),
+                Modifier.fillMaxWidth().selectableGroup(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 items.forEachIndexed { index, item ->
@@ -128,7 +137,7 @@ private fun RowScope.BarItem(item: ColaNavItem, selected: Boolean, onClick: () -
         }
         Text(
             item.label,
-            style = MaterialTheme.typography.labelSmall,
+            style = NavLabelStyle(),
             color = label,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
