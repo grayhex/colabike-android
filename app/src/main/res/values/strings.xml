@@ -486,7 +486,7 @@
     <string name="route_map_description">Карта маршрута</string>
     <string name="route_open_map">Открыть карту</string>
     <string name="route_cut_note">Маршрут разорван там, где участок скрыт: линия между частями не проводится.</string>
-    <string name="route_no_basemap">Подложка карты недоступна: показан только маршрут.</string>
+    <string name="route_no_basemap">Подложка карты не подключена: показан только маршрут.</string>
     <string name="map_attribution">OpenFreeMap © OpenMapTiles · данные © OpenStreetMap</string>
     <string name="map_attribution_action">Условия использования данных OpenStreetMap</string>
     <string name="map_basemap_failed">Подложка не загрузилась: показан только маршрут.</string>
