@@ -37,7 +37,7 @@ Composable ──события──▶ ViewModel ──suspend──▶ Reposi
 
 ## Навигация
 
-- Navigation 3. Ключи — `@Serializable` объекты `Destination` (`Feed`, `Bikes`, `Bike(id)`, `Rides`, `Messages`, `Profile`), поэтому back stack переживает смерть процесса. В ключ кладётся только id: экран сам загружает то, что показывает, а токены и DTO в ключи не попадают.
+- Navigation 3. Ключи — `@Serializable` объекты `Destination` (`Feed`, `Bikes`, `Bike(id)`, `Rides`, `Market`, `Profile`; `Messages` — экран поверх текущего раздела), поэтому back stack переживает смерть процесса. В ключ кладётся только id: экран сам загружает то, что показывает, а токены и DTO в ключи не попадают.
 - Корень (`ColaBikeApp`) смотрит на `AuthState` и на выбор «смотреть без входа» (`AppSettings.browsingAsGuest`):
   - `Restoring` — пустой фон;
   - `SignedOut`, гость не выбран — вход с кнопкой «Смотреть без входа»;

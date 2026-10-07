@@ -146,11 +146,11 @@ class Navigator(
     /**
      * Goes where a link points: the section that owns the destination, then the destination on its
      * stack (a bike replaces the bike already shown). Back from it works as for any opened screen.
-     * The objects of a ride belong to the Rides section, a conversation to Messages; every other
-     * object (a bike, a person, a journal entry, a listing, a catalog model) opens over Bikes; a
-     * discussion opens in the section of its object, the devices in Profile, the inbox where the
-     * person is. A destination with no place in the shell, or whose function the server has
-     * switched off, goes nowhere.
+     * The objects of a ride belong to the Rides section, a listing to the Market, a conversation
+     * opens where the person is; every other object (a bike, a person, a journal entry, a catalog
+     * model) opens over Bikes; a discussion opens in the section of its object, the devices in
+     * Profile, the inbox where the person is. A destination with no place in the shell, or whose
+     * function the server has switched off, goes nowhere.
      */
     fun go(destination: Destination) {
         val section =
@@ -161,7 +161,11 @@ class Navigator(
                 is Destination.IntentEditor,
                 is Destination.Participation,
                 is Destination.BikeRides -> TopLevel.Rides.root
-                is Destination.Conversation -> TopLevel.Messages.root
+                // The chats are not a section: a conversation opens over the screen the person is
+                // on, with the list of conversations beneath it.
+                is Destination.Conversation,
+                Destination.Messages,
+                Destination.NewConversation -> state.topLevelRoute
                 is Destination.Bike,
                 is Destination.BikeEditor,
                 is Destination.BikeParts,
@@ -171,8 +175,10 @@ class Navigator(
                 is Destination.JournalPhotos,
                 is Destination.Person,
                 is Destination.Journal,
-                is Destination.Listing,
                 is Destination.Component -> TopLevel.Bikes.root
+                // A listing belongs to the market, wherever the link came from.
+                is Destination.Market,
+                is Destination.Listing -> TopLevel.Market.root
                 // A discussion belongs to the section of its object.
                 is Destination.Comments ->
                     if (destination.kind == "ride") TopLevel.Rides.root else TopLevel.Bikes.root
@@ -192,6 +198,13 @@ class Navigator(
         val owner = if (section in state.backStacks) section else TopLevel.Bikes.root
         if (owner !in state.backStacks) return
         state.topLevelRoute = owner
+        // A conversation is reached through the list of conversations: Back goes there first.
+        if (
+            destination is Destination.Conversation &&
+                state.currentStack.none { it is Destination.Messages }
+        ) {
+            open(Destination.Messages)
+        }
         if (destination is Destination.Bike) openBike(destination.id) else open(destination)
     }
 

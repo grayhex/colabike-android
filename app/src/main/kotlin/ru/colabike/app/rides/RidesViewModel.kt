@@ -57,15 +57,21 @@ sealed interface RideRow {
 
 /** The lists of the Rides section. Each is its own server list: they are never mixed. */
 enum class RideSegment(val personal: Boolean) {
-    Upcoming(false),
+    /** What took place: the section opens on it. */
     Completed(false),
+    Upcoming(false),
     MyPlans(true),
-    Mine(true),
+    Mine(true);
+
+    companion object {
+        /** Where the section opens when nothing else is asked for. */
+        val Default = Completed
+    }
 }
 
 @Immutable
 data class RidesUiState(
-    val segment: RideSegment = RideSegment.Upcoming,
+    val segment: RideSegment = RideSegment.Default,
     /** What is typed in the search box: ahead of [query] by the debounce. */
     val typed: String = "",
     /** The text the list was asked for; public lists only. */
@@ -84,7 +90,7 @@ class RidesViewModel(
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
     participationChanges: Flow<String> = emptyFlow(),
 ) : ViewModel() {
-    private val segment = MutableStateFlow(RideSegment.Upcoming)
+    private val segment = MutableStateFlow(RideSegment.Default)
     private val typed = MutableStateFlow("")
     private val query = MutableStateFlow("")
     private var typing: Job? = null

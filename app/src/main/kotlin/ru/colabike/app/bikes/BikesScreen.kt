@@ -3,20 +3,18 @@ package ru.colabike.app.bikes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -52,12 +50,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
-import ru.colabike.app.notifications.NotificationsBell
+import ru.colabike.app.ui.HeaderActions
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.BikeCard
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
-import ru.colabike.core.designsystem.component.ColaFilterChip
+import ru.colabike.core.designsystem.component.ColaDropdownChip
+import ru.colabike.core.designsystem.component.ColaDropdownItem
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaSearchField
 import ru.colabike.core.designsystem.component.ColaTopBar
@@ -77,7 +76,6 @@ fun BikesRoute(
     onOpen: (BikeId) -> Unit,
     onSearch: () -> Unit = {},
     onOpenCatalog: (() -> Unit)? = null,
-    onOpenMarket: (() -> Unit)? = null,
     onCreate: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
@@ -92,6 +90,7 @@ fun BikesRoute(
         onScope = viewModel::selectScope,
         onSearchText = viewModel::onSearchText,
         onToggleCategory = viewModel::toggleCategory,
+        onClearCategories = viewModel::clearCategories,
         onClearFilters = viewModel::clearFilters,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
@@ -99,7 +98,6 @@ fun BikesRoute(
         onOpen = onOpen,
         onOpenSearch = onSearch,
         onOpenCatalog = onOpenCatalog,
-        onOpenMarket = onOpenMarket,
         // A new bike is the signed-in person's own: a guest has no garage to add it to.
         onCreate = if (authState is AuthState.SignedIn) onCreate else null,
         scrollToTop = scrollToTop,
@@ -110,7 +108,7 @@ fun BikesRoute(
  * Bikes as photo-first cards; as many columns as the pane width holds at 280 dp each. A tap on the
  * already selected Bikes tab arrives as [scrollToTop].
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BikesScreen(
     state: BikesUiState,
@@ -118,6 +116,7 @@ fun BikesScreen(
     onScope: (BikeScope) -> Unit,
     onSearchText: (String) -> Unit = {},
     onToggleCategory: (String) -> Unit = {},
+    onClearCategories: () -> Unit = {},
     onClearFilters: () -> Unit = {},
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
@@ -125,7 +124,6 @@ fun BikesScreen(
     onOpen: (BikeId) -> Unit,
     onOpenSearch: (() -> Unit)? = null,
     onOpenCatalog: (() -> Unit)? = null,
-    onOpenMarket: (() -> Unit)? = null,
     onCreate: (() -> Unit)? = null,
     scrollToTop: Flow<Unit> = emptyFlow(),
 ) {
@@ -134,8 +132,7 @@ fun BikesScreen(
         topBar = {
             ColaTopBar(
                 title = stringResource(R.string.bikes_title),
-                eyebrow = stringResource(R.string.app_name),
-                // At a large system font the three buttons would take the title's room.
+                // At a large system font the buttons would take the title's room.
                 actionsBelow = LocalDensity.current.fontScale >= LargeFont,
                 actions = {
                     // The catalog of component models, apart from the bikes that carry them.
@@ -147,16 +144,7 @@ fun BikesScreen(
                             )
                         }
                     }
-                    // The market: listings of bikes, components and accessories.
-                    if (onOpenMarket != null) {
-                        IconButton(onClick = onOpenMarket) {
-                            Icon(
-                                painterResource(ColaIcons.Tag),
-                                contentDescription = stringResource(R.string.market_open),
-                            )
-                        }
-                    }
-                    NotificationsBell()
+                    HeaderActions()
                 },
             )
         },
@@ -173,60 +161,14 @@ fun BikesScreen(
                 onFilters = onOpenSearch,
                 modifier = Modifier.padding(horizontal = Spacing.screen),
             )
-            if (showScopes || onCreate != null) {
-                FlowRow(
-                    Modifier.padding(horizontal = Spacing.screen),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                    itemVerticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (showScopes) {
-                        ColaFilterChip(
-                            selected = state.scope == BikeScope.Public,
-                            onClick = { onScope(BikeScope.Public) },
-                            label = stringResource(R.string.bikes_scope_public),
-                        )
-                        ColaFilterChip(
-                            selected = state.scope == BikeScope.Mine,
-                            onClick = { onScope(BikeScope.Mine) },
-                            label = stringResource(R.string.bikes_scope_mine),
-                        )
-                    }
-                    // A new bike of one's own: an action, in the accent colour, not a filter.
-                    if (onCreate != null) {
-                        // TalkBack says the whole thing; the screen has room for one word.
-                        val addLabel = stringResource(R.string.bike_add)
-                        TextButton(
-                            onClick = onCreate,
-                            modifier =
-                                Modifier.testTag("bikes:add").semantics {
-                                    contentDescription = addLabel
-                                },
-                        ) {
-                            Icon(
-                                painterResource(ColaIcons.Add),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                stringResource(R.string.bike_add_short),
-                                modifier = Modifier.padding(start = Spacing.xs),
-                            )
-                        }
-                    }
-                }
-            }
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = Spacing.screen),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                items(BikeLabels.categories, key = { it.first }) { (key, label) ->
-                    ColaFilterChip(
-                        selected = key in state.query.categories,
-                        onClick = { onToggleCategory(key) },
-                        label = label,
-                    )
-                }
-            }
+            FilterRow(
+                state = state,
+                showScopes = showScopes,
+                onScope = onScope,
+                onToggleCategory = onToggleCategory,
+                onClearCategories = onClearCategories,
+                onCreate = onCreate,
+            )
             when {
                 state.loading -> LoadingGrid()
                 state.error != null ->
@@ -263,6 +205,98 @@ fun BikesScreen(
                     PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = onRefresh) {
                         BikeGrid(state, onOpen, onLoadMore, onRefresh, scrollToTop)
                     }
+            }
+        }
+    }
+}
+
+/**
+ * The line under the search, one line on a phone: who the bikes are (everyone's or the person's
+ * own), which categories, and "Add". The first two are lists that open on a tap and show what is
+ * chosen; the categories may be several, and "All categories" clears them. "Add" is an action in
+ * the accent colour, not a filter.
+ */
+@Composable
+private fun FilterRow(
+    state: BikesUiState,
+    showScopes: Boolean,
+    onScope: (BikeScope) -> Unit,
+    onToggleCategory: (String) -> Unit,
+    onClearCategories: () -> Unit,
+    onCreate: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.screen),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (showScopes) {
+            val everyone = stringResource(R.string.bikes_scope_public)
+            val mine = stringResource(R.string.bikes_scope_mine)
+            val current = if (state.scope == BikeScope.Mine) mine else everyone
+            ColaDropdownChip(
+                label = current,
+                active = state.scope == BikeScope.Mine,
+                description = stringResource(R.string.bikes_scope_filter, current),
+                modifier = Modifier.testTag("bikes:scope"),
+            ) { close ->
+                ColaDropdownItem(everyone, state.scope == BikeScope.Public) {
+                    onScope(BikeScope.Public)
+                    close()
+                }
+                ColaDropdownItem(mine, state.scope == BikeScope.Mine) {
+                    onScope(BikeScope.Mine)
+                    close()
+                }
+            }
+        }
+        val chosen = BikeLabels.categories.filter { it.first in state.query.categories }
+        val all = stringResource(R.string.bikes_category_all)
+        val label =
+            when (chosen.size) {
+                0 -> all
+                1 -> chosen.first().second
+                else ->
+                    stringResource(
+                        R.string.bikes_category_more,
+                        chosen.first().second,
+                        chosen.size - 1,
+                    )
+            }
+        ColaDropdownChip(
+            label = label,
+            active = chosen.isNotEmpty(),
+            description = stringResource(R.string.bikes_category_filter, label),
+            modifier = Modifier.weight(1f, fill = false).testTag("bikes:category"),
+        ) { close ->
+            ColaDropdownItem(all, chosen.isEmpty()) {
+                onClearCategories()
+                close()
+            }
+            // Several can be chosen: the list stays open until the person is done.
+            BikeLabels.categories.forEach { (key, name) ->
+                ColaDropdownItem(name, key in state.query.categories) { onToggleCategory(key) }
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        // A new bike of one's own: an action, in the accent colour, not a filter.
+        if (onCreate != null) {
+            // TalkBack says the whole thing; the screen has room for one word.
+            val addLabel = stringResource(R.string.bike_add)
+            TextButton(
+                onClick = onCreate,
+                modifier =
+                    Modifier.testTag("bikes:add").semantics { contentDescription = addLabel },
+            ) {
+                Icon(
+                    painterResource(ColaIcons.Add),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    stringResource(R.string.bike_add_short),
+                    modifier = Modifier.padding(start = Spacing.xs),
+                )
             }
         }
     }

@@ -80,8 +80,10 @@ import ru.colabike.app.market.ListingActions
 import ru.colabike.app.market.ListingRoute
 import ru.colabike.app.market.MarketRoute
 import ru.colabike.app.market.SavedMarketRoute
+import ru.colabike.app.messages.ChatsEntry
 import ru.colabike.app.messages.ConversationRoute
 import ru.colabike.app.messages.ConversationsRoute
+import ru.colabike.app.messages.LocalChatsEntry
 import ru.colabike.app.messages.NewConversationRoute
 import ru.colabike.app.navigation.Destination
 import ru.colabike.app.navigation.Navigator
@@ -249,7 +251,18 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
             } else null
         }
 
-    CompositionLocalProvider(LocalNotificationsEntry provides bell) {
+    // The chats: over the screen the person is on, not a section of the bar. A guest has the
+    // invitation to sign in behind the button, as the section had.
+    val chatOn = features.isEnabled(Feature.Chat)
+    val chats =
+        remember(chatOn, navigator) {
+            if (chatOn) ChatsEntry { navigator.open(Destination.Messages) } else null
+        }
+
+    CompositionLocalProvider(
+        LocalNotificationsEntry provides bell,
+        LocalChatsEntry provides chats,
+    ) {
         ColaCanvas(modifier.fillMaxSize()) {
             NavigationSuiteScaffoldLayout(
                 layoutType =
@@ -616,10 +629,6 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                     ) {
                                                         { navigator.open(Destination.Components) }
                                                     } else null,
-                                                onOpenMarket =
-                                                    if (features.isEnabled(Feature.Market)) {
-                                                        { navigator.open(Destination.Market()) }
-                                                    } else null,
                                                 scrollToTop =
                                                     remember(navigator) {
                                                         navigator.reselects(Destination.Bikes)
@@ -639,7 +648,12 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             MarketRoute(
                                                 repository = dependencies.market,
                                                 seller = key.seller,
-                                                onBack = { navigator.back() },
+                                                // The market is a section: at its root there is
+                                                // nothing to go back from. A seller's listings are
+                                                // opened over it.
+                                                onBack =
+                                                    if (key.seller == null) null
+                                                    else ({ navigator.back() }),
                                                 onOpen = { id ->
                                                     navigator.open(Destination.Listing(id.value))
                                                 },

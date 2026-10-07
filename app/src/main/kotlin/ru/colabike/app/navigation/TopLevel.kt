@@ -8,7 +8,7 @@ import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeatureAvailability
 
 /**
- * The target top-level sections of the app: Feed, Bikes, Rides, Messages, Profile. A section is
+ * The target top-level sections of the app: Feed, Bikes, Rides, Market, Profile. A section is
  * [available] only when the slice that implements it exists: a release never shows a tab that leads
  * to an empty stub. Turn a flag on in the same change that adds the screen (the slice named next to
  * it), and its tab, its back stack and its reselect behaviour appear with no other edit.
@@ -39,14 +39,17 @@ enum class TopLevel(
         Feature.Rides,
     ),
 
-    /** Personal chat (the provider's SDK in the app's look): slice 8. */
-    Messages(
-        Destination.Messages,
-        R.string.nav_messages,
-        ColaIcons.Chat,
-        ColaIcons.ChatFilled,
+    /**
+     * The market: listings of bikes, components and accessories (slice 9b). It took the place of
+     * the chats in the bar; the chats are the button beside the bell ([Destination.Messages]).
+     */
+    Market(
+        Destination.Market(),
+        R.string.nav_market,
+        ColaIcons.Tag,
+        ColaIcons.Tag,
         true,
-        Feature.Chat,
+        Feature.Market,
     ),
     Profile(
         Destination.Profile,

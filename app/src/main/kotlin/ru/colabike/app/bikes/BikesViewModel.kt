@@ -110,6 +110,9 @@ class BikesViewModel(
         )
     }
 
+    /** "All categories": the categories go, the text and the scope stay. */
+    fun clearCategories() = apply(state.value.query.copy(categories = emptySet()))
+
     /** Every key stroke: the field follows at once, the request waits for a pause. */
     fun onSearchText(text: String) {
         mutableState.update { it.copy(typed = text) }
