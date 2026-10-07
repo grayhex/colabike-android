@@ -178,7 +178,7 @@ DTO generated-клиента не должны попадать прямо в UI
 - [**AGENTS.md**](AGENTS.md) — обязательные правила для coding agents, команды и Definition of Done.
 - [**Architecture**](docs/architecture.md) — модули, navigation, auth/session lifecycle и environments.
 - [**DESIGN.md**](DESIGN.md) — тема, компоненты, adaptive rules, состояния и accessibility.
-- [**Twilight Stillness**](docs/design/twilight-stillness.md) — текущее визуальное направление.
+- [**Графит и лайм**](docs/design/graphite-lime.md) — текущее визуальное направление ([ADR 0023](docs/adr/0023-graphite-lime-redesign.md)); [Twilight Stillness](docs/design/twilight-stillness.md) — прежнее, историческое.
 - [**Screen ↔ API mapping**](docs/screen-api-mapping.md) — связь экранов и операций API.
 - [**ADR 0001**](docs/adr/0001-platform-baseline.md) — platform baseline.
 - [**ADR 0002**](docs/adr/0002-visual-direction-and-shell.md) — visual direction и shell.

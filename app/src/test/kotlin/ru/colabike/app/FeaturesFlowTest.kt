@@ -66,7 +66,7 @@ class FeaturesFlowTest {
     fun `all the tabs are there when the server switches nothing off`() {
         start(dependencies())
 
-        for (name in listOf("Лента", "Велосипеды", "Покатушки", "Сообщения", "Профиль")) {
+        for (name in listOf("Лента", "Велосипеды", "Покатушки", "Чаты", "Профиль")) {
             assertThat(hasSection(name)).isTrue()
         }
     }
@@ -78,7 +78,7 @@ class FeaturesFlowTest {
         start(dependencies(config))
 
         assertThat(hasSection("Покатушки")).isFalse()
-        assertThat(hasSection("Сообщения")).isFalse()
+        assertThat(hasSection("Чаты")).isFalse()
         for (name in listOf("Лента", "Велосипеды", "Профиль")) {
             assertThat(hasSection(name)).isTrue()
         }

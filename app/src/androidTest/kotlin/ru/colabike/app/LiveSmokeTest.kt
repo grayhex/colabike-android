@@ -143,7 +143,7 @@ class LiveSmokeTest {
 
         // /auth/sessions: this device is in the list, marked as this one.
         compose.onNodeWithText("Устройства и входы").performScrollTo().performClick()
-        waitFor { hasText("ЭТО УСТРОЙСТВО") }
+        waitFor { hasText("Это устройство") }
         compose.onNodeWithContentDescription("Назад").performClick()
 
         waitFor { hasText("Выйти") }

@@ -42,21 +42,19 @@ class NavigationSemanticsTest {
             ColaNavItem("Лента", ColaIcons.Feed, ColaIcons.FeedFilled),
             ColaNavItem("Велосипеды", ColaIcons.Bike, ColaIcons.BikeFilled),
             ColaNavItem("Покатушки", ColaIcons.Route, ColaIcons.Route),
-            ColaNavItem("Сообщения", ColaIcons.Chat, ColaIcons.ChatFilled),
+            ColaNavItem("Чаты", ColaIcons.Chat, ColaIcons.ChatFilled),
             ColaNavItem("Профиль", ColaIcons.Person, ColaIcons.PersonFilled),
         )
 
     private val isTab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
 
     @Test
-    fun `with five sections only the selected one shows its label, and every one keeps a name`() {
+    fun `with five sections every one shows its label, always`() {
         compose.setContent {
             ColaBikeTheme { ColaNavigationBar(five, selectedIndex = 1, onSelect = {}) }
         }
 
-        compose.onNodeWithText("Велосипеды").assertIsDisplayed()
-        compose.onNodeWithText("Сообщения").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Сообщения").assertIsDisplayed()
+        five.forEach { compose.onNodeWithText(it.label).assertIsDisplayed() }
     }
 
     @Test
@@ -75,7 +73,7 @@ class NavigationSemanticsTest {
         }
 
         compose.onNodeWithText("Велосипеды").assert(isTab).assertIsSelected()
-        compose.onNodeWithContentDescription("Профиль").assert(isTab).assertIsNotSelected()
+        compose.onNodeWithText("Профиль").assert(isTab).assertIsNotSelected()
     }
 
     @Test
@@ -84,14 +82,7 @@ class NavigationSemanticsTest {
             ColaBikeTheme { ColaNavigationBar(five, selectedIndex = 1, onSelect = {}) }
         }
 
-        listOf(
-                compose.onNodeWithText("Велосипеды"),
-                compose.onNodeWithContentDescription("Лента"),
-                compose.onNodeWithContentDescription("Покатушки"),
-                compose.onNodeWithContentDescription("Сообщения"),
-                compose.onNodeWithContentDescription("Профиль"),
-            )
-            .forEach { it.assertLaidOutAtLeast(48.dp) }
+        five.forEach { compose.onNodeWithText(it.label).assertLaidOutAtLeast(48.dp) }
     }
 
     @Test
@@ -112,7 +103,7 @@ class NavigationSemanticsTest {
         }
 
         compose.onNodeWithText("Велосипеды").performClick()
-        compose.onNodeWithContentDescription("Профиль").performClick()
+        compose.onNodeWithText("Профиль").performClick()
 
         assertThat(taps).containsExactly(1, 4).inOrder()
         compose.onNodeWithText("Профиль").assertIsSelected()

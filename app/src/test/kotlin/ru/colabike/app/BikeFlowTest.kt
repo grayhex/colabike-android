@@ -169,8 +169,7 @@ class BikeFlowTest {
         start(dependencies())
         open("Городской Cube")
 
-        // The badges are set in capitals like every caption of the reference.
-        compose.onNodeWithText("ГОРОД / ТУРИЗМ · TOURING").assertIsDisplayed()
+        compose.onNodeWithText("Город / туризм · Touring").assertIsDisplayed()
 
         compose.onNodeWithText("ЦЕНА").performScrollTo().assertIsDisplayed()
         compose

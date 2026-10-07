@@ -76,10 +76,10 @@ wait_for "Вход в ColaBike" 90
 
 echo "2. guest mode opens the shell"
 tap "Смотреть без входа"
-wait_for "Сообщения" 60
+wait_for "Чаты" 60
 
 echo "3. the Messages section for a guest explains and asks to sign in"
-tap "Сообщения"
+tap "Чаты"
 wait_for "Сообщения — для участников" 30
 
 echo "4. after the system kills the process the person returns to the same section"

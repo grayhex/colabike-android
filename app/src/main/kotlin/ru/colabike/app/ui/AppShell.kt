@@ -33,14 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -221,12 +214,16 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
         )
     val bottomBar =
         !windowSize.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-    // The box to write in sits at the bottom edge, where the floating bar would cover it: while a
-    // discussion is open on a phone the bar steps aside (the rail on wider windows is at the side).
+    // The bar steps aside on a phone where the bottom edge belongs to something else: the box to
+    // write in of a discussion, the main action of the "I want to ride" form, and the page of a
+    // bike, which the approved design shows whole (the rail on wider windows is at the side).
     val barHidden =
         bottomBar &&
             state.currentStack.lastOrNull().let {
-                it is Destination.Comments || it is Destination.Conversation
+                it is Destination.Comments ||
+                    it is Destination.Conversation ||
+                    it is Destination.Bike ||
+                    it is Destination.IntentEditor
             }
 
     val items = sections.map { ColaNavItem(stringResource(it.label), it.icon, it.selectedIcon) }
@@ -327,10 +324,6 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                             )
                                         )
                                 }
-                            )
-                            .then(
-                                if (bottomBar && !barHidden) Modifier.fadeBottomEdge(FadeHeight)
-                                else Modifier
                             )
                     ) {
                         NavDisplay(
@@ -1119,23 +1112,6 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
 }
 
 private val BrandMarkRail = 40.dp
-
-/** How far above the floating bar the page dissolves. */
-private val FadeHeight = 24.dp
-
-/** Erases the last [height] of the content softly, so a list does not end in a straight cut. */
-private fun Modifier.fadeBottomEdge(height: Dp): Modifier =
-    graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
-        drawContent()
-        drawRect(
-            Brush.verticalGradient(
-                listOf(Color.Black, Color.Transparent),
-                startY = size.height - height.toPx(),
-                endY = size.height,
-            ),
-            blendMode = BlendMode.DstIn,
-        )
-    }
 
 @Composable
 private fun DetailPlaceholder(

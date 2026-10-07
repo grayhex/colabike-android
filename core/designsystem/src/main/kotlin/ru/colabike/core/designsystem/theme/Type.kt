@@ -6,57 +6,30 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import ru.colabike.core.designsystem.R
 
-// Two voices, both with Cyrillic and both bundled: no font provider, which devices without Google
-// services would not have. The reference pairs Lora with Outfit; Outfit has no Cyrillic glyphs
-// (checked: 0 of 64 letters), so the sans voice is Source Sans 3 in Light, the reference's
-// dominant body weight. One variable file per family, one entry per weight.
-private fun lora(weight: FontWeight) =
-    Font(
-        resId = R.font.lora,
-        weight = weight,
-        variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
-    )
-
-private fun sourceSans(weight: FontWeight) =
-    Font(
-        resId = R.font.source_sans_3,
-        weight = weight,
-        variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
-    )
-
-/** Headings and numerals. Regular only (the file spans 400-700): the reference forbids bold. */
-val Lora = FontFamily(lora(FontWeight.Normal))
-
-/** Body, labels, metadata. Light for reading, Regular for small text and controls. */
-val SourceSans3 =
+// One voice: Inter, with Cyrillic, bundled in four weights (a subset of Latin and Cyrillic, about
+// 57 KB each): no font provider, which devices without Google services would not have. Headings,
+// numerals, labels and body form one system; the weight, not another family, carries the rank.
+/** Regular for reading, Medium for labels and controls, Semibold and Bold for headings. */
+val Inter =
     FontFamily(
-        sourceSans(FontWeight.Light),
-        sourceSans(FontWeight.Normal),
-        sourceSans(FontWeight.Medium),
+        Font(R.font.inter_regular, FontWeight.Normal),
+        Font(R.font.inter_medium, FontWeight.Medium),
+        Font(R.font.inter_semibold, FontWeight.SemiBold),
+        Font(R.font.inter_bold, FontWeight.Bold),
     )
 
-private fun serif(size: Int, line: Int, tracking: Double = 0.0) =
-    TextStyle(
-        fontFamily = Lora,
-        fontWeight = FontWeight.Normal,
-        fontSize = size.sp,
-        lineHeight = line.sp,
-        letterSpacing = tracking.sp,
-    )
-
-private fun sans(
+private fun inter(
     size: Int,
     line: Int,
     weight: FontWeight = FontWeight.Normal,
     tracking: Double = 0.0,
 ) =
     TextStyle(
-        fontFamily = SourceSans3,
+        fontFamily = Inter,
         fontWeight = weight,
         fontSize = size.sp,
         lineHeight = line.sp,
@@ -64,45 +37,46 @@ private fun sans(
     )
 
 /**
- * The Material scale on the reference's type tokens (display-md, headline-lg/md/sm, body, label).
- * Everything in sp: it scales with the system font. Weights stop at Medium (docs/design).
+ * The Material scale on the approved sizes: a page title 28-32 sp bold, a section 18-20 sp
+ * semibold, text 14-16 sp, metadata never under 12 sp. Everything in sp: it scales with the system
+ * font.
  */
 internal val ColaTypography =
     Typography(
-        displayLarge = serif(36, 44),
-        displayMedium = serif(30, 36),
-        displaySmall = serif(26, 32),
-        headlineLarge = serif(24, 30, 0.24),
-        headlineMedium = serif(20, 26, 0.2),
-        headlineSmall = serif(18, 24, 0.18),
-        titleLarge = serif(20, 26, 0.2),
-        titleMedium = sans(16, 22),
-        titleSmall = sans(14, 20),
-        bodyLarge = sans(16, 24, FontWeight.Light, 0.16),
-        bodyMedium = sans(14, 22, FontWeight.Light, 0.14),
-        bodySmall = sans(13, 20, FontWeight.Normal, 0.13),
-        labelLarge = sans(14, 20, FontWeight.Normal, 0.28),
-        labelMedium = sans(13, 18, FontWeight.Normal, 0.26),
-        labelSmall = sans(12, 16, FontWeight.Medium, 0.24),
+        displayLarge = inter(34, 40, FontWeight.Bold),
+        displayMedium = inter(30, 36, FontWeight.Bold),
+        displaySmall = inter(28, 34, FontWeight.Bold),
+        headlineLarge = inter(26, 32, FontWeight.Bold),
+        headlineMedium = inter(20, 26, FontWeight.SemiBold),
+        headlineSmall = inter(18, 24, FontWeight.SemiBold),
+        titleLarge = inter(22, 28, FontWeight.SemiBold),
+        titleMedium = inter(16, 22, FontWeight.SemiBold),
+        titleSmall = inter(14, 20, FontWeight.SemiBold),
+        bodyLarge = inter(16, 24),
+        bodyMedium = inter(14, 20),
+        bodySmall = inter(13, 18),
+        labelLarge = inter(14, 20, FontWeight.Medium),
+        labelMedium = inter(13, 18, FontWeight.Medium),
+        labelSmall = inter(12, 16, FontWeight.Medium),
     )
 
 /** Styles the Material scale has no slot for. */
 @Immutable
 data class ColaTextStyles(
     /**
-     * Eyebrows, kickers and badge text: small, wide-tracked, set in capitals by the caller
-     * (`text.uppercase()`). The tracking carries the meaning, so it is part of the style. 11 sp,
-     * not the reference's 10: this is the floor for readable small text.
+     * Section captions ("КОГДА", "СОХРАНЁННОЕ"): small, wide-tracked, set in capitals by the caller
+     * (`text.uppercase()`). The tracking carries the meaning, so it is part of the style. 12 sp is
+     * the floor for readable small text.
      */
     val eyebrow: TextStyle,
-    /** Large numerals on stat tiles, in the serif voice. */
+    /** Large numerals on stat tiles: the figures of a ride. */
     val numeral: TextStyle,
 )
 
 internal val DefaultColaTextStyles =
     ColaTextStyles(
-        eyebrow = sans(11, 16, FontWeight.Normal, 1.8),
-        numeral = serif(30, 34),
+        eyebrow = inter(12, 16, FontWeight.Medium, 1.6),
+        numeral = inter(30, 36, FontWeight.Bold),
     )
 
 val LocalColaTextStyles = staticCompositionLocalOf { DefaultColaTextStyles }

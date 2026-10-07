@@ -104,7 +104,13 @@ fun PillBadge(
                 )
             }
             // Two lines at most: a long badge wraps at big system fonts instead of being cut.
-            Eyebrow(text, maxLines = 2)
+            Text(
+                text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

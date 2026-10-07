@@ -42,31 +42,24 @@ fun LicensesRoute(onBack: () -> Unit) {
     val resources = LocalResources.current
     val title = stringResource(R.string.licenses_apache_title)
     val covers = stringResource(R.string.licenses_apache_covers)
-    val lora = stringResource(R.string.licenses_lora_title)
-    val loraCovers = stringResource(R.string.licenses_lora_covers)
-    val sans = stringResource(R.string.licenses_sans_title)
-    val sansCovers = stringResource(R.string.licenses_sans_covers)
+    val inter = stringResource(R.string.licenses_inter_title)
+    val interCovers = stringResource(R.string.licenses_inter_covers)
     val maplibre = stringResource(R.string.licenses_maplibre_title)
     val maplibreCovers = stringResource(R.string.licenses_maplibre_covers)
     val stream = stringResource(R.string.licenses_stream_title)
     val streamCovers = stringResource(R.string.licenses_stream_covers)
     val streamText = stringResource(R.string.licenses_stream_text)
     val entries by
-        produceState(emptyList<LicenseEntry>(), title, covers, lora, sans, maplibre, stream) {
+        produceState(emptyList<LicenseEntry>(), title, covers, inter, maplibre, stream) {
             value =
                 withContext(Dispatchers.IO) {
                     fun raw(@RawRes id: Int) =
                         resources.openRawResource(id).bufferedReader().use { it.readText() }
                     listOf(
                         LicenseEntry(
-                            lora,
-                            loraCovers,
-                            raw(ru.colabike.core.designsystem.R.raw.license_lora),
-                        ),
-                        LicenseEntry(
-                            sans,
-                            sansCovers,
-                            raw(ru.colabike.core.designsystem.R.raw.license_source_sans_3),
+                            inter,
+                            interCovers,
+                            raw(ru.colabike.core.designsystem.R.raw.license_inter),
                         ),
                         LicenseEntry(
                             title,

@@ -67,7 +67,9 @@ class ProcessDeathTest {
         compose.onNodeWithTag("bikes:grid").assertDoesNotExist()
     }
 
+    /** On a phone the bar steps aside for the page of a bike, so the sections are the rail's. */
     @Test
+    @Config(qualifiers = "ru-w700dp-h900dp-xhdpi")
     fun `a bike left open in one section waits in it while the person is in another`() {
         start()
         compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
@@ -83,7 +85,7 @@ class ProcessDeathTest {
     @Test
     fun `a conversation is still open, and so is the box around it`() {
         start()
-        compose.section("Сообщения").performClick()
+        compose.section("Чаты").performClick()
         compose.onNodeWithTag("chat:open:dm-1").performClick()
         compose.onNodeWithTag("chat:conversation").assertIsDisplayed()
 

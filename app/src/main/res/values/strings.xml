@@ -5,7 +5,7 @@
     <string name="nav_feed">Лента</string>
     <string name="nav_bikes">Велосипеды</string>
     <string name="nav_rides">Покатушки</string>
-    <string name="nav_messages">Сообщения</string>
+    <string name="nav_messages">Чаты</string>
     <string name="nav_profile">Профиль</string>
 
     <string name="login_title">Вход в ColaBike</string>
@@ -171,10 +171,8 @@
     <string name="about_opens_in_browser">Откроется на сайте, в браузере</string>
     <string name="about_licenses">Лицензии</string>
     <string name="about_licenses_hint">Шрифты, иконки и библиотеки с открытым кодом</string>
-    <string name="licenses_lora_title">Lora</string>
-    <string name="licenses_lora_covers">Шрифт заголовков. Лицензия SIL Open Font License 1.1.</string>
-    <string name="licenses_sans_title">Source Sans 3</string>
-    <string name="licenses_sans_covers">Шрифт текста. Лицензия SIL Open Font License 1.1.</string>
+    <string name="licenses_inter_title">Inter</string>
+    <string name="licenses_inter_covers">Шрифт приложения (латиница и кириллица, четыре начертания). Лицензия SIL Open Font License 1.1.</string>
     <string name="licenses_maplibre_title">MapLibre Native</string>
     <string name="licenses_maplibre_covers">Карта маршрута. Лицензия BSD 2-Clause.</string>
     <string name="licenses_stream_title">Stream Chat SDK</string>
