@@ -89,7 +89,7 @@ class ShellNavigationTest {
     fun `controls are at least 48 dp, a bike card is one button, a title is a heading`() {
         section("Велосипеды").assertLaidOutAtLeast(48.dp)
         section("Профиль").assertLaidOutAtLeast(48.dp)
-        compose.onNodeWithText("Мои").assertTouchTargetAtLeast(48.dp)
+        compose.onNodeWithTag("bikes:scope").assertTouchTargetAtLeast(48.dp)
         bike(0).assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         compose
             .onNode(

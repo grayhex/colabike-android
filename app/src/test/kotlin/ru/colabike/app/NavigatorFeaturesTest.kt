@@ -89,15 +89,21 @@ class NavigatorFeaturesTest {
     }
 
     @Test
-    fun `a ride opens in Rides, a conversation in Messages`() {
+    fun `a ride opens in Rides, a conversation over the section where the person is`() {
         navigator.go(Destination.Ride("r1"))
         assertThat(state.topLevelRoute).isEqualTo(rides)
         assertThat(state.currentStack).containsExactly(rides, Destination.Ride("r1")).inOrder()
 
+        // The chats are no section: the conversation opens here, the list of them beneath it.
         navigator.go(Destination.Conversation("messaging:dm-1"))
-        assertThat(state.topLevelRoute).isEqualTo(messages)
+        assertThat(state.topLevelRoute).isEqualTo(rides)
         assertThat(state.currentStack)
-            .containsExactly(messages, Destination.Conversation("messaging:dm-1"))
+            .containsExactly(
+                rides,
+                Destination.Ride("r1"),
+                Destination.Messages,
+                Destination.Conversation("messaging:dm-1"),
+            )
             .inOrder()
         assertThat(unavailable).isEqualTo(0)
     }

@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -163,18 +163,20 @@ fun RidesScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             // Every filter of the section on one line above the search: which list, and the way to
-            // "I want to ride". The lists are a drop-down, not a row of chips.
-            Row(
+            // "I want to ride". The lists are a drop-down, not a row of chips. With a large font
+            // the two go to two lines, whole, rather than one being cut to its first letter.
+            FlowRow(
                 Modifier.fillMaxWidth().padding(horizontal = Spacing.screen),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 val current = stringResource(state.segment.label())
                 ColaDropdownChip(
                     label = current,
                     active = state.segment != RideSegment.Default,
                     description = stringResource(R.string.rides_segment_filter, current),
-                    modifier = Modifier.weight(1f, fill = false).testTag("rides:segment"),
+                    modifier = Modifier.testTag("rides:segment"),
                 ) { close ->
                     RideSegment.entries
                         .filter { personal || !it.personal }

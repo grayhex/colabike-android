@@ -4,9 +4,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
-import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -155,16 +156,36 @@ class BikeFlowTest {
     }
 
     @Test
-    fun `a category chip is sent to the server and tapped again it goes`() {
+    fun `a category chosen in the list is sent to the server and chosen again it goes`() {
         val dependencies = dependencies()
         start(dependencies)
 
-        compose.onNode(hasText("MTB") and hasClickAction()).performClick()
+        compose.onNodeWithTag("bikes:category").performClick()
+        compose.waitForIdle()
+        // The list stays open: several categories may be chosen.
+        val mtb = hasText("MTB") and hasAnyAncestor(isPopup())
+        compose.onNode(mtb).performClick()
         compose.waitForIdle()
         assertThat(dependencies.bikes.calls.last().first.categories).containsExactly("mtb")
 
-        compose.onNode(hasText("MTB") and hasClickAction()).performClick()
+        compose.onNode(mtb).performClick()
         compose.waitForIdle()
+        assertThat(dependencies.bikes.calls.last().first.categories).isEmpty()
+    }
+
+    @Test
+    fun `all categories clears what was chosen`() {
+        val dependencies = dependencies()
+        start(dependencies)
+        compose.onNodeWithTag("bikes:category").performClick()
+        compose.waitForIdle()
+        compose.onNode(hasText("MTB") and hasAnyAncestor(isPopup())).performClick()
+        compose.waitForIdle()
+        assertThat(dependencies.bikes.calls.last().first.categories).containsExactly("mtb")
+
+        compose.onNode(hasText("Все категории") and hasAnyAncestor(isPopup())).performClick()
+        compose.waitForIdle()
+
         assertThat(dependencies.bikes.calls.last().first.categories).isEmpty()
     }
 

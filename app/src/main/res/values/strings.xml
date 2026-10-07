@@ -37,6 +37,7 @@
     <string name="bikes_scope_mine">Мои</string>
     <string name="bikes_scope_filter">Чьи велосипеды: %1$s</string>
     <string name="bikes_category_all">Все категории</string>
+    <string name="bikes_category_all_short">Категории</string>
     <string name="bikes_category_more">%1$s +%2$d</string>
     <string name="bikes_category_filter">Категория: %1$s</string>
     <string name="bikes_empty_public_title">Пока нет велосипедов</string>
