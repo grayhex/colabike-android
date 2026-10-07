@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ru.colabike.app.BuildConfig
 import ru.colabike.app.R
 import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.app.links.SiteLinks
@@ -39,17 +38,13 @@ fun AboutRoute(
     onLicenses: () -> Unit,
 ) {
     val opener = LocalLinkOpener.current
+    val info = LocalBuildInfo.current
     // The pages the server names (checked to be plain https); the site's own when it names none.
     // Support has no page of ours: without one the row is not there.
     val support = service.support
     AboutScreen(
-        versionName = BuildConfig.VERSION_NAME,
-        build =
-            stringResource(
-                R.string.about_build,
-                BuildConfig.VERSION_CODE,
-                BuildConfig.CONTRACT_VERSION,
-            ),
+        versionName = info.versionName,
+        build = stringResource(R.string.about_build, info.versionCode, info.contractVersion),
         onBack = onBack,
         onTerms = { opener.open(service.terms ?: links.terms) },
         onPrivacy = { opener.open(service.privacy ?: links.privacy) },
