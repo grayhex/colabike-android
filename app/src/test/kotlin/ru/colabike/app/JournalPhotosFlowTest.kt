@@ -98,7 +98,7 @@ class JournalPhotosFlowTest {
     private fun openEntry() {
         compose.onNodeWithContentDescription("Мой трейл", substring = true).performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
+        compose.onNodeWithTag("bike:journal-all").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("journal:j-own").performClick()
         compose.waitForIdle()

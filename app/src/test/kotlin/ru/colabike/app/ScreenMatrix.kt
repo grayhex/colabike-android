@@ -93,9 +93,14 @@ enum class Screen(val file: String) {
     Bikes("bikes"),
     BikeDetail("bike_detail"),
 
-    /** The rest of the bike page below the first screen: the passport, the build in groups. */
-    BikeDetailPassport("bike_detail_passport"),
+    /**
+     * The same page as the owner has it (the photo's actions, the pencil, "+ Запись", an empty
+     * discussion with its box), the build opened in place, and the discussion opened in place with
+     * the replies of its first comment (docs/design/reference/2026-10-07-bicycle-detail-ux).
+     */
+    BikeDetailOwner("bike_detail_owner"),
     BikeDetailBuild("bike_detail_build"),
+    BikeDetailComments("bike_detail_comments"),
     Profile("profile"),
 
     /** What a guest sees on the profile tab, and the rest of the profile below the fold. */
@@ -265,13 +270,13 @@ private fun ComposeContentTestRule.openCompletedRide() {
 /** From the list to the first bike's page and from there to its journal. */
 private fun ComposeContentTestRule.openJournal() {
     onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-    reveal(onNodeWithText("Журнал велосипеда")).performClick()
+    reveal(onNodeWithTag("bike:journal-all")).performClick()
 }
 
 /** From the list to the first bike's page and from there to its author. */
 private fun ComposeContentTestRule.openAuthor() {
     onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-    reveal(onNodeWithText("Тестовый Райдер")).performClick()
+    reveal(onNodeWithTag("bike:author")).performClick()
 }
 
 /** What the viewer is to a person they blocked. */
@@ -691,6 +696,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                 PhotosActions(),
                             )
                         }
+                    Screen.BikeDetailOwner,
                     Screen.JournalOwn,
                     Screen.JournalPhotos,
                     Screen.JournalEditorNew,
@@ -764,13 +770,19 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
     when (screen) {
         Screen.BikeDetail ->
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-        Screen.BikeDetailPassport -> {
-            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-            reveal(onNodeWithText("Характеристики"))
-        }
+        Screen.BikeDetailOwner ->
+            onNodeWithContentDescription("Мой трейл", substring = true).performClick()
         Screen.BikeDetailBuild -> {
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            // The build is shut when the page opens; the title row opens it in place.
+            reveal(onNodeWithText("Комплектация")).performClick()
             reveal(onNodeWithText("Shimano Deore 10-speed"))
+        }
+        Screen.BikeDetailComments -> {
+            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            reveal(onNodeWithTag("discussion:all")).performClick()
+            reveal(onNodeWithText("3 ответа")).performClick()
+            reveal(onNodeWithText("Согласен"))
         }
         Screen.Profile,
         Screen.ProfileGuest -> section("Профиль").performClick()
@@ -816,7 +828,10 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.FeedGuest -> section("Лента").performClick()
         Screen.Comments,
         Screen.CommentsGuest -> {
+            // The full screen of a discussion is reached from an entry of the journal; the page of
+            // a bike has its discussion in place.
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            reveal(onNodeWithTag("bike:journal-entry")).performClick()
             reveal(onNodeWithText("Комментарии")).performClick()
         }
         Screen.Rides -> section("Покатушки").performClick()
@@ -881,7 +896,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.JournalEditorEdit,
         Screen.JournalEditorDelete -> {
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
-            reveal(onNodeWithText("Журнал велосипеда")).performClick()
+            reveal(onNodeWithTag("bike:journal-all")).performClick()
             onNodeWithTag("journal:j-own").performClick()
             if (screen == Screen.JournalPhotos) {
                 reveal(onNodeWithTag("journal:photos")).performClick()
@@ -1030,8 +1045,10 @@ private val ownEntry =
     }
 
 private val ownBike =
-    PreviewData.bikeDetail.fromDraft(
-        BikeId("b-own"),
-        PreviewData.bikeDetail.toDraft().copy(name = "Мой трейл"),
-        "\"v1\"",
-    )
+    PreviewData.bikeDetail
+        .fromDraft(
+            BikeId("b-own"),
+            PreviewData.bikeDetail.toDraft().copy(name = "Мой трейл"),
+            "\"v1\"",
+        )
+        .let { it.copy(summary = it.summary.copy(comments = 0)) }

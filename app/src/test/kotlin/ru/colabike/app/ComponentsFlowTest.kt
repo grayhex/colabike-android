@@ -225,6 +225,8 @@ class ComponentsFlowTest {
         compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
         compose.waitForIdle()
         // Only a row with a model is a button; the others have no page to open.
+        compose.onNodeWithText("Комплектация").performScrollTo().performClick()
+        compose.waitForIdle()
         compose.onNodeWithText("Shimano Deore 10-speed").performScrollTo().performClick()
         compose.waitForIdle()
 

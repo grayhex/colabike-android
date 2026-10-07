@@ -5,10 +5,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.pager.HorizontalPager
@@ -19,13 +22,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,25 +43,34 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.SubcomposeAsyncImage
+import coil3.network.HttpException
+import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import ru.colabike.app.R
 import ru.colabike.core.designsystem.component.BikePhoto
 import ru.colabike.core.designsystem.component.ColaIcons
-import ru.colabike.core.designsystem.component.PhotoTile
 import ru.colabike.core.designsystem.theme.PillShape
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.Photo
 
-/** The size asked of the server for the full-screen picture (`?width=`, cola api-v1). */
-private const val FULLSCREEN_WIDTH = "1600"
+/**
+ * The size asked of the server for the full-screen picture (`?width=`). The server serves a closed
+ * set of widths, 160, 320, 640 and 1280 (cola `lib/media-sizes.ts`), and answers any other with 400
+ * "wrong photo size": 1600 was exactly that, and every full-screen photo came out as "Photo
+ * unavailable". 1280 is the largest of the set; a photo narrower than that comes as it is.
+ */
+private const val FULLSCREEN_WIDTH = "1280"
 
 /** The size for a small picture in a list of a bike's photos (one of the server's own widths). */
 private const val THUMBNAIL_WIDTH = "320"
@@ -86,6 +104,9 @@ fun BikeGallery(photos: List<Photo>, aspect: Float, modifier: Modifier = Modifie
     }
     val pager = rememberPagerState { photos.size }
     var viewerAt by rememberSaveable { mutableStateOf<Int?>(null) }
+    // The photo the viewer was left on is the one the page shows when it closes.
+    var lastViewed by rememberSaveable { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
     Box(shape) {
         HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
             val description = stringResource(R.string.cola_photo_n_of_m, page + 1, photos.size)
@@ -102,7 +123,17 @@ fun BikeGallery(photos: List<Photo>, aspect: Float, modifier: Modifier = Modifie
         if (photos.size > 1)
             PageCounter(pager.currentPage + 1, photos.size, Modifier.align(Alignment.BottomEnd))
     }
-    viewerAt?.let { PhotoViewer(photos, it, onDismiss = { viewerAt = null }) }
+    viewerAt?.let { from ->
+        PhotoViewer(
+            photos,
+            from,
+            onPage = { lastViewed = it },
+            onDismiss = {
+                viewerAt = null
+                scope.launch { pager.scrollToPage(lastViewed.coerceIn(photos.indices)) }
+            },
+        )
+    }
 }
 
 @Composable
@@ -134,9 +165,15 @@ private fun PageCounter(page: Int, count: Int, modifier: Modifier = Modifier) {
  * Back to leave. Paging is held while a photo is zoomed so that a drag moves the picture.
  */
 @Composable
-fun PhotoViewer(photos: List<Photo>, startAt: Int, onDismiss: () -> Unit) {
+fun PhotoViewer(
+    photos: List<Photo>,
+    startAt: Int,
+    onDismiss: () -> Unit,
+    onPage: (Int) -> Unit = {},
+) {
     val pager = rememberPagerState(initialPage = startAt.coerceIn(photos.indices)) { photos.size }
     var zoomed by remember { mutableStateOf(false) }
+    LaunchedEffect(pager) { snapshotFlow { pager.currentPage }.collect(onPage) }
     Dialog(
         onDismissRequest = onDismiss,
         properties =
@@ -183,6 +220,7 @@ private fun ZoomablePhoto(photo: Photo, active: Boolean, onZoomed: (Boolean) -> 
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+    var attempt by remember { mutableIntStateOf(0) }
     // Leaving the page puts the photo back, so it is never found zoomed on return.
     if (!active && scale != 1f) {
         scale = 1f
@@ -217,24 +255,60 @@ private fun ZoomablePhoto(photo: Photo, active: Boolean, onZoomed: (Boolean) -> 
             },
         contentAlignment = Alignment.Center,
     ) {
-        SubcomposeAsyncImage(
-            model = photo.fullscreenUrl(),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            loading = {},
-            error = {
-                PhotoTile(
-                    stringResource(ru.colabike.core.designsystem.R.string.cola_photo_unavailable)
-                )
-            },
-            modifier =
-                Modifier.fillMaxSize()
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = offsetX,
-                        translationY = offsetY,
-                    ),
+        // A new key is a new request: a failed one is not kept, so "try again" really asks again.
+        key(attempt) {
+            SubcomposeAsyncImage(
+                model = photo.fullscreenUrl(),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                loading = {},
+                error = { PhotoFailure(it.result.throwable, onRetry = { attempt++ }) },
+                modifier =
+                    Modifier.fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offsetX,
+                            translationY = offsetY,
+                        ),
+            )
+        }
+    }
+}
+
+/** The photo is not there (the server says 404), as against the server not being reached. */
+internal fun Throwable.isPhotoMissing(): Boolean = this is HttpException && response.code == 404
+
+/**
+ * Why a full-screen photo did not come: a photo that is gone says so and offers nothing; a failed
+ * transfer says so and offers to try again.
+ */
+@Composable
+private fun PhotoFailure(cause: Throwable, onRetry: () -> Unit) {
+    val missing = cause.isPhotoMissing()
+    Column(
+        Modifier.fillMaxSize().padding(Spacing.xl).semantics {
+            liveRegion = LiveRegionMode.Polite
+        },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            stringResource(
+                if (missing) ru.colabike.core.designsystem.R.string.cola_photo_unavailable
+                else R.string.bike_photo_failed
+            ),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.inverseOnSurface,
+            textAlign = TextAlign.Center,
         )
+        if (!missing) {
+            TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = Spacing.touch)) {
+                Text(
+                    stringResource(ru.colabike.core.designsystem.R.string.cola_retry),
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                )
+            }
+        }
     }
 }

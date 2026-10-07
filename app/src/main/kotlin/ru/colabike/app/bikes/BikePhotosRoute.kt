@@ -4,8 +4,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.colabike.core.model.BikeId
@@ -23,6 +27,7 @@ fun BikePhotosRoute(
     onBack: () -> Unit,
     onOpenGarage: () -> Unit,
     photoFiles: PhotoFiles,
+    pickOnOpen: Boolean = false,
 ) {
     val viewModel =
         viewModel(key = "bike-photos:$bikeId") {
@@ -54,5 +59,14 @@ fun BikePhotosRoute(
                 onOpenGarage = onOpenGarage,
             )
         }
+    // "+ Фото" on the page of the bike opens the picker at once, and once: a turn of the screen or
+    // coming back to it does not open it again.
+    var picked by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(pickOnOpen) {
+        if (pickOnOpen && !picked) {
+            picked = true
+            actions.onPick()
+        }
+    }
     BikePhotosScreen(state, actions)
 }

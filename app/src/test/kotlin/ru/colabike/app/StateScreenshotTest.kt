@@ -31,11 +31,13 @@ import ru.colabike.app.bikes.BikeDetailScreen
 import ru.colabike.app.bikes.BikeDetailUiState
 import ru.colabike.app.bikes.BikesScreen
 import ru.colabike.app.bikes.BikesUiState
+import ru.colabike.app.bikes.JournalPreviewUiState
 import ru.colabike.app.comments.CommentNode
 import ru.colabike.app.comments.CommentsActions
 import ru.colabike.app.comments.CommentsScreen
 import ru.colabike.app.comments.CommentsUiState
 import ru.colabike.app.comments.Composer
+import ru.colabike.app.comments.InlineDiscussion
 import ru.colabike.app.components.ComponentScreen
 import ru.colabike.app.components.ComponentUiState
 import ru.colabike.app.components.ComponentsScreen
@@ -163,6 +165,18 @@ enum class ScreenState(val file: String) {
     BikeDetailError("bike_detail_error"),
     BikeDetailBare("bike_detail_bare"),
     BikeDetailPrivateGuest("bike_detail_private_guest"),
+
+    /**
+     * The page of a bike in the states of its sections (issue #56): an own private bike (no
+     * discussion, no rides), a page with empty journal and discussion, a guest, the sections
+     * waiting, the sections failed, and long texts.
+     */
+    BikePagePrivateOwner("bike_page_private_owner"),
+    BikePageEmptySections("bike_page_empty_sections"),
+    BikePageGuest("bike_page_guest"),
+    BikePageLoadingSections("bike_page_loading_sections"),
+    BikePageSectionErrors("bike_page_section_errors"),
+    BikePageLongTexts("bike_page_long_texts"),
     BikesSearchEmpty("bikes_search_empty"),
     BikesFiltered("bikes_filtered"),
     DevicesLoading("devices_loading"),
@@ -1085,6 +1099,110 @@ private fun Content(state: ScreenState) {
                     openError = UiText.Res(R.string.chat_cannot_write),
                 )
             )
+        ScreenState.BikePagePrivateOwner ->
+            BikeDetailScreen(
+                BikeDetailUiState.Loaded(
+                    PreviewData.bikeDetail.let {
+                        it.copy(
+                            summary =
+                                it.summary.copy(isOwner = true, isPublic = false, comments = 0)
+                        )
+                    }
+                ),
+                showBack = true,
+                onBack = {},
+                onRetry = {},
+                onEditParts = {},
+                onEditPhotos = {},
+                onAddPhoto = {},
+                onNewJournalEntry = {},
+                journal = JournalPreviewUiState.Ready(journalSummary(0)),
+            )
+        ScreenState.BikePageEmptySections ->
+            PageWithDiscussion(
+                journal = JournalPreviewUiState.Ready(null),
+                discussion = CommentsUiState(page = PagedState(loading = false)),
+                comments = 0,
+                signedIn = true,
+            )
+        ScreenState.BikePageGuest ->
+            PageWithDiscussion(
+                journal = JournalPreviewUiState.Ready(journalSummary(0)),
+                discussion = discussion(Composer()),
+                comments = 21,
+                signedIn = false,
+            )
+        ScreenState.BikePageLoadingSections ->
+            PageWithDiscussion(
+                journal = JournalPreviewUiState.Loading,
+                discussion = CommentsUiState(),
+                comments = 21,
+                signedIn = true,
+            )
+        ScreenState.BikePageSectionErrors ->
+            PageWithDiscussion(
+                journal = JournalPreviewUiState.Failed(UiText.Res(R.string.error_offline)),
+                discussion =
+                    CommentsUiState(
+                        page =
+                            PagedState(loading = false, error = UiText.Res(R.string.error_offline))
+                    ),
+                comments = 21,
+                signedIn = true,
+            )
+        ScreenState.BikePageLongTexts -> {
+            val long = (1..40).joinToString(" ") { "длинное$it" }
+            PageWithDiscussion(
+                bike =
+                    PreviewData.bikeDetail.let {
+                        it.copy(
+                            summary =
+                                it.summary.copy(
+                                    name =
+                                        "Очень длинное название велосипеда, которое не помещается " +
+                                            "в одну строку и переносится",
+                                    comments = 3,
+                                ),
+                            description = long,
+                            color = "Серо-зелёный металлик с чёрными вставками",
+                            components =
+                                listOf(
+                                    BikeComponent(
+                                        "c1",
+                                        "build",
+                                        "Заднее колесо в сборе со втулкой и покрышкой",
+                                        "Колесо 29\" с карбоновым ободом, втулкой на шесть собачек " +
+                                            "и бескамерной покрышкой, собранное под заказ",
+                                        long,
+                                    )
+                                ),
+                        )
+                    },
+                journal =
+                    JournalPreviewUiState.Ready(
+                        journalSummary(0)
+                            .copy(
+                                title =
+                                    "Замена цепи, кассеты и тормозных колодок после тысячи " +
+                                        "километров по грязи"
+                            )
+                    ),
+                discussion =
+                    discussion(
+                        Composer(),
+                        nodes =
+                            listOf(
+                                CommentNode(
+                                    commentOf("L1", body = long, replyCount = 1),
+                                    listOf(commentOf("L2", body = long, parentId = "L1")),
+                                    repliesComplete = true,
+                                )
+                            ),
+                    ),
+                comments = 3,
+                signedIn = true,
+            )
+        }
         ScreenState.BikeDetailBare ->
             BikeDetailScreen(
                 BikeDetailUiState.Loaded(bareBike),
@@ -1120,6 +1238,34 @@ private fun CommentsWith(state: CommentsUiState) =
         signedIn = true,
         actions = CommentsActions(),
     )
+
+/** The page of a bike with its two sections given by hand: the journal and the discussion. */
+@Composable
+private fun PageWithDiscussion(
+    journal: JournalPreviewUiState,
+    discussion: CommentsUiState,
+    comments: Int,
+    signedIn: Boolean,
+    bike: ru.colabike.core.model.BikeDetail = PreviewData.bikeDetail,
+) {
+    val detail = bike.copy(summary = bike.summary.copy(comments = comments))
+    BikeDetailScreen(
+        BikeDetailUiState.Loaded(detail),
+        showBack = true,
+        onBack = {},
+        onRetry = {},
+        journal = journal,
+        discussion = { count ->
+            InlineDiscussion(
+                state = discussion,
+                count = count,
+                me = account.takeIf { signedIn },
+                ownerId = detail.summary.author?.id,
+                actions = CommentsActions(),
+            )
+        },
+    )
+}
 
 private val chatPeople = people(0, 4).map { it.person }
 

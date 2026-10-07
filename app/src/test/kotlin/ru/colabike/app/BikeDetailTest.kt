@@ -246,10 +246,10 @@ class BikePresentationTest {
         val photo = Photo("p", "https://colabike.ru/api/photos/0b7e6a52?width=640")
 
         assertThat(photo.fullscreenUrl())
-            .isEqualTo("https://colabike.ru/api/photos/0b7e6a52?width=1600")
+            .isEqualTo("https://colabike.ru/api/photos/0b7e6a52?width=1280")
         // No width yet: one is added; not an address: left as it is.
         assertThat(Photo("p", "https://colabike.ru/api/photos/1").fullscreenUrl())
-            .isEqualTo("https://colabike.ru/api/photos/1?width=1600")
+            .isEqualTo("https://colabike.ru/api/photos/1?width=1280")
         assertThat(Photo("p", "not a url").fullscreenUrl()).isEqualTo("not a url")
     }
 }

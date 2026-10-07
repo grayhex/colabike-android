@@ -30,7 +30,11 @@ import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.model.CommentKind
 import ru.colabike.core.model.DataError
 
-/** The discussion as a person uses it: reading, writing, answering, changing, deleting. */
+/**
+ * The discussion on its own screen, as a person uses it: reading, writing, answering, changing,
+ * deleting. The page of a bike has it in place (InlineDiscussionTest); the full screen is the one
+ * of a journal entry, a ride, a component, and of a link to one comment, with the same model.
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "ru-w360dp-h800dp-xhdpi")
 class CommentsFlowTest {
@@ -58,9 +62,15 @@ class CommentsFlowTest {
         compose.waitForIdle()
     }
 
-    private fun openDiscussion() {
+    /**
+     * From the list to the page of the first bike, its latest entry, and the entry's discussion.
+     */
+    private fun openDiscussion(beforeOpening: () -> Unit = {}) {
         compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
         compose.waitForIdle()
+        compose.onNodeWithTag("bike:journal-entry").performScrollTo().performClick()
+        compose.waitForIdle()
+        beforeOpening()
         compose.onNodeWithText("Комментарии").performScrollTo().performClick()
         compose.waitForIdle()
     }
@@ -113,10 +123,10 @@ class CommentsFlowTest {
     @Test
     fun `a hidden discussion offers a retry`() {
         val comments = discussion()
-        comments.nextError = DataError.NotFound()
         start(dependencies(comments))
 
-        openDiscussion()
+        // The page of the bike has asked already; the next answer is the full screen's.
+        openDiscussion(beforeOpening = { comments.nextError = DataError.NotFound() })
         compose.onNodeWithText("Повторить").performClick()
         compose.waitForIdle()
 
@@ -126,15 +136,21 @@ class CommentsFlowTest {
     @Test
     fun `the bar steps aside for the box and for the bike's page, and comes back at the list`() {
         start(dependencies())
-        openDiscussion()
-
+        compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+        compose.waitForIdle()
+        // The approved design shows the page of a bike without the bar.
         compose.section("Лента").assertDoesNotExist()
 
-        // Back to the page of the bike: the approved design shows it without the bar as well.
-        compose.onNodeWithContentDescription("Назад").performClick()
+        compose.onNodeWithTag("bike:journal-entry").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Комментарии").performScrollTo().performClick()
         compose.waitForIdle()
         compose.section("Лента").assertDoesNotExist()
 
+        compose.onNodeWithContentDescription("Назад").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Назад").performClick()
+        compose.waitForIdle()
         compose.onNodeWithContentDescription("Назад").performClick()
         compose.waitForIdle()
         compose.section("Лента").assertIsDisplayed()
@@ -153,7 +169,7 @@ class CommentsFlowTest {
     }
 
     @Test
-    fun `a comment appears at the end and the bike page counts it`() {
+    fun `a comment appears at the end of the discussion`() {
         val comments = discussion()
         start(dependencies(comments))
         openDiscussion()
@@ -161,13 +177,9 @@ class CommentsFlowTest {
         write("Новый комментарий")
         send()
 
-        assertThat(comments.posted.single().target.kind).isEqualTo(CommentKind.Bike)
+        assertThat(comments.posted.single().target.kind).isEqualTo(CommentKind.Journal)
         compose.onNodeWithTag("comments:list").performScrollToNode(hasText("Новый комментарий"))
         compose.onNodeWithText("Новый комментарий").assertIsDisplayed()
-
-        compose.onNodeWithContentDescription("Назад").performClick()
-        compose.waitForIdle()
-        compose.onNodeWithText("22 комментария").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -335,7 +347,7 @@ class CommentsFlowTest {
         start(dependencies(comments))
         compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
+        compose.onNodeWithTag("bike:journal-all").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Запись 0", substring = true).performClick()
         compose.waitForIdle()

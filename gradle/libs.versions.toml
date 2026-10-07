@@ -25,7 +25,7 @@ maplibre = "13.6.1"
 yandexMapkit = "4.45.0-lite"
 stream = "7.13.0"
 rustorePush = "7.5.0"
-openapiGenerator = "7.25.0"
+openapiGenerator = "7.26.0"
 
 spotless = "8.10.3"
 ktfmt = "0.64"

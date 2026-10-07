@@ -6,25 +6,23 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,10 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
@@ -52,12 +48,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.text.NumberFormat
-import java.util.Locale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.comments.CommentDrafts
+import ru.colabike.app.comments.InlineDiscussionRoute
 import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.app.links.LocalSharer
 import ru.colabike.app.links.SiteLinks
@@ -66,22 +62,20 @@ import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.ColaIcons
-import ru.colabike.core.designsystem.component.ColaListItem
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ErrorState
-import ru.colabike.core.designsystem.component.LikeButton
-import ru.colabike.core.designsystem.component.ListItemAction
 import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.component.PillBadge
-import ru.colabike.core.designsystem.component.StatTile
-import ru.colabike.core.designsystem.component.UserRow
-import ru.colabike.core.designsystem.component.bikeSubtitle
 import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
-import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
 import ru.colabike.core.model.CommentCountChange
+import ru.colabike.core.model.CommentKind
+import ru.colabike.core.model.CommentTarget
+import ru.colabike.core.model.CommentsRepository
+import ru.colabike.core.model.JournalId
+import ru.colabike.core.model.JournalRepository
 import ru.colabike.core.model.ReportKind
 import ru.colabike.core.model.ReportTarget
 import ru.colabike.core.model.SafetyRepository
@@ -96,14 +90,18 @@ fun BikeDetailRoute(
     onBack: () -> Unit,
     onOpenAuthor: (ref: String) -> Unit = {},
     onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
-    onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    onOpenJournalEntry: (JournalId) -> Unit = {},
     onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComponent: (modelId: String) -> Unit = {},
     commentChanges: Flow<CommentCountChange> = emptyFlow(),
     safety: SafetyRepository? = null,
+    journal: JournalRepository? = null,
+    comments: CommentsRepository? = null,
+    drafts: CommentDrafts? = null,
     onEdit: ((id: BikeId) -> Unit)? = null,
     onEditParts: ((id: BikeId) -> Unit)? = null,
     onEditPhotos: ((id: BikeId) -> Unit)? = null,
+    onAddPhoto: ((id: BikeId) -> Unit)? = null,
     onNewJournalEntry: ((id: BikeId) -> Unit)? = null,
 ) {
     val viewModel = viewModel { BikeDetailViewModel(repository, id, commentChanges) }
@@ -113,6 +111,29 @@ fun BikeDetailRoute(
     val sharer = LocalSharer.current
     val opener = LocalLinkOpener.current
     val signedIn = authState is AuthState.SignedIn
+    val loaded = (state as? BikeDetailUiState.Loaded)?.bike
+    val isOwner = loaded?.summary?.isOwner == true
+    val journalModel = journal?.let {
+        viewModel(key = "bike-journal:${id.value}") { BikeJournalPreviewViewModel(it, id) }
+    }
+    val journalState = journalModel?.state?.collectAsStateWithLifecycle()
+    // Only a public bike has a discussion (the API answers 404 for the rest): a private one is not
+    // asked for it, and shows no count.
+    val discussion: (@Composable (count: Int) -> Unit)? =
+        if (comments != null && drafts != null && loaded?.summary?.isPublic == true) {
+            { count ->
+                InlineDiscussionRoute(
+                    repository = comments,
+                    drafts = drafts,
+                    auth = auth,
+                    target = CommentTarget(CommentKind.Bike, id.value),
+                    count = count,
+                    ownerId = loaded.summary.author?.id,
+                    onOpenAuthor = onOpenAuthor,
+                    safety = safety,
+                )
+            }
+        } else null
     BikeDetailScreen(
         state,
         showBack = showBack,
@@ -126,37 +147,21 @@ fun BikeDetailRoute(
         onOpenLink = opener::open,
         onOpenAuthor = onOpenAuthor,
         onOpenJournal = onOpenJournal,
-        onOpenComments = onOpenComments,
+        onOpenJournalEntry = onOpenJournalEntry,
         onOpenRides = onOpenRides,
         onOpenComponent = onOpenComponent,
-        // The build is changed by the owner on a screen of its own.
-        onEditParts =
-            if (
-                onEditParts != null &&
-                    (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
-            )
-                ({ onEditParts(id) })
-            else null,
-        onEditPhotos =
-            if (
-                onEditPhotos != null &&
-                    (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
-            )
-                ({ onEditPhotos(id) })
-            else null,
+        // The build, the photos and the journal are changed by the owner, on screens of their own.
+        onEditParts = if (onEditParts != null && isOwner) ({ onEditParts(id) }) else null,
+        onEditPhotos = if (onEditPhotos != null && isOwner) ({ onEditPhotos(id) }) else null,
+        onAddPhoto = if (onAddPhoto != null && isOwner) ({ onAddPhoto(id) }) else null,
         onNewJournalEntry =
-            if (
-                onNewJournalEntry != null &&
-                    (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
-            )
-                ({ onNewJournalEntry(id) })
-            else null,
+            if (onNewJournalEntry != null && isOwner) ({ onNewJournalEntry(id) }) else null,
+        journal = journalState?.value,
+        onRetryJournal = { journalModel?.load() },
+        discussion = discussion,
         topActions = {
             // The owner changes the bike; everyone else may report it.
-            if (
-                onEdit != null &&
-                    (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true
-            ) {
+            if (onEdit != null && isOwner) {
                 IconButton(
                     onClick = { onEdit(id) },
                     modifier = Modifier.testTag("bike:edit"),
@@ -169,19 +174,24 @@ fun BikeDetailRoute(
             }
             ReportMenu(
                 target = ReportTarget(ReportKind.Bike, id.value),
-                authorId = (state as? BikeDetailUiState.Loaded)?.bike?.summary?.author?.id,
+                authorId = loaded?.summary?.author?.id,
                 safety = safety,
                 auth = auth,
-                own = (state as? BikeDetailUiState.Loaded)?.bike?.summary?.isOwner == true,
+                own = isOwner,
             )
         },
     )
 }
 
 /**
- * One bike: the photos, what it is, who rides it, the like and the share, the passport (the facts
- * the owner gave, and the price only if the owner shows it), the description and the build in the
- * owner's groups. Nothing the contract does not give is shown.
+ * One bike on one page, compact: the photo whole with the owner's "+ Фото" and "Управлять" under
+ * it, the name once with the kind and the year, who rides it with the like and the share, the
+ * description and the passport, the build (shut until it is asked for), the latest entry of the
+ * journal, the discussion with its first two comments, and the way to the rides. Opening anything
+ * happens in place on the same scroll. Nothing the contract does not give is shown.
+ *
+ * [journal] and [discussion] are the two sections that have a source of their own: a page that is
+ * given none shows neither, and a failure of either leaves the rest of the page as it is.
  */
 @Composable
 fun BikeDetailScreen(
@@ -195,12 +205,16 @@ fun BikeDetailScreen(
     onOpenLink: (String) -> Unit = {},
     onOpenAuthor: (ref: String) -> Unit = {},
     onOpenJournal: (id: BikeId, name: String) -> Unit = { _, _ -> },
-    onOpenComments: (id: BikeId, name: String) -> Unit = { _, _ -> },
+    onOpenJournalEntry: (JournalId) -> Unit = {},
     onOpenRides: (id: BikeId, name: String) -> Unit = { _, _ -> },
     onOpenComponent: (modelId: String) -> Unit = {},
     onEditParts: (() -> Unit)? = null,
     onEditPhotos: (() -> Unit)? = null,
+    onAddPhoto: (() -> Unit)? = null,
     onNewJournalEntry: (() -> Unit)? = null,
+    journal: JournalPreviewUiState? = null,
+    onRetryJournal: () -> Unit = {},
+    discussion: (@Composable (count: Int) -> Unit)? = null,
     topActions: @Composable RowScope.() -> Unit = {},
 ) {
     val loaded = (state as? BikeDetailUiState.Loaded)?.bike
@@ -245,27 +259,51 @@ fun BikeDetailScreen(
                     }
                 is BikeDetailUiState.Loaded ->
                     BikeContent(
-                        state,
-                        onToggleLike,
-                        onShare,
-                        onOpenLink,
-                        onOpenAuthor,
-                        onOpenJournal,
-                        onOpenComments,
-                        onOpenRides,
-                        onOpenComponent,
-                        onEditParts,
-                        onEditPhotos,
-                        onNewJournalEntry,
+                        state = state,
+                        actions =
+                            PageActions(
+                                onToggleLike = onToggleLike,
+                                onShare = onShare,
+                                onOpenLink = onOpenLink,
+                                onOpenAuthor = onOpenAuthor,
+                                onOpenJournal = onOpenJournal,
+                                onOpenJournalEntry = onOpenJournalEntry,
+                                onOpenRides = onOpenRides,
+                                onOpenComponent = onOpenComponent,
+                                onEditParts = onEditParts,
+                                onEditPhotos = onEditPhotos,
+                                onAddPhoto = onAddPhoto,
+                                onNewJournalEntry = onNewJournalEntry,
+                                onRetryJournal = onRetryJournal,
+                            ),
+                        journal = journal,
+                        discussion = discussion,
                     )
             }
         }
     }
 }
 
+/** What the page can do, so that its parts take one argument instead of a dozen. */
+private class PageActions(
+    val onToggleLike: () -> Unit,
+    val onShare: (title: String) -> Unit,
+    val onOpenLink: (String) -> Unit,
+    val onOpenAuthor: (ref: String) -> Unit,
+    val onOpenJournal: (id: BikeId, name: String) -> Unit,
+    val onOpenJournalEntry: (JournalId) -> Unit,
+    val onOpenRides: (id: BikeId, name: String) -> Unit,
+    val onOpenComponent: (modelId: String) -> Unit,
+    val onEditParts: (() -> Unit)?,
+    val onEditPhotos: (() -> Unit)?,
+    val onAddPhoto: (() -> Unit)?,
+    val onNewJournalEntry: (() -> Unit)?,
+    val onRetryJournal: () -> Unit,
+)
+
 /**
  * On a phone the photo is 1.6 : 1, a little wider than a bike is tall, and is shown whole: the
- * facts under it are on the first screen.
+ * sections under it are on the first screen.
  */
 private const val PhonePhotoAspect = 1.6f
 
@@ -280,7 +318,7 @@ private fun CollapsibleText(text: String) {
     Column {
         Text(
             text,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = if (expanded) Int.MAX_VALUE else CollapsedLines,
             overflow = TextOverflow.Ellipsis,
             onTextLayout = { if (!expanded) overflows = it.hasVisualOverflow },
@@ -303,7 +341,7 @@ private fun CollapsibleText(text: String) {
     }
 }
 
-private const val CollapsedLines = 3
+private const val CollapsedLines = 2
 
 /** From this pane width the photo is wide (16:9) so it does not push the facts off the screen. */
 private val WidePane = 600.dp
@@ -312,17 +350,9 @@ private val WidePane = 600.dp
 @Composable
 private fun BikeContent(
     state: BikeDetailUiState.Loaded,
-    onToggleLike: () -> Unit,
-    onShare: (title: String) -> Unit,
-    onOpenLink: (String) -> Unit,
-    onOpenAuthor: (ref: String) -> Unit,
-    onOpenJournal: (id: BikeId, name: String) -> Unit,
-    onOpenComments: (id: BikeId, name: String) -> Unit,
-    onOpenRides: (id: BikeId, name: String) -> Unit,
-    onOpenComponent: (modelId: String) -> Unit,
-    onEditParts: (() -> Unit)?,
-    onEditPhotos: (() -> Unit)?,
-    onNewJournalEntry: (() -> Unit)?,
+    actions: PageActions,
+    journal: JournalPreviewUiState?,
+    discussion: (@Composable (count: Int) -> Unit)?,
 ) =
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bike = state.bike
@@ -330,268 +360,139 @@ private fun BikeContent(
         val locale = LocalConfiguration.current.locales[0]
         val photoAspect = if (maxWidth >= WidePane) 16f / 9f else PhonePhotoAspect
         val photos = bike.photos.ifEmpty { listOfNotNull(summary.cover) }
+        val sections =
+            remember(bike.components, bike.groupOrder) {
+                orderComponents(bike.components, bike.groupOrder)
+            }
+        val facts = passport(bike, locale)
+        val info = bikeInfoLine(bike)
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            // The keyboard lifts the page; the box to write in is brought into view with it.
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
                 Modifier.widthIn(max = 840.dp)
                     .fillMaxWidth()
                     .padding(horizontal = Spacing.screen)
-                    .padding(top = Spacing.s, bottom = Spacing.xxl),
-                verticalArrangement = Arrangement.spacedBy(Spacing.section),
+                    .padding(top = Spacing.xs, bottom = Spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                Column {
                     BikeGallery(photos, photoAspect)
-                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
-                        val subtitle =
-                            bikeSubtitle(
-                                summary.brand,
-                                "${summary.model} ${bike.trim}".trim(),
-                                summary.year,
-                            )
-                        if (subtitle.isNotBlank()) {
-                            Text(
-                                subtitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Text(
-                            summary.name,
-                            style = ColaTheme.textStyles.pageTitle,
-                            modifier = Modifier.semantics { heading() },
+                    if (actions.onAddPhoto != null || actions.onEditPhotos != null) {
+                        PhotoActions(
+                            hasPhotos = photos.isNotEmpty(),
+                            onAdd = { (actions.onAddPhoto ?: actions.onEditPhotos)?.invoke() },
+                            onManage = { actions.onEditPhotos?.invoke() },
                         )
                     }
-                    summary.author?.let { author ->
-                        UserRow(author, onClick = { onOpenAuthor(author.id.value) })
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                    Text(
+                        summary.name,
+                        style = ColaTheme.textStyles.pageTitle,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    if (info.isNotBlank()) {
+                        Text(
+                            info,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
+                }
+                // One's own and private bikes cannot be liked: the count shows, no switch.
+                val likeable = !summary.isOwner && summary.isPublic
+                AuthorRow(
+                    author = summary.author,
+                    liked = summary.liked,
+                    likes = summary.likes,
+                    busy = state.liking,
+                    onToggleLike = actions.onToggleLike.takeIf { likeable },
+                    onShare = if (summary.isPublic) ({ actions.onShare(summary.name) }) else null,
+                    onOpenAuthor = actions.onOpenAuthor,
+                )
+                state.likeError?.let {
+                    Text(
+                        it.resolve(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+                if (summary.isFormer || !summary.isPublic) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                         verticalArrangement = Arrangement.spacedBy(Spacing.s),
-                        itemVerticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // One's own and private bikes cannot be liked: the count shows, no switch.
-                        val likeable = !summary.isOwner && summary.isPublic
-                        LikeButton(
-                            liked = summary.liked,
-                            count = summary.likes,
-                            onToggle = onToggleLike.takeIf { likeable },
-                            busy = state.liking,
-                        )
-                        if (summary.isPublic) {
-                            val title = summary.name
-                            OutlinedButton(
-                                onClick = { onShare(title) },
-                                modifier = Modifier.heightIn(min = Spacing.touch),
-                            ) {
-                                Icon(
-                                    painterResource(ColaIcons.Share),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
+                        if (summary.isFormer) {
+                            PillBadge(
+                                stringResource(
+                                    ru.colabike.core.designsystem.R.string.cola_former_bike
                                 )
-                                Text(
-                                    stringResource(
-                                        ru.colabike.core.designsystem.R.string.cola_share
-                                    ),
-                                    modifier = Modifier.padding(start = Spacing.s),
-                                )
-                            }
+                            )
                         }
-                    }
-                    state.likeError?.let {
-                        Text(
-                            it.resolve(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                        )
-                    }
-                    val badges = BikeLabels.badges(summary.classification)
-                    if (badges.isNotEmpty() || summary.isFormer || !summary.isPublic) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                            verticalArrangement = Arrangement.spacedBy(Spacing.s),
-                        ) {
-                            badges.forEach { PillBadge(it) }
-                            if (summary.isFormer) {
-                                PillBadge(
-                                    stringResource(
-                                        ru.colabike.core.designsystem.R.string.cola_former_bike
-                                    )
-                                )
-                            }
-                            if (!summary.isPublic) {
-                                PillBadge(
-                                    stringResource(R.string.bike_private),
-                                    icon = ColaIcons.Lock,
-                                )
-                            }
+                        if (!summary.isPublic) {
+                            PillBadge(stringResource(R.string.bike_private), icon = ColaIcons.Lock)
                         }
                     }
                 }
-                if (bike.description.isNotBlank()) {
-                    Section(stringResource(R.string.bike_description)) {
-                        CollapsibleText(bike.description)
+                if (bike.description.isNotBlank() || facts.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        if (bike.description.isNotBlank()) CollapsibleText(bike.description)
+                        if (facts.isNotEmpty()) PassportLine(facts)
                     }
                 }
-                val facts = passport(bike, locale)
-                // The price arrives only when the owner shows it (or it is the owner's own). It
-                // gets a whole row: "85 000 ₽" does not fit half of one without breaking.
-                val price = bike.priceRub
-                if (facts.isNotEmpty() || price != null) {
-                    Section(stringResource(R.string.bike_specs)) {
-                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-                            if (facts.isNotEmpty()) Facts(facts)
-                            if (price != null) {
-                                StatTile(
-                                    stringResource(R.string.bike_price),
-                                    priceText(price, locale),
-                                    Modifier.fillMaxWidth(),
-                                    compact = true,
-                                )
-                            }
-                        }
+                if (sections.isNotEmpty() || actions.onEditParts != null) {
+                    EquipmentCard(
+                        sections = sections,
+                        locale = locale,
+                        onEdit = actions.onEditParts,
+                        onOpenLink = actions.onOpenLink,
+                        onOpenModel = actions.onOpenComponent,
+                    )
+                }
+                if (journal != null) {
+                    Spacer(Modifier.height(Spacing.xs))
+                    JournalSection(
+                        state = journal,
+                        locale = locale,
+                        onNew = actions.onNewJournalEntry,
+                        onOpenAll = { actions.onOpenJournal(summary.id, summary.name) },
+                        onOpenEntry = actions.onOpenJournalEntry,
+                        onRetry = actions.onRetryJournal,
+                    )
+                }
+                if (summary.isPublic && discussion != null) {
+                    // The hairline belongs to the section under it, so the gaps are its own.
+                    Column {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        discussion(summary.comments)
                     }
-                }
-                orderComponents(bike.components, bike.groupOrder).forEach { (section, components) ->
-                    Section(
-                        stringResource(
-                            when (section) {
-                                "build" -> R.string.bike_build
-                                "accessories" -> R.string.bike_accessories
-                                else -> R.string.bike_other_components
-                            }
-                        )
-                    ) {
-                        ComponentsCard(
-                            components,
-                            locale,
-                            onOpenLink,
-                            onOpenModel = onOpenComponent,
-                        )
-                    }
-                }
-                if (onNewJournalEntry != null) {
-                    ColaListItem(
-                        title = stringResource(R.string.journal_new_open),
-                        supporting = stringResource(R.string.journal_new_open_hint),
-                        icon = ColaIcons.Journal,
-                        onClick = onNewJournalEntry,
-                        modifier = Modifier.testTag("bike:journal-new"),
-                    )
-                }
-                if (onEditPhotos != null) {
-                    ColaListItem(
-                        title = stringResource(R.string.photos_open),
-                        supporting = stringResource(R.string.photos_open_hint),
-                        icon = ColaIcons.Image,
-                        onClick = onEditPhotos,
-                        modifier = Modifier.testTag("bike:photos"),
-                    )
-                }
-                if (onEditParts != null) {
-                    ColaListItem(
-                        title = stringResource(R.string.parts_open),
-                        supporting = stringResource(R.string.parts_open_hint),
-                        icon = ColaIcons.Build,
-                        onClick = onEditParts,
-                        modifier = Modifier.testTag("bike:parts"),
-                    )
-                }
-                // Only a public bike has a discussion (the API answers 404 for the rest).
-                if (summary.isPublic) {
-                    ColaListItem(
-                        title = stringResource(R.string.comments_open),
-                        supporting =
-                            pluralStringResource(
-                                ru.colabike.core.designsystem.R.plurals.cola_comments,
-                                summary.comments,
-                                summary.comments,
-                            ),
-                        icon = ColaIcons.Comment,
-                        onClick = { onOpenComments(summary.id, summary.name) },
-                    )
                 }
                 // Only a public bike has rides to show (the API answers 404 for the rest).
                 if (summary.isPublic) {
-                    ColaListItem(
-                        title = stringResource(R.string.bike_rides),
-                        supporting = stringResource(R.string.bike_rides_hint),
-                        icon = ColaIcons.Route,
-                        onClick = { onOpenRides(summary.id, summary.name) },
-                    )
+                    Column {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        LinkRow(
+                            stringResource(R.string.bike_rides),
+                            ColaIcons.Route,
+                            onClick = { actions.onOpenRides(summary.id, summary.name) },
+                            modifier = Modifier.testTag("bike:rides"),
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
                 }
-                ColaListItem(
-                    title = stringResource(R.string.bike_journal),
-                    supporting = stringResource(R.string.bike_journal_hint),
-                    icon = ColaIcons.Journal,
-                    onClick = { onOpenJournal(summary.id, summary.name) },
-                )
                 bike.manufacturerUrl?.let { url ->
-                    ColaListItem(
-                        title = stringResource(R.string.bike_manufacturer),
-                        supporting = stringResource(R.string.bike_manufacturer_hint),
-                        icon = ColaIcons.Info,
-                        action = ListItemAction.External,
-                        onClick = { onOpenLink(url) },
+                    LinkRow(
+                        stringResource(R.string.bike_manufacturer),
+                        ColaIcons.Info,
+                        onClick = { actions.onOpenLink(url) },
+                        external = true,
+                        modifier = Modifier.testTag("bike:manufacturer"),
                     )
                 }
             }
         }
     }
-
-/** The facts the owner gave, as label and value; what is empty is not here. */
-@Composable
-private fun passport(bike: BikeDetail, locale: Locale): List<Pair<String, String>> =
-    listOfNotNull(
-        bike.weightKg?.let {
-            stringResource(R.string.bike_weight) to
-                stringResource(
-                    R.string.bike_weight_value,
-                    NumberFormat.getNumberInstance(locale).format(it),
-                )
-        },
-        bike.mileageKm
-            .takeIf { it > 0 }
-            ?.let {
-                stringResource(R.string.bike_mileage) to
-                    stringResource(R.string.bike_mileage_value, it)
-            },
-        bike.size.takeIf { it.isNotBlank() }?.let { stringResource(R.string.bike_size) to it },
-        bike.color.takeIf { it.isNotBlank() }?.let { stringResource(R.string.bike_color) to it },
-    )
-
-@Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-        Text(
-            title,
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        content()
-    }
-}
-
-/** Two tiles to a row; one when the system font is large and a tile no longer fits half a row. */
-@Composable
-private fun Facts(facts: List<Pair<String, String>>) {
-    val columns = if (LocalDensity.current.fontScale > LargeFont) 1 else 2
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-        facts.chunked(columns).forEach { row ->
-            Row(
-                Modifier.height(IntrinsicSize.Max),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-            ) {
-                row.forEach { (label, value) ->
-                    StatTile(label, value, Modifier.weight(1f).fillMaxHeight(), compact = true)
-                }
-                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-            }
-        }
-    }
-}
-
-/** From this font scale on, stat tiles stack. */
-private const val LargeFont = 1.3f
