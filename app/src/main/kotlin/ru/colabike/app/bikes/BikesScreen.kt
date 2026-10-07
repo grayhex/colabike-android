@@ -31,7 +31,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -261,6 +263,18 @@ private fun BikeGrid(
 ) {
     val grid = rememberLazyGridState()
     LaunchedEffect(scrollToTop, grid) { scrollToTop.collect { grid.animateScrollToItem(0) } }
+    // The grid keeps the card it shows at the top when the list around it changes, so the result of
+    // a new search would open scrolled past its own first cards. A different first card means a
+    // different result: it is read from the top. Coming back to a list that was left, `shown`
+    // starts at what the list is now, and the scroll stays where it was.
+    val first = state.bikes.firstOrNull()?.id
+    var shown by remember { mutableStateOf(first) }
+    LaunchedEffect(first) {
+        if (first != shown) {
+            shown = first
+            grid.scrollToItem(0)
+        }
+    }
     val nearEnd by remember {
         derivedStateOf {
             (grid.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >=

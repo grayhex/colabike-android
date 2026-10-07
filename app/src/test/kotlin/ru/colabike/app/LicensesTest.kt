@@ -29,7 +29,7 @@ class LicensesTest {
 
         val list = compose.onNodeWithTag("licenses:list")
         listOf(
-                "SIL Open Font License",
+                "Шрифт приложения",
                 "Apache License 2.0",
                 "MapLibre Native",
                 "Redistribution and use in source and binary forms",

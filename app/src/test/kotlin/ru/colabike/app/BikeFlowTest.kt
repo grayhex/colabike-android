@@ -169,7 +169,7 @@ class BikeFlowTest {
         start(dependencies())
         open("Городской Cube")
 
-        compose.onNodeWithText("Город / туризм · touring").assertIsDisplayed()
+        compose.onNodeWithText("Город / туризм · Touring").assertIsDisplayed()
 
         compose.onNodeWithText("ЦЕНА").performScrollTo().assertIsDisplayed()
         compose
