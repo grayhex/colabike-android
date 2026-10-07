@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!--
+        Yandex publishes MapKit as three builds of one version (-lite, -full, -navikit), not as
+        newer releases of one another; lint reads the suffix "navikit" as a later version of
+        "lite". The app uses the lite build, which has only the map (docs/adr/0025-yandex-maps.md).
+        Every other library is still checked.
+    -->
+    <issue id="NewerVersionAvailable">
+        <ignore regexp="com\.yandex\.android:maps\.mobile" />
+    </issue>
+</lint>

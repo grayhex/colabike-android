@@ -41,6 +41,7 @@ import ru.colabike.app.AppDependencies
 import ru.colabike.app.R
 import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.app.notifications.NotificationsBell
+import ru.colabike.app.settings.MapProvider
 import ru.colabike.app.settings.ThemeMode
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.resolve
@@ -77,12 +78,25 @@ fun ProfileRoute(
     val viewModel = viewModel { ProfileViewModel(dependencies.account, dependencies.auth) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val theme by dependencies.settings.themeMode.collectAsStateWithLifecycle()
+    val mapProvider by dependencies.settings.mapProvider.collectAsStateWithLifecycle()
+    // Two maps to choose between only in a build that has the owner's key for the second.
+    val mapChoice =
+        if (dependencies.maps.offersYandex) {
+            MapChoice(mapProvider) {
+                // A new choice is a new try of whatever was given up on.
+                dependencies.settings.setMapProvider(it)
+                dependencies.maps.forgetFailure()
+            }
+        } else {
+            null
+        }
     val signIn = LocalSignInRequest.current
     val opener = LocalLinkOpener.current
     ProfileScreen(
         state = state,
         themeMode = theme,
         onThemeMode = dependencies.settings::setThemeMode,
+        mapChoice = mapChoice,
         onRetry = viewModel::load,
         onSignOut = viewModel::signOut,
         onSignIn = signIn,
@@ -117,6 +131,7 @@ fun ProfileScreen(
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
     onOpenSavedMarket: (() -> Unit)? = {},
+    mapChoice: MapChoice? = null,
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -143,7 +158,7 @@ fun ProfileScreen(
                                 .padding(bottom = Spacing.xxl),
                             verticalArrangement = Arrangement.spacedBy(Spacing.section),
                         ) {
-                            AppearanceAndAbout(themeMode, onThemeMode, onOpenAbout)
+                            AppearanceAndAbout(themeMode, onThemeMode, mapChoice, onOpenAbout)
                         }
                     }
                 else ->
@@ -174,7 +189,7 @@ fun ProfileScreen(
                                     )
                                 else -> Unit
                             }
-                            AppearanceAndAbout(themeMode, onThemeMode, onOpenAbout)
+                            AppearanceAndAbout(themeMode, onThemeMode, mapChoice, onOpenAbout)
                             if (state is ProfileUiState.Loaded) {
                                 OutlinedButton(
                                     onClick = onSignOut,
@@ -387,14 +402,23 @@ private fun MemberSections(
     }
 }
 
+/** The map under routes, as the setting shows it: what is chosen and how to choose another. */
+data class MapChoice(val selected: MapProvider, val onSelect: (MapProvider) -> Unit)
+
 @Composable
 private fun AppearanceAndAbout(
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
+    mapChoice: MapChoice?,
     onOpenAbout: () -> Unit,
 ) {
     Section(stringResource(R.string.profile_section_appearance)) {
         ThemeChoice(themeMode, onThemeMode)
+    }
+    if (mapChoice != null) {
+        Section(stringResource(R.string.profile_section_map)) {
+            MapProviderChoice(mapChoice.selected, mapChoice.onSelect)
+        }
     }
     Section(stringResource(R.string.profile_section_app)) {
         ColaListItem(
@@ -419,28 +443,67 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 /** System, light or dark: one choice among three, each row a whole touch target. */
 @Composable
 private fun ThemeChoice(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    ChoiceGroup(
+        options = ThemeMode.entries.map { Choice(it, stringResource(it.label)) },
+        selected = selected,
+        onSelect = onSelect,
+    )
+}
+
+/** OpenStreetMap or Yandex: the map under every route, changed on the screen at once. */
+@Composable
+private fun MapProviderChoice(selected: MapProvider, onSelect: (MapProvider) -> Unit) {
+    ChoiceGroup(
+        options =
+            listOf(
+                Choice(
+                    MapProvider.OpenStreetMap,
+                    stringResource(R.string.map_choice_osm),
+                    stringResource(R.string.map_choice_osm_hint),
+                ),
+                Choice(
+                    MapProvider.Yandex,
+                    stringResource(R.string.map_choice_yandex),
+                    stringResource(R.string.map_choice_yandex_hint),
+                ),
+            ),
+        selected = selected,
+        onSelect = onSelect,
+    )
+}
+
+private data class Choice<T>(val value: T, val title: String, val hint: String? = null)
+
+/** A card of radio rows, one chosen; a row is a whole touch target with its title and hint. */
+@Composable
+private fun <T> ChoiceGroup(options: List<Choice<T>>, selected: T, onSelect: (T) -> Unit) {
     ColaCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
         Column(Modifier.selectableGroup()) {
-            ThemeMode.entries.forEachIndexed { index, mode ->
+            options.forEachIndexed { index, option ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row(
                     Modifier.fillMaxWidth()
                         .heightIn(min = Spacing.touch)
                         .selectable(
-                            selected = mode == selected,
-                            onClick = { onSelect(mode) },
+                            selected = option.value == selected,
+                            onClick = { onSelect(option.value) },
                             role = Role.RadioButton,
                         )
                         .padding(horizontal = Spacing.l, vertical = Spacing.s),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.l),
                 ) {
-                    RadioButton(selected = mode == selected, onClick = null)
-                    Text(
-                        stringResource(mode.label),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
-                    )
+                    RadioButton(selected = option.value == selected, onClick = null)
+                    Column(Modifier.weight(1f)) {
+                        Text(option.title, style = MaterialTheme.typography.bodyLarge)
+                        if (option.hint != null) {
+                            Text(
+                                option.hint,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
         }

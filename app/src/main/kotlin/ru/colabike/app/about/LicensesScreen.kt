@@ -49,11 +49,23 @@ fun LicensesRoute(onBack: () -> Unit) {
     val osm = stringResource(R.string.licenses_osm_title)
     val osmCovers = stringResource(R.string.licenses_osm_covers)
     val osmText = stringResource(R.string.licenses_osm_text)
+    val yandex = stringResource(R.string.licenses_yandex_title)
+    val yandexCovers = stringResource(R.string.licenses_yandex_covers)
+    val yandexText = stringResource(R.string.licenses_yandex_text)
     val stream = stringResource(R.string.licenses_stream_title)
     val streamCovers = stringResource(R.string.licenses_stream_covers)
     val streamText = stringResource(R.string.licenses_stream_text)
     val entries by
-        produceState(emptyList<LicenseEntry>(), title, covers, inter, maplibre, osm, stream) {
+        produceState(
+            emptyList<LicenseEntry>(),
+            title,
+            covers,
+            inter,
+            maplibre,
+            osm,
+            yandex,
+            stream,
+        ) {
             value =
                 withContext(Dispatchers.IO) {
                     fun raw(@RawRes id: Int) =
@@ -71,6 +83,7 @@ fun LicensesRoute(onBack: () -> Unit) {
                         ),
                         LicenseEntry(maplibre, maplibreCovers, raw(R.raw.license_maplibre)),
                         LicenseEntry(osm, osmCovers, osmText),
+                        LicenseEntry(yandex, yandexCovers, yandexText),
                         LicenseEntry(stream, streamCovers, streamText),
                     )
                 }

@@ -41,6 +41,7 @@ import ru.colabike.app.push.VisibleConversation
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.rides.map.SketchRouteMaps
 import ru.colabike.app.settings.AppSettings
+import ru.colabike.app.settings.MapProvider
 import ru.colabike.app.settings.ThemeMode
 import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.PreviewData
@@ -1631,8 +1632,18 @@ class FakeSessions(var list: List<AccountSession> = listOf(thisDevice, browser))
     }
 }
 
-class FakeSettings(theme: ThemeMode = ThemeMode.System, guest: Boolean = false) : AppSettings {
+class FakeSettings(
+    theme: ThemeMode = ThemeMode.System,
+    guest: Boolean = false,
+    map: MapProvider = MapProvider.OpenStreetMap,
+) : AppSettings {
     override val themeMode = MutableStateFlow(theme)
+    override val mapProvider = MutableStateFlow(map)
+
+    override fun setMapProvider(provider: MapProvider) {
+        mapProvider.value = provider
+    }
+
     override val browsingAsGuest = MutableStateFlow(guest)
 
     override fun setThemeMode(mode: ThemeMode) {

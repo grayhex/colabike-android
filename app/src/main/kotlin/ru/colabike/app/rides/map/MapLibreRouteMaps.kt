@@ -78,6 +78,7 @@ class MapLibreRouteMaps(private val styleOverride: String?) : RouteMaps {
 /** What an instrumented test can look at: the style loaded and the route is on it. */
 class MapProbe {
     @Volatile var routeShown: Boolean = false
+    @Volatile var mapLoaded: Boolean = false
     @Volatile var failure: String? = null
 }
 

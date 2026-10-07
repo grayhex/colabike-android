@@ -22,6 +22,7 @@ browser = "1.10.0"
 okhttp = "5.5.0"
 coil = "3.6.3"
 maplibre = "13.6.1"
+yandexMapkit = "4.45.0-lite"
 stream = "7.13.0"
 rustorePush = "7.5.0"
 openapiGenerator = "7.25.0"
@@ -57,6 +58,7 @@ androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", vers
 rustore-push = { module = "ru.rustore.sdk:pushclient", version.ref = "rustorePush" }
 stream-compose = { module = "io.getstream:stream-chat-android-compose", version.ref = "stream" }
 maplibre-android = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
+yandex-mapkit = { module = "com.yandex.android:maps.mobile", version.ref = "yandexMapkit" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }

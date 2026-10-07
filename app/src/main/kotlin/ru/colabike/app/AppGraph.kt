@@ -43,6 +43,8 @@ import ru.colabike.app.push.PushSync
 import ru.colabike.app.push.RuStorePushProvider
 import ru.colabike.app.push.StoredPushBinding
 import ru.colabike.app.push.VisibleConversation
+import ru.colabike.app.rides.map.ChoosingRouteMaps
+import ru.colabike.app.rides.map.MapKitRouteMaps
 import ru.colabike.app.rides.map.MapLibreRouteMaps
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.settings.AppSettings
@@ -294,7 +296,13 @@ class AppGraph(context: Context, private val onSignedOut: () -> Unit = {}) : App
         PreferencesSettings(context.getSharedPreferences("settings", Context.MODE_PRIVATE))
     override val links = SiteLinks(config.siteUrl)
     override val clock: Clock = Clock.systemUTC()
-    override val maps: RouteMaps = MapLibreRouteMaps(BuildConfig.MAP_STYLE_URL)
+    override val maps: RouteMaps =
+        ChoosingRouteMaps(
+            settings,
+            osm = MapLibreRouteMaps(BuildConfig.MAP_STYLE_URL),
+            yandex =
+                BuildConfig.YANDEX_MAPS_API_KEY.takeIf { it.isNotEmpty() }?.let(::MapKitRouteMaps),
+        )
     override val photoFiles: PhotoFiles = ContentPhotoFiles(context.applicationContext)
     override val pending: PendingNavigation =
         PreferencesPendingNavigation(

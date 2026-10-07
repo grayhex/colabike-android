@@ -7,6 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import ru.colabike.app.links.SiteLinks
+import ru.colabike.app.settings.MapProvider
 import ru.colabike.app.settings.PreferencesSettings
 import ru.colabike.app.settings.ThemeMode
 
@@ -35,6 +36,30 @@ class SettingsTest {
 
         assertThat(restarted.themeMode.value).isEqualTo(ThemeMode.Dark)
         assertThat(restarted.browsingAsGuest.value).isTrue()
+    }
+
+    @Test
+    fun `the map under a route is OpenStreetMap until the person chooses another`() {
+        assertThat(PreferencesSettings(preferences).mapProvider.value)
+            .isEqualTo(MapProvider.OpenStreetMap)
+    }
+
+    @Test
+    fun `the chosen map is kept over a restart, and the way back is kept too`() {
+        PreferencesSettings(preferences).setMapProvider(MapProvider.Yandex)
+        assertThat(PreferencesSettings(preferences).mapProvider.value).isEqualTo(MapProvider.Yandex)
+
+        PreferencesSettings(preferences).setMapProvider(MapProvider.OpenStreetMap)
+        assertThat(PreferencesSettings(preferences).mapProvider.value)
+            .isEqualTo(MapProvider.OpenStreetMap)
+    }
+
+    @Test
+    fun `a map this version does not know is the default one, not a crash`() {
+        preferences.edit().putString("map_provider", "Google").commit()
+
+        assertThat(PreferencesSettings(preferences).mapProvider.value)
+            .isEqualTo(MapProvider.OpenStreetMap)
     }
 
     @Test
