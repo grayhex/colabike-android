@@ -11,7 +11,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +43,16 @@ internal class ChoosingRouteMaps(
     override val hasBasemap: Boolean = true
     override val offersYandex: Boolean = yandex != null
 
-    /** Why Yandex was given up on in this run of the app; null while it is trusted. */
+    /**
+     * Why Yandex was given up on in this run of the app; null while it is trusted. Kept while the
+     * map is closed and opened again, so that a person with no network is not made to wait out the
+     * Yandex map at every route; forgotten when they choose a map in the settings or tap "retry".
+     */
     private val failure = MutableStateFlow<YandexFailure?>(null)
+
+    override fun forgetFailure() {
+        failure.value = null
+    }
 
     @Composable
     override fun Map(route: RideRoute, modifier: Modifier) {
@@ -53,8 +60,6 @@ internal class ChoosingRouteMaps(
         val failed by failure.collectAsStateWithLifecycle()
         val maps = yandex
         val wantsYandex = maps != null && provider == MapProvider.Yandex
-        // A new choice is a new try: going to OpenStreetMap and back forgets an old failure.
-        LaunchedEffect(provider) { failure.value = null }
         Box(modifier) {
             if (maps != null && wantsYandex && failed == null) {
                 maps.Map(route, Modifier.fillMaxSize()) { failure.value = it }

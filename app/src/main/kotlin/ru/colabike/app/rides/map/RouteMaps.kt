@@ -41,6 +41,12 @@ interface RouteMaps {
     val offersYandex: Boolean
         get() = false
 
+    /**
+     * The person chose a map again in the settings: whatever was given up on in this run of the app
+     * is tried anew. Nothing to forget for a map that has no second one.
+     */
+    fun forgetFailure() = Unit
+
     /** The route, panned and zoomed by the hand. Fills [modifier]. */
     @Composable fun Map(route: RideRoute, modifier: Modifier)
 }

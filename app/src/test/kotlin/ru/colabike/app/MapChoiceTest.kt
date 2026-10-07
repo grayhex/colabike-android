@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
@@ -72,10 +73,14 @@ class ChoosingRouteMapsTest {
 
     private val osm = NamedMaps("osm")
 
+    private val shown = mutableStateOf(true)
+
     private fun show(maps: RouteMaps) {
         compose.setContent {
             ColaBikeTheme {
-                Box(Modifier.fillMaxSize()) { maps.Map(route, Modifier.fillMaxSize()) }
+                Box(Modifier.fillMaxSize()) {
+                    if (shown.value) maps.Map(route, Modifier.fillMaxSize())
+                }
             }
         }
         compose.waitForIdle()
@@ -146,6 +151,28 @@ class ChoosingRouteMapsTest {
     }
 
     @Test
+    fun `a Yandex that failed is not asked again at every route, until the choice is made anew`() {
+        val yandex = FakeYandex(failure = YandexFailure.NotLoaded)
+        val maps = ChoosingRouteMaps(FakeSettings(map = MapProvider.Yandex), osm, yandex)
+        show(maps)
+        val asked = yandex.routes.size
+
+        // The page closes and another route's map opens: Yandex is not asked, the note is there.
+        compose.runOnUiThread { shown.value = false }
+        compose.waitForIdle()
+        compose.runOnUiThread { shown.value = true }
+        compose.waitForIdle()
+        assertThat(yandex.routes.size).isEqualTo(asked)
+        compose.onNodeWithTag("map:yandex-fallback").assertIsDisplayed()
+
+        // The person chooses a map in the settings anew, and Yandex is tried again.
+        yandex.failure = null
+        compose.runOnUiThread { maps.forgetFailure() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("map:yandex").assertIsDisplayed()
+    }
+
+    @Test
     fun `keeping OpenStreetMap makes it the choice and stops asking Yandex`() {
         val settings = FakeSettings(map = MapProvider.Yandex)
         val yandex = FakeYandex(failure = YandexFailure.NotLoaded)
@@ -178,12 +205,21 @@ class MapSettingTest {
 
     private class OffersYandex(override val offersYandex: Boolean) : RouteMaps {
         override val hasBasemap: Boolean = true
+        var forgotten = 0
+
+        override fun forgetFailure() {
+            forgotten++
+        }
 
         @Composable override fun Map(route: RideRoute, modifier: Modifier) = Unit
     }
 
-    private fun profile(offersYandex: Boolean, settings: FakeSettings = FakeSettings()) {
-        val dependencies = FakeDependencies(settings = settings, maps = OffersYandex(offersYandex))
+    private fun profile(
+        offersYandex: Boolean,
+        settings: FakeSettings = FakeSettings(),
+        maps: OffersYandex = OffersYandex(offersYandex),
+    ) {
+        val dependencies = FakeDependencies(settings = settings, maps = maps)
         compose.setContent { ColaBikeTheme { ColaBikeApp(dependencies) } }
         compose.waitForIdle()
         compose.section("Профиль").performClick()
@@ -209,11 +245,14 @@ class MapSettingTest {
     @Test
     fun `choosing Yandex is kept in the settings, and the way back is one tap`() {
         val settings = FakeSettings()
-        profile(offersYandex = true, settings = settings)
+        val maps = OffersYandex(true)
+        profile(offersYandex = true, settings = settings, maps = maps)
 
         compose.onNodeWithText("Яндекс Карты").performScrollTo().performClick()
         compose.waitForIdle()
         assertThat(settings.mapProvider.value).isEqualTo(MapProvider.Yandex)
+        // A map chosen anew is a map tried anew.
+        assertThat(maps.forgotten).isEqualTo(1)
         compose.onNodeWithText("Яндекс Карты").assertIsSelected()
 
         compose.onNodeWithText("OpenStreetMap — по умолчанию").performScrollTo().performClick()

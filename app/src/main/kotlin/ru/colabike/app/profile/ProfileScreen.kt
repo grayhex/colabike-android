@@ -82,7 +82,11 @@ fun ProfileRoute(
     // Two maps to choose between only in a build that has the owner's key for the second.
     val mapChoice =
         if (dependencies.maps.offersYandex) {
-            MapChoice(mapProvider, dependencies.settings::setMapProvider)
+            MapChoice(mapProvider) {
+                // A new choice is a new try of whatever was given up on.
+                dependencies.settings.setMapProvider(it)
+                dependencies.maps.forgetFailure()
+            }
         } else {
             null
         }
