@@ -60,6 +60,7 @@
     <string name="bike_price">Цена</string>
     <string name="bike_price_value">%1$s&#160;₽</string>
     <string name="bike_photo_open">Открыть на весь экран</string>
+    <string name="bike_photo_failed">Не удалось загрузить фото</string>
     <string name="cola_photo_n_of_m_short">%1$d / %2$d</string>
     <string name="cola_photo_n_of_m">Фото %1$d из %2$d</string>
     <string name="bike_component_link">Страница компонента «%1$s» на сайте производителя</string>
