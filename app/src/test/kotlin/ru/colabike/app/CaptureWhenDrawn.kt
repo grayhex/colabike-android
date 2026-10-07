@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.View
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToString
@@ -13,6 +14,37 @@ import org.robolectric.shadows.ShadowLog
 
 /** How many times, 100 ms apart, to look again at a window that has not been drawn. */
 private const val MaxDrawTries = 20
+
+/** The tree must look the same this many times in a row, a pause apart, to be called at rest. */
+private const val CalmLooks = 3
+private const val MaxSettleLooks = 60
+private const val SettlePauseMs = 30L
+
+/**
+ * Waits until the screen has stopped changing: the semantics tree, with the place of every node, is
+ * the same [CalmLooks] times in a row. Compose's own idle wait does not cover what arrives from
+ * another thread (a form's findings, a loaded page), and that lands at a different moment from run
+ * to run. A scroll worked out before it, or a picture taken before it, differs by that much.
+ */
+fun ComposeContentTestRule.settle() {
+    var before = ""
+    var calm = 0
+    var looks = 0
+    while (calm < CalmLooks && looks < MaxSettleLooks) {
+        waitForIdle()
+        mainClock.advanceTimeBy(100)
+        Thread.sleep(SettlePauseMs)
+        // A dialog is a root of its own: look at all of them.
+        val now = onAllNodes(isRoot()).printToString()
+        if (now == before) {
+            calm++
+        } else {
+            calm = 0
+            before = now
+        }
+        looks++
+    }
+}
 
 /**
  * Captures the root of [this] into [path] once the first frame is on the screen.

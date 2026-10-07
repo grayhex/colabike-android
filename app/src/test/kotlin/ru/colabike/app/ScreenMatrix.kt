@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -262,13 +263,13 @@ private fun ComposeContentTestRule.openCompletedRide() {
 /** From the list to the first bike's page and from there to its journal. */
 private fun ComposeContentTestRule.openJournal() {
     onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-    onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
+    reveal(onNodeWithText("Журнал велосипеда")).performClick()
 }
 
 /** From the list to the first bike's page and from there to its author. */
 private fun ComposeContentTestRule.openAuthor() {
     onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-    onNodeWithText("Тестовый Райдер").performScrollTo().performClick()
+    reveal(onNodeWithText("Тестовый Райдер")).performClick()
 }
 
 /** What the viewer is to a person they blocked. */
@@ -331,6 +332,19 @@ private val photos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toA
  * its own clock, so a click would make captures differ between runs.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Scrolls to [node] once the screen has stopped changing, and lets the scroll come to rest. The
+ * distance is worked out from the layout of the moment: findings of a form or a card that arrives a
+ * frame later move the node by a line, and the same screen comes out scrolled by a different amount
+ * from one run to the next.
+ */
+private fun ComposeContentTestRule.reveal(
+    node: SemanticsNodeInteraction
+): SemanticsNodeInteraction {
+    settle()
+    return node.performScrollTo().also { settle() }
+}
+
 fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: Look) {
     setContent {
         CompositionLocalProvider(
@@ -745,35 +759,35 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
         Screen.BikeDetailPassport -> {
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-            onNodeWithText("Характеристики").performScrollTo()
+            reveal(onNodeWithText("Характеристики"))
         }
         Screen.BikeDetailBuild -> {
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-            onNodeWithText("Shimano Deore 10-speed").performScrollTo()
+            reveal(onNodeWithText("Shimano Deore 10-speed"))
         }
         Screen.Profile,
         Screen.ProfileGuest -> section("Профиль").performClick()
         Screen.ProfileMore -> {
             section("Профиль").performClick()
-            onNodeWithText("О приложении").performScrollTo()
+            reveal(onNodeWithText("О приложении"))
         }
         Screen.AboutConfigured -> {
             section("Профиль").performClick()
-            onNodeWithText("О приложении").performScrollTo().performClick()
+            reveal(onNodeWithText("О приложении")).performClick()
         }
         Screen.Devices -> {
             section("Профиль").performClick()
-            onNodeWithText("Устройства и входы").performScrollTo().performClick()
+            reveal(onNodeWithText("Устройства и входы")).performClick()
         }
         Screen.DeleteAccount,
         Screen.DeleteAccountYandex,
         Screen.DeleteAccountAdmin -> {
             section("Профиль").performClick()
-            onNodeWithText("Удалить аккаунт").performScrollTo().performClick()
+            reveal(onNodeWithText("Удалить аккаунт")).performClick()
         }
         Screen.Blocked -> {
             section("Профиль").performClick()
-            onNodeWithText("Заблокированные").performScrollTo().performClick()
+            reveal(onNodeWithText("Заблокированные")).performClick()
         }
         Screen.PersonBlocked -> openAuthor()
         Screen.ReportDialog -> {
@@ -783,7 +797,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         }
         Screen.About -> {
             section("Профиль").performClick()
-            onNodeWithText("О приложении").performScrollTo().performClick()
+            reveal(onNodeWithText("О приложении")).performClick()
         }
         Screen.Person -> openAuthor()
         Screen.PeopleList -> {
@@ -796,7 +810,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.Comments,
         Screen.CommentsGuest -> {
             onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-            onNodeWithText("Комментарии").performScrollTo().performClick()
+            reveal(onNodeWithText("Комментарии")).performClick()
         }
         Screen.Rides -> section("Покатушки").performClick()
         Screen.RidePlan -> {
@@ -808,13 +822,13 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.RideCompletedAnalysis -> {
             openCompletedRide()
             // The last chart (heart rate, with its gap) brings the others into the picture too.
-            onNodeWithContentDescription("Пульс: от", substring = true).performScrollTo()
+            reveal(onNodeWithContentDescription("Пульс: от", substring = true))
         }
         Screen.RideMap -> {
             openCompletedRide()
             // On a wide window the map is already beside the page; a phone opens it by a button.
             if (onAllNodesWithText("Открыть карту").fetchSemanticsNodes().isNotEmpty()) {
-                onNodeWithText("Открыть карту").performScrollTo().performClick()
+                reveal(onNodeWithText("Открыть карту")).performClick()
             }
         }
         Screen.Notifications ->
@@ -823,12 +837,11 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.NotificationSettingsBusy,
         Screen.NotificationSettingsPhone -> {
             section("Профиль").performClick()
-            onNodeWithText("Что, когда и от кого присылать").performScrollTo().performClick()
+            reveal(onNodeWithText("Что, когда и от кого присылать")).performClick()
             when (screen) {
                 Screen.NotificationSettingsBusy ->
-                    onNodeWithTag("notif-settings:mute:ride-1").performScrollTo()
-                Screen.NotificationSettingsPhone ->
-                    onNodeWithTag("notif-settings:os-off").performScrollTo()
+                    reveal(onNodeWithTag("notif-settings:mute:ride-1"))
+                Screen.NotificationSettingsPhone -> reveal(onNodeWithTag("notif-settings:os-off"))
                 else -> Unit
             }
         }
@@ -836,24 +849,24 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.BikeEditorProblems -> {
             onNodeWithTag("bikes:add").performClick()
             // The findings are shown once the person tried to save an empty form.
-            onNodeWithTag("bike-editor:save").performScrollTo().performClick()
+            reveal(onNodeWithTag("bike-editor:save")).performClick()
             // The findings pushed the button down: bring it, and what is above it, back.
-            onNodeWithTag("bike-editor:save").performScrollTo()
+            reveal(onNodeWithTag("bike-editor:save"))
         }
         Screen.BikeEditorDelete -> {
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
             onNodeWithTag("bike:edit").performClick()
-            onNodeWithTag("bike-editor:delete").performScrollTo().performClick()
+            reveal(onNodeWithTag("bike-editor:delete")).performClick()
         }
         Screen.JournalEditorNew,
         Screen.JournalEditorProblems -> {
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
-            onNodeWithTag("bike:journal-new").performScrollTo().performClick()
+            reveal(onNodeWithTag("bike:journal-new")).performClick()
             if (screen == Screen.JournalEditorProblems) {
-                onNodeWithTag("journal-editor:status:published").performScrollTo().performClick()
+                reveal(onNodeWithTag("journal-editor:status:published")).performClick()
                 // The findings are shown once the person tried to save, above the button.
-                onNodeWithTag("journal-editor:save").performScrollTo().performClick()
-                onNodeWithTag("journal-editor:save").performScrollTo()
+                reveal(onNodeWithTag("journal-editor:save")).performClick()
+                reveal(onNodeWithTag("journal-editor:save"))
             }
         }
         Screen.JournalOwn,
@@ -861,37 +874,36 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.JournalEditorEdit,
         Screen.JournalEditorDelete -> {
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
-            onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
+            reveal(onNodeWithText("Журнал велосипеда")).performClick()
             onNodeWithTag("journal:j-own").performClick()
             if (screen == Screen.JournalPhotos) {
-                onNodeWithTag("journal:photos").performScrollTo().performClick()
+                reveal(onNodeWithTag("journal:photos")).performClick()
             } else if (screen != Screen.JournalOwn) {
                 onNodeWithTag("journal:edit").performClick()
                 if (screen == Screen.JournalEditorDelete) {
-                    onNodeWithTag("journal-editor:delete").performScrollTo().performClick()
+                    reveal(onNodeWithTag("journal-editor:delete")).performClick()
                 }
             }
         }
         Screen.BikePhotos,
         Screen.BikePhotosDelete -> {
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
-            onNodeWithTag("bike:photos").performScrollTo().performClick()
+            reveal(onNodeWithTag("bike:photos")).performClick()
             if (screen == Screen.BikePhotosDelete) {
-                onNodeWithTag("photos:delete:p2").performScrollTo().performClick()
+                reveal(onNodeWithTag("photos:delete:p2")).performClick()
             }
         }
         Screen.BikeParts,
         Screen.BikePartEditor,
         Screen.BikePartProblems -> {
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
-            onNodeWithTag("bike:parts").performScrollTo().performClick()
+            reveal(onNodeWithTag("bike:parts")).performClick()
             when (screen) {
-                Screen.BikePartEditor ->
-                    onNodeWithTag("parts:part:c2").performScrollTo().performClick()
+                Screen.BikePartEditor -> reveal(onNodeWithTag("parts:part:c2")).performClick()
                 Screen.BikePartProblems -> {
                     onNodeWithTag("parts:add").performClick()
-                    onNodeWithTag("part-editor:save").performScrollTo().performClick()
-                    onNodeWithTag("part-editor:save").performScrollTo()
+                    reveal(onNodeWithTag("part-editor:save")).performClick()
+                    reveal(onNodeWithTag("part-editor:save"))
                 }
                 else -> Unit
             }
@@ -914,7 +926,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                 Screen.IntentEditor -> {
                     onNodeWithTag("intents:create").performClick()
                     // The findings are shown once the person tried to save without an area.
-                    onNodeWithTag("intent-editor:save").performScrollTo().performClick()
+                    reveal(onNodeWithTag("intent-editor:save")).performClick()
                 }
                 else -> Unit
             }
@@ -923,16 +935,15 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.NearbyDraft,
         Screen.NearbyOffers -> {
             section("Профиль").performClick()
-            onNodeWithText("Что, когда и от кого присылать").performScrollTo().performClick()
-            onNodeWithTag("notif-settings:nearby").performScrollTo().performClick()
+            reveal(onNodeWithText("Что, когда и от кого присылать")).performClick()
+            reveal(onNodeWithTag("notif-settings:nearby")).performClick()
             when (screen) {
                 Screen.NearbyDraft -> {
-                    onNodeWithTag("nearby:locate").performScrollTo().performClick()
+                    reveal(onNodeWithTag("nearby:locate")).performClick()
                     onNodeWithTag("nearby:locate-allow").performClick()
-                    onNodeWithTag("nearby:confirm").performScrollTo()
+                    reveal(onNodeWithTag("nearby:confirm"))
                 }
-                Screen.NearbyOffers ->
-                    onNodeWithTag("nearby:offers").performScrollTo().performClick()
+                Screen.NearbyOffers -> reveal(onNodeWithTag("nearby:offers")).performClick()
                 else -> Unit
             }
         }
@@ -942,7 +953,9 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithContentDescription("Каталог компонентов").performClick()
             onNodeWithTag("component:c1").performClick()
             if (screen == Screen.ComponentCredits) {
+                settle()
                 onNodeWithTag("component:page").performScrollToNode(hasText("Фотографии"))
+                settle()
             }
         }
         Screen.Market -> onNodeWithContentDescription("Объявления").performClick()
@@ -955,12 +968,12 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
             onNodeWithContentDescription("Объявления").performClick()
             onNodeWithTag("listing:l1").performClick()
             if (screen == Screen.ListingContact) {
-                onNodeWithTag("listing:contact_show").performScrollTo().performClick()
+                reveal(onNodeWithTag("listing:contact_show")).performClick()
             }
         }
         Screen.SavedMarket -> {
             section("Профиль").performClick()
-            onNodeWithText("Сохранённые объявления").performScrollTo().performClick()
+            reveal(onNodeWithText("Сохранённые объявления")).performClick()
         }
         Screen.Messages,
         Screen.MessagesGuest -> section("Чаты").performClick()
@@ -983,6 +996,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
     }
     mainClock.advanceTimeBy(3_000)
     waitForIdle()
+    settle()
     captureWhenDrawn("src/test/screenshots/${screen.file}_${window}_${look.file}.png")
 }
 
