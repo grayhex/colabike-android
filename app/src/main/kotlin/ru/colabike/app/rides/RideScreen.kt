@@ -317,12 +317,15 @@ private fun RouteCard(route: RideRoute, onOpenMap: () -> Unit) {
             Modifier.padding(Spacing.m),
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // The heading and the way to the map: side by side, one under the other at a big font.
+            val title: @Composable (Modifier) -> Unit = {
                 Text(
                     stringResource(R.string.route_title),
                     style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.weight(1f).semantics { heading() },
+                    modifier = it.semantics { heading() },
                 )
+            }
+            val open: @Composable () -> Unit = {
                 TextButton(onClick = onOpenMap) {
                     Icon(
                         painterResource(ColaIcons.Route),
@@ -333,6 +336,15 @@ private fun RouteCard(route: RideRoute, onOpenMap: () -> Unit) {
                         stringResource(R.string.route_open_map),
                         modifier = Modifier.padding(start = Spacing.xs),
                     )
+                }
+            }
+            if (LocalDensity.current.fontScale > LargeFont) {
+                title(Modifier)
+                open()
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    title(Modifier.weight(1f))
+                    open()
                 }
             }
             RouteSketch(

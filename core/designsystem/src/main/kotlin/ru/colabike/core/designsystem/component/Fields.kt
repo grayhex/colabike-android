@@ -63,9 +63,9 @@ fun colaTextFieldColors(): TextFieldColors {
     )
 }
 
-/** Rounded, nearly a pill at the usual field height, but with room for the floating label. */
+/** The corner of a field: 12 dp, like the search line and the fields chosen by touch. */
 val colaFieldShape: Shape
-    @Composable get() = MaterialTheme.shapes.large
+    @Composable get() = MaterialTheme.shapes.small
 
 /** The height a search line and its buttons keep: the touch target, no less. */
 private val SearchHeight = 48.dp
@@ -74,7 +74,9 @@ private val SearchHeight = 48.dp
  * The search line of a list: a raised surface under a visible edge, the lens, what is typed, a
  * clear button once there is text and, if the screen has a wider search, a divider and a "filters"
  * button at the end. The keyboard's search key only hides the keyboard: the list already follows
- * the text. Every part keeps its 48 dp touch target.
+ * the text. Every part keeps its 48 dp touch target. [onClear] is what the clear button does: by
+ * default it empties the text, a screen that has a quicker way (no pause before the request) gives
+ * its own.
  */
 @Composable
 fun ColaSearchField(
@@ -85,6 +87,7 @@ fun ColaSearchField(
     modifier: Modifier = Modifier,
     filtersLabel: String? = null,
     onFilters: (() -> Unit)? = null,
+    onClear: () -> Unit = { onValueChange("") },
 ) {
     val scheme = MaterialTheme.colorScheme
     val focus = LocalFocusManager.current
@@ -124,7 +127,7 @@ fun ColaSearchField(
                     field()
                 }
                 if (value.isNotEmpty()) {
-                    IconButton(onClick = { onValueChange("") }) {
+                    IconButton(onClick = onClear) {
                         Icon(painterResource(ColaIcons.Close), contentDescription = clearLabel)
                     }
                 }

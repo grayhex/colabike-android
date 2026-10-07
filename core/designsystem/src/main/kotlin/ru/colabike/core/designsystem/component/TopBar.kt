@@ -88,7 +88,10 @@ fun ColaTopBar(
                     bottom = Spacing.xs,
                 )
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // With a subtitle under the title the arrow stays beside the title, not between the lines.
+        Row(
+            verticalAlignment = if (subtitle != null) Alignment.Top else Alignment.CenterVertically
+        ) {
             if (onBack != null) {
                 IconButton(onClick = onBack) {
                     Icon(

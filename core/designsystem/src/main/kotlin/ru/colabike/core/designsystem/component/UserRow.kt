@@ -57,10 +57,11 @@ fun UserRow(
         ) {
             Avatar(person.displayName, person.avatarUrl)
             Column(Modifier.weight(1f)) {
+                // A name is never cut for good: at a big system font it takes a second line.
                 Text(
                     person.displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
