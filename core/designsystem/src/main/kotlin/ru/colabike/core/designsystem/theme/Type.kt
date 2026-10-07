@@ -71,12 +71,18 @@ data class ColaTextStyles(
     val eyebrow: TextStyle,
     /** Large numerals on stat tiles: the figures of a ride. */
     val numeral: TextStyle,
+    /** The name of the thing a detail page is about: 24 sp, so that it gives room to the facts. */
+    val pageTitle: TextStyle,
+    /** A fact on a compact tile: weight, mileage, size. */
+    val figure: TextStyle,
 )
 
 internal val DefaultColaTextStyles =
     ColaTextStyles(
         eyebrow = inter(12, 16, FontWeight.Medium, 1.6),
         numeral = inter(30, 36, FontWeight.Bold),
+        pageTitle = inter(24, 30, FontWeight.Bold),
+        figure = inter(20, 26, FontWeight.SemiBold),
     )
 
 val LocalColaTextStyles = staticCompositionLocalOf { DefaultColaTextStyles }

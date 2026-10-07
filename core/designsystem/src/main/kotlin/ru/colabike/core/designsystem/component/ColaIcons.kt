@@ -64,4 +64,12 @@ object ColaIcons {
     @DrawableRes val Build = R.drawable.cola_ic_build
     @DrawableRes val Tag = R.drawable.cola_ic_tag
     @DrawableRes val DoneAll = R.drawable.cola_ic_done_all
+    @DrawableRes val Tune = R.drawable.cola_ic_tune
+    @DrawableRes val CheckCircle = R.drawable.cola_ic_check_circle
+    @DrawableRes val Schedule = R.drawable.cola_ic_schedule
+    @DrawableRes val Forest = R.drawable.cola_ic_forest
+    @DrawableRes val Fitness = R.drawable.cola_ic_fitness
+    @DrawableRes val Map = R.drawable.cola_ic_map
+    @DrawableRes val Landscape = R.drawable.cola_ic_landscape
+    @DrawableRes val AddCircle = R.drawable.cola_ic_add_circle
 }

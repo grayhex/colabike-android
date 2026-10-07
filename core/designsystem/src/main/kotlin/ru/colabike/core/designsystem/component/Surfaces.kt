@@ -176,16 +176,28 @@ fun SoftIconTile(
     }
 }
 
-/** A fact as a card: an eyebrow label over a serif value. */
+/**
+ * A fact as a card: a quiet label over a value. [compact] is the 20 sp value of a passport on a
+ * detail page; without it the value is the 30 sp figure of a ride.
+ */
 @Composable
-fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
+fun StatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
     ColaCard(modifier) {
         Column(
-            Modifier.padding(Spacing.card),
-            verticalArrangement = Arrangement.spacedBy(Spacing.s),
+            Modifier.padding(if (compact) Spacing.m else Spacing.card),
+            verticalArrangement = Arrangement.spacedBy(if (compact) Spacing.xs else Spacing.s),
         ) {
             Eyebrow(label, maxLines = 2)
-            Text(value, style = ColaTheme.textStyles.numeral, maxLines = 2)
+            Text(
+                value,
+                style = if (compact) ColaTheme.textStyles.figure else ColaTheme.textStyles.numeral,
+                maxLines = 2,
+            )
         }
     }
 }
