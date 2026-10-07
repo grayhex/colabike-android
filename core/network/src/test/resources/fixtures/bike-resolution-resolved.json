@@ -1,0 +1,82 @@
+{
+  "query": {
+    "brand": "Giant",
+    "model": "Contend",
+    "trim": "AR 1",
+    "year": 2024
+  },
+  "cached": false,
+  "previewId": "5c1c1b6e-9d6e-4a5b-8a33-6f1d2a9b0c11",
+  "previewExpiresAt": "2026-10-07T17:00:00.000Z",
+  "candidates": [],
+  "build": {
+    "name": "Giant Contend AR 1",
+    "brand": "Giant",
+    "model": "Contend",
+    "trim": "AR 1",
+    "year": 2024,
+    "sourceYear": 2025,
+    "sourceUrl": "https://www.giant.example/contend",
+    "sourceHost": "www.giant.example",
+    "sourceKind": "manufacturer",
+    "sourceName": "Giant",
+    "manualSelection": false,
+    "identityMismatch": true,
+    "yearMismatch": true,
+    "warnings": [
+      "identity_mismatch"
+    ],
+    "quality": {
+      "level": "partial",
+      "recognizedComponents": 4,
+      "coverage": 0.66
+    },
+    "components": [
+      {
+        "section": "build",
+        "category": "Рама",
+        "name": "ALUXX aluminium",
+        "notes": "",
+        "groupId": "frame"
+      },
+      {
+        "section": "build",
+        "category": "Вилка",
+        "name": "Giant Contend",
+        "notes": "Giant Contend, carbon",
+        "groupId": "frame"
+      },
+      {
+        "section": "build",
+        "category": "Седло",
+        "name": "Giant Contact",
+        "notes": "",
+        "groupId": "cockpit"
+      },
+      {
+        "section": "accessories",
+        "category": "Звонок",
+        "name": "Звонок Giant",
+        "notes": "",
+        "groupId": "equipment"
+      }
+    ],
+    "unrecognized": [
+      {
+        "label": "Прочее",
+        "value": "?"
+      }
+    ],
+    "suggested": {
+      "weightKg": 9.8,
+      "color": "Black",
+      "sizes": "S, M, L",
+      "wheelSize": null,
+      "manufacturerUrl": "https://www.giant.example/contend"
+    }
+  },
+  "sourcesChecked": null,
+  "status": "resolved",
+  "retryable": false,
+  "reason": null
+}

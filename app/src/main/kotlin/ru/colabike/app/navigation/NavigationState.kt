@@ -168,6 +168,7 @@ class Navigator(
                 Destination.NewConversation -> state.topLevelRoute
                 is Destination.Bike,
                 is Destination.BikeEditor,
+                Destination.BikeWizard,
                 is Destination.BikeParts,
                 is Destination.BikePart,
                 is Destination.BikePhotos,

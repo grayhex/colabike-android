@@ -11928,6 +11928,396 @@
                 }
             }
         },
+        "/catalog": {
+            "get": {
+                "operationId": "getSiteCatalog",
+                "tags": [
+                    "Bikes"
+                ],
+                "summary": "Справочники сайта",
+                "description": "Справочники, по которым заполняются велосипед и его комплектация: типы и подтипы, признаки, марки и модели, производители, размеры рам, группы, категории и названия компонентов, назначения. Без входа, одинаково для всех; заголовки входа не читаются. Значения подсказывают, а не запирают ввод: сайт принимает и свои названия, старые значения в записях остаются. `version` растёт с каждым сохранением справочников в админке. Ответ свеж минуту (`Cache-Control: public, max-age=60`), затем запрос с `If-None-Match` получает 304 без тела, если ничего не изменилось. Марки Resolver в справочник не входят: что он умеет распознавать, говорит исход поиска.",
+                "security": [
+                    
+                ],
+                "parameters": [
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "`ETag` прошлого ответа: без изменений ответ — 304.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Справочники сайта.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Валидатор этого ответа для `If-None-Match`.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Cache-Control": {
+                                "description": "`public, max-age=60`.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SiteCatalog"
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Справочники не изменились: тела нет, `ETag` тот же.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Тот же валидатор.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/bike-resolutions": {
+            "post": {
+                "operationId": "resolveBike",
+                "tags": [
+                    "Bikes"
+                ],
+                "summary": "Найти комплектацию велосипеда",
+                "description": "Тот же поиск и разбор, что в мастере сайта: производитель, затем подходящие магазины. Запрос может идти до полутора минут; клиент показывает ожидание и даёт его прервать (разрыв соединения останавливает поиск). Исходы поиска — ответ 200 со `status`: `resolved` (комплектация в `build`, `previewId` для создания), `ambiguous` (варианты в `candidates`: человек выбирает сам, следующий запрос называет `candidateId`, а не запускает новый поиск), `not_found`, `unsupported_brand`, `upstream_unavailable`, `parse_error`. Ссылка `sourceUrl` распознаётся тем же разбором и ограничена настройками Resolver. Бюджет — 30 поисков за окно, общий с сайтом (429 с `Retry-After`).",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BikeResolutionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Итог поиска.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BikeResolution"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело не подходит, либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше 4096 байт.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много поисков; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/bike-wizard/bikes": {
+            "post": {
+                "operationId": "createBikeWithBuild",
+                "tags": [
+                    "Bikes"
+                ],
+                "summary": "Создать велосипед с проверенной комплектацией",
+                "description": "Создаёт велосипед и его комплектацию одной операцией, как мастер сайта: `components` — то, что человек проверил и исправил, сервер ничего не добавляет. `previewId` из `BikeResolution` сохраняет источник и заводскую спецификацию; он действует два часа и принадлежит тому, кто искал (иначе 409, `details.path` = `previewId`). Если модель или год источника отличаются от велосипеда, нужно `identityConfirmed: true` (иначе 409, `details.path` = `identityConfirmed`). Заголовок `Idempotency-Key` (UUID) обязателен: повтор после потерянного ответа отдаёт тот же велосипед (`Idempotency-Replayed: true`), а не второй; тот же ключ с другим телом — 409. Публикация требует подтверждённой почты (403 `email_verification_required`), приватный велосипед — нет. Не больше 20 велосипедов на человека (409). Бюджет создания общий с `POST /bikes`. Тело — до 262144 байт (до 200 компонентов). Фото загружаются отдельно.",
+                "security": [
+                    {
+                        "cookieSession": [
+                            
+                        ]
+                    },
+                    {
+                        "bearerAuth": [
+                            
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "description": "UUID одной операции создания: повтор того же запроса в течение суток отдаёт тот же ответ (`Idempotency-Replayed: true`), а не второй объект; тот же ключ с другим телом — 409.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BikeWizardRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Велосипед создан: карточка владельца.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            },
+                            "ETag": {
+                                "description": "Версия собственных полей велосипеда (не комплектации и не фото): для `If-Match` следующей правки.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Bike"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Тело, параметры или `Idempotency-Key` не подходят, либо cookie вместе с Authorization.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Нет входа, сессия или токен недействительны, токен доступа истёк (`token_expired`) либо схема Authorization не поддерживается.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cookie-запрос не с адреса сайта (нужен заголовок `Origin`) либо публикация без подтверждённой почты (`email_verification_required`).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "description": "Предпросмотр устарел (`previewId`), нужно подтверждение отличий (`identityConfirmed`), `Idempotency-Key` уже использован с другим телом либо велосипедов уже 20.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Тело больше допустимого (16384 байта для велосипеда, 4096 для остального).",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Тело не `application/json`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много действий; секунды до конца окна — в `Retry-After`.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "$ref": "#/components/headers/RequestId"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
         "/bikes/{id}/photos": {
             "post": {
                 "operationId": "uploadBikePhoto",
@@ -20685,6 +21075,1028 @@
                 ],
                 "additionalProperties": false,
                 "description": "Порядок групп компонентов, в котором владелец показывает сборку: полный список ключей групп, замена целиком."
+            },
+            "SiteCatalog": {
+                "type": "object",
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "description": "Версия справочников; с ней клиент решает, обновлять ли копию."
+                    },
+                    "classification": {
+                        "type": "object",
+                        "properties": {
+                            "categories": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "subtypes": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "key": {
+                                                        "type": "string",
+                                                        "description": "Ключ значения: его принимают запись и фильтры."
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "description": "Название для людей."
+                                                    }
+                                                },
+                                                "required": [
+                                                    "key",
+                                                    "name"
+                                                ],
+                                                "additionalProperties": false
+                                            },
+                                            "description": "Подтипы этой категории; других подтипов она не имеет."
+                                        }
+                                    },
+                                    "required": [
+                                        "key",
+                                        "name",
+                                        "subtypes"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            },
+                            "suspensions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "type": "string",
+                                            "description": "Ключ значения: его принимают запись и фильтры."
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "description": "Название для людей."
+                                        }
+                                    },
+                                    "required": [
+                                        "key",
+                                        "name"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            },
+                            "constructions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "type": "string",
+                                            "description": "Ключ значения: его принимают запись и фильтры."
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "description": "Название для людей."
+                                        }
+                                    },
+                                    "required": [
+                                        "key",
+                                        "name"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            },
+                            "uses": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "type": "string",
+                                            "description": "Ключ значения: его принимают запись и фильтры."
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "description": "Название для людей."
+                                        }
+                                    },
+                                    "required": [
+                                        "key",
+                                        "name"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            },
+                            "maxUses": {
+                                "type": "integer",
+                                "description": "Сколько назначений можно выбрать."
+                            }
+                        },
+                        "required": [
+                            "categories",
+                            "suspensions",
+                            "constructions",
+                            "uses",
+                            "maxUses"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "purposes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "name"
+                            ],
+                            "additionalProperties": false
+                        },
+                        "description": "Включённые назначения сайта (ключи поля `purposes`)."
+                    },
+                    "brands": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "models": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "description": "Модели марки по всем типам справочника, без повторов."
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "models"
+                            ],
+                            "additionalProperties": false
+                        },
+                        "description": "Марки и модели велосипедов сайта. Это не список марок, которые умеет распознавать Resolver."
+                    },
+                    "manufacturers": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Производители компонентов."
+                    },
+                    "sizes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Размеры рам."
+                    },
+                    "components": {
+                        "type": "object",
+                        "properties": {
+                            "groups": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "categories": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "name",
+                                        "categories"
+                                    ],
+                                    "additionalProperties": false
+                                },
+                                "description": "Группы компонентов в порядке сайта и их категории."
+                            },
+                            "buildCategories": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "accessoryCategories": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "names": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "category": {
+                                            "type": "string"
+                                        },
+                                        "names": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "category",
+                                        "names"
+                                    ],
+                                    "additionalProperties": false
+                                },
+                                "description": "Названия компонентов по категориям."
+                            }
+                        },
+                        "required": [
+                            "groups",
+                            "buildCategories",
+                            "accessoryCategories",
+                            "names"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "version",
+                    "classification",
+                    "purposes",
+                    "brands",
+                    "manufacturers",
+                    "sizes",
+                    "components"
+                ],
+                "additionalProperties": false,
+                "description": "Справочники сайта, по которым заполняются велосипед и его комплектация. `version` растёт с каждым сохранением справочников в админке; тип велосипеда (`classification`) описан кодом сайта и меняется вместе с API. Значения не закрывают ввод: сайт принимает и свои названия марок, моделей и компонентов, а старые значения остаются в записях как есть."
+            },
+            "BikeResolutionRequest": {
+                "type": "object",
+                "properties": {
+                    "brand": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                    },
+                    "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                    },
+                    "trim": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 100
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "year": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "minimum": 1900,
+                                "maximum": 2100
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "sourceUrl": {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                    },
+                    "candidateId": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "chooseCandidates": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "brand",
+                    "model"
+                ],
+                "additionalProperties": false,
+                "description": "Что искать: марка и модель, год и комплектация по желанию. Без `sourceUrl` и `candidateId` сервер ищет комплектацию сам; `chooseCandidates: true` просит при нескольких вариантах вернуть их список (`ambiguous`), а не выбирать за человека. `candidateId` — выбор одного из вариантов, выданных сервером ранее, `sourceUrl` — страница магазина или производителя. Не больше одного из `sourceUrl`, `candidateId`; `chooseCandidates` с ними не сочетается."
+            },
+            "BikeResolutionCandidate": {
+                "type": "object",
+                "properties": {
+                    "candidateId": {
+                        "description": "Идентификатор варианта для выбора. Нет — вариант выбирают по `url` (`sourceUrl`).",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Название модели по странице."
+                    },
+                    "brand": {
+                        "type": "string"
+                    },
+                    "year": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Год по странице; null — страница года не называет."
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "sourceHost": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "sourceKind": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "manufacturer",
+                                    "distributor",
+                                    "archive",
+                                    "store",
+                                    "web",
+                                    "manual"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "sourceName": {
+                        "description": "Название магазина, если источник — магазин.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "drivetrain": {
+                        "description": "Кратко: навеска, чтобы отличить варианты одной модели.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "quality": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "level": {
+                                        "type": "string",
+                                        "enum": [
+                                            "complete",
+                                            "partial"
+                                        ],
+                                        "description": "`complete` — спецификация прочитана полностью."
+                                    },
+                                    "recognizedComponents": {
+                                        "type": "integer",
+                                        "description": "Сколько компонентов распознано."
+                                    },
+                                    "coverage": {
+                                        "type": "number",
+                                        "description": "Доля характеристик страницы, которые распознаны (0–1)."
+                                    }
+                                },
+                                "required": [
+                                    "level",
+                                    "recognizedComponents",
+                                    "coverage"
+                                ],
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "warnings": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Предупреждения: `identity_mismatch`, `conflicting_sources`, `multiple_builds`."
+                    },
+                    "selectable": {
+                        "type": "boolean",
+                        "description": "Вариант можно выбрать без расхождения с запросом."
+                    },
+                    "otherHosts": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Та же модель на других страницах (не другая версия)."
+                    }
+                },
+                "required": [
+                    "candidateId",
+                    "name",
+                    "brand",
+                    "year",
+                    "url",
+                    "sourceHost",
+                    "sourceKind",
+                    "sourceName",
+                    "drivetrain",
+                    "quality",
+                    "warnings",
+                    "selectable",
+                    "otherHosts"
+                ],
+                "additionalProperties": false,
+                "description": "Один предложенный вариант комплектации: конкретная страница одного источника. Выбор относится к нему: `candidateId` называется в следующем запросе, детали разных вариантов не смешиваются."
+            },
+            "BikeResolutionComponent": {
+                "type": "object",
+                "properties": {
+                    "section": {
+                        "type": "string",
+                        "enum": [
+                            "build",
+                            "accessories"
+                        ]
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "groupId": {
+                        "type": "string",
+                        "description": "Группа справочника или пустая строка, если группы нет."
+                    }
+                },
+                "required": [
+                    "section",
+                    "category",
+                    "name",
+                    "notes",
+                    "groupId"
+                ],
+                "additionalProperties": false,
+                "description": "Черновик компонента, который сервер получил из спецификации источника, в том виде, в каком его принимает запись комплектации."
+            },
+            "BikeResolutionBuild": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Название модели по странице."
+                    },
+                    "brand": {
+                        "type": "string"
+                    },
+                    "model": {
+                        "type": "string"
+                    },
+                    "trim": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "year": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "sourceYear": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Год, названный страницей источника."
+                    },
+                    "sourceUrl": {
+                        "type": "string"
+                    },
+                    "sourceHost": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "sourceKind": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "manufacturer",
+                                    "distributor",
+                                    "archive",
+                                    "store",
+                                    "web",
+                                    "manual"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "sourceName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "manualSelection": {
+                        "type": "boolean",
+                        "description": "Страницу выбрал человек (ссылкой); совпадение не проверено."
+                    },
+                    "identityMismatch": {
+                        "type": "boolean",
+                        "description": "Источник описывает другую модель, чем запрос."
+                    },
+                    "yearMismatch": {
+                        "type": "boolean",
+                        "description": "Год источника отличается от года в запросе."
+                    },
+                    "warnings": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "quality": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "level": {
+                                        "type": "string",
+                                        "enum": [
+                                            "complete",
+                                            "partial"
+                                        ],
+                                        "description": "`complete` — спецификация прочитана полностью."
+                                    },
+                                    "recognizedComponents": {
+                                        "type": "integer",
+                                        "description": "Сколько компонентов распознано."
+                                    },
+                                    "coverage": {
+                                        "type": "number",
+                                        "description": "Доля характеристик страницы, которые распознаны (0–1)."
+                                    }
+                                },
+                                "required": [
+                                    "level",
+                                    "recognizedComponents",
+                                    "coverage"
+                                ],
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "components": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BikeResolutionComponent"
+                        }
+                    },
+                    "unrecognized": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "label": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        },
+                        "description": "Характеристики страницы, которые не удалось разобрать."
+                    },
+                    "suggested": {
+                        "type": "object",
+                        "properties": {
+                            "weightKg": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "color": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "sizes": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "wheelSize": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "manufacturerUrl": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "weightKg",
+                            "color",
+                            "sizes",
+                            "wheelSize",
+                            "manufacturerUrl"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "name",
+                    "brand",
+                    "model",
+                    "trim",
+                    "year",
+                    "sourceYear",
+                    "sourceUrl",
+                    "sourceHost",
+                    "sourceKind",
+                    "sourceName",
+                    "manualSelection",
+                    "identityMismatch",
+                    "yearMismatch",
+                    "warnings",
+                    "quality",
+                    "components",
+                    "unrecognized",
+                    "suggested"
+                ],
+                "additionalProperties": false,
+                "description": "Найденная комплектация: что прочитано со страницы источника, чтобы человек проверил это до сохранения."
+            },
+            "BikeResolution": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "resolved",
+                            "ambiguous",
+                            "not_found",
+                            "unsupported_brand",
+                            "upstream_unavailable",
+                            "parse_error"
+                        ]
+                    },
+                    "query": {
+                        "type": "object",
+                        "properties": {
+                            "brand": {
+                                "type": "string"
+                            },
+                            "model": {
+                                "type": "string"
+                            },
+                            "trim": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "year": {
+                                "anyOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            }
+                        },
+                        "required": [
+                            "brand",
+                            "model",
+                            "trim",
+                            "year"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "cached": {
+                        "type": "boolean",
+                        "description": "Ответ взят из кэша Resolver."
+                    },
+                    "retryable": {
+                        "type": "boolean",
+                        "description": "Имеет смысл повторить тот же запрос позже."
+                    },
+                    "reason": {
+                        "description": "Причина исхода: `timeout`, `http_403`, `access_challenge`, `candidate_expired`, `not_complete_bike`, `connection_failed` и т. п.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "previewId": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Предпросмотр найденной комплектации (только `resolved`); живёт два часа."
+                    },
+                    "previewExpiresAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "candidates": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BikeResolutionCandidate"
+                        }
+                    },
+                    "build": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/BikeResolutionBuild"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "sourcesChecked": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "answered": {
+                                        "type": "integer"
+                                    },
+                                    "asked": {
+                                        "type": "integer"
+                                    },
+                                    "complete": {
+                                        "type": "boolean",
+                                        "description": "Поиск был полным; иначе выдача ограничена."
+                                    }
+                                },
+                                "required": [
+                                    "answered",
+                                    "asked",
+                                    "complete"
+                                ],
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Сколько источников проверено (для вариантов и отказов)."
+                    }
+                },
+                "required": [
+                    "status",
+                    "query",
+                    "cached",
+                    "retryable",
+                    "reason",
+                    "previewId",
+                    "previewExpiresAt",
+                    "candidates",
+                    "build",
+                    "sourcesChecked"
+                ],
+                "additionalProperties": false,
+                "description": "Итог поиска комплектации. `resolved` — найдена одна комплектация (`build`), `previewId` нужен при создании велосипеда, чтобы сохранить источник и заводскую спецификацию; `ambiguous` — варианты (`candidates`), человек выбирает сам; остальное — исход без комплектации (HTTP 200, не ошибка запроса): `not_found`, `unsupported_brand`, `upstream_unavailable`, `parse_error`; тогда `reason` и `retryable` говорят, что делать. Во всех случаях можно продолжить вручную."
+            },
+            "BikeWizardRequest": {
+                "type": "object",
+                "properties": {
+                    "previewId": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "identityConfirmed": {
+                        "type": "boolean"
+                    },
+                    "bike": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "maxLength": 100
+                            },
+                            "brand": {
+                                "type": "string",
+                                "maxLength": 60
+                            },
+                            "model": {
+                                "type": "string",
+                                "maxLength": 100
+                            },
+                            "trim": {
+                                "type": "string",
+                                "maxLength": 100
+                            },
+                            "year": {
+                                "type": "integer",
+                                "minimum": 1900,
+                                "maximum": 2100
+                            },
+                            "classification": {
+                                "$ref": "#/components/schemas/BikeClassificationRequest"
+                            },
+                            "description": {
+                                "type": "string",
+                                "maxLength": 2000
+                            },
+                            "color": {
+                                "type": "string",
+                                "maxLength": 60
+                            },
+                            "size": {
+                                "type": "string",
+                                "maxLength": 30
+                            },
+                            "weight": {
+                                "description": "Вес в килограммах или null.",
+                                "anyOf": [
+                                    {
+                                        "type": "number",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 100
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            "mileage": {
+                                "description": "Пробег в километрах.",
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000000
+                            },
+                            "purposes": {
+                                "maxItems": 12,
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_-]{0,29}$"
+                                },
+                                "description": "Назначения из справочника сайта (ключи `purposes`)."
+                            },
+                            "manufacturerUrl": {
+                                "type": "string",
+                                "maxLength": 2048
+                            },
+                            "price": {
+                                "description": "Цена в рублях или null.",
+                                "anyOf": [
+                                    {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 999999999
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            "priceVisibility": {
+                                "description": "Какие цены показывать другим; без поля все цены скрыты.",
+                                "type": "object",
+                                "properties": {
+                                    "bike": {
+                                        "type": "boolean"
+                                    },
+                                    "components": {
+                                        "type": "boolean"
+                                    },
+                                    "accessories": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "bike",
+                                    "components",
+                                    "accessories"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "isFormer": {
+                                "type": "boolean"
+                            },
+                            "isPublic": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "brand",
+                            "model",
+                            "year",
+                            "classification",
+                            "isPublic"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "components": {
+                        "maxItems": 200,
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BikeComponentRequest"
+                        }
+                    }
+                },
+                "required": [
+                    "bike",
+                    "components"
+                ],
+                "additionalProperties": false,
+                "description": "Создание велосипеда с проверенной комплектацией. `bike` — как в `BikeRequest`, но `name` можно не называть: тогда это марка, модель, версия и год. `components` — комплектация целиком, как человек её проверил: сервер ничего не добавляет к ней. `previewId` из `BikeResolution` сохраняет источник и заводскую спецификацию; без него велосипед создаётся без привязки к источнику. `identityConfirmed: true` нужен, если модель или год источника отличаются от велосипеда. Заголовок `Idempotency-Key` обязателен."
             },
             "JournalRequest": {
                 "type": "object",

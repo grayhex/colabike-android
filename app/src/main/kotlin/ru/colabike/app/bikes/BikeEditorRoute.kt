@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.colabike.app.catalog.CatalogSource
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
 
@@ -17,15 +18,23 @@ import ru.colabike.core.model.BikesRepository
 @Composable
 fun BikeEditorRoute(
     repository: BikesRepository,
+    catalog: CatalogSource,
     id: String?,
     onBack: () -> Unit,
     onSaved: (id: String) -> Unit,
     onDeleted: () -> Unit,
     onOpenGarage: () -> Unit,
 ) {
+    // The dictionaries are asked for when the form opens: the copy on the device shows at once.
+    LaunchedEffect(catalog) { catalog.load() }
+    val dictionaries by catalog.state.collectAsStateWithLifecycle()
     val viewModel =
         viewModel(key = "bike-editor:${id ?: "new"}") {
-            BikeEditorViewModel(repository, id?.let(::BikeId))
+            BikeEditorViewModel(
+                repository,
+                id?.let(::BikeId),
+                catalog = { catalog.state.value.catalog },
+            )
         }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val editing = state as? BikeEditorUiState.Editing
@@ -67,5 +76,10 @@ fun BikeEditorRoute(
                 onOpenGarage = onOpenGarage,
             )
         }
-    BikeEditorScreen(state, editing = id != null, actions = actions)
+    BikeEditorScreen(
+        state,
+        editing = id != null,
+        actions = actions,
+        catalog = dictionaries.catalog,
+    )
 }

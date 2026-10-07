@@ -39,7 +39,7 @@ class AppConfigRepositoryTest {
     private val cacheFile by lazy { File(folder.root, "config/app-config.json") }
 
     private fun repository(
-        cache: AppConfigCache = AppConfigCache(cacheFile)
+        cache: DocumentCache = DocumentCache(cacheFile)
     ): NetworkAppConfigRepository =
         NetworkAppConfigRepository(
             api = site.api.app,
@@ -339,7 +339,7 @@ class AppConfigRepositoryTest {
     fun `a cache that cannot be written is not an error`() = runTest {
         // The "directory" is a file: nothing can be created in it.
         val blocker = folder.newFile("blocker")
-        val repository = repository(AppConfigCache(File(blocker, "app-config.json")))
+        val repository = repository(DocumentCache(File(blocker, "app-config.json")))
         etagged("app-config.json", "\"v7\"")
 
         val result = repository.refresh()
@@ -355,7 +355,7 @@ class AppConfigRepositoryTest {
             repository().refresh()
 
             val raw = cacheFile.readText()
-            val entry = AppConfigCache(cacheFile).read()!!
+            val entry = DocumentCache(cacheFile).read()!!
 
             assertThat(raw).doesNotContain("Authorization")
             assertThat(raw).doesNotContain("cola_at_")

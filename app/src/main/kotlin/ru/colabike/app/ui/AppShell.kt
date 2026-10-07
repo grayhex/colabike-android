@@ -52,6 +52,7 @@ import ru.colabike.app.bikes.BikeEditorRoute
 import ru.colabike.app.bikes.BikePartEditorRoute
 import ru.colabike.app.bikes.BikePartsRoute
 import ru.colabike.app.bikes.BikePhotosRoute
+import ru.colabike.app.bikes.BikeWizardRoute
 import ru.colabike.app.bikes.BikesRoute
 import ru.colabike.app.comments.CommentsRoute
 import ru.colabike.app.components.ComponentRoute
@@ -621,7 +622,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onOpen = { id -> navigator.openBike(id.value) },
                                                 onSearch = { navigator.open(Destination.Search()) },
                                                 onCreate = {
-                                                    navigator.open(Destination.BikeEditor())
+                                                    navigator.open(Destination.BikeWizard)
                                                 },
                                                 onOpenCatalog =
                                                     if (
@@ -718,9 +719,22 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 },
                                             )
                                         }
+                                        entry<Destination.BikeWizard> {
+                                            BikeWizardRoute(
+                                                repository = dependencies.wizard,
+                                                catalog = dependencies.catalog,
+                                                onBack = { navigator.back() },
+                                                // The wizard is replaced by the bike it made.
+                                                onCreated = { id ->
+                                                    navigator.back()
+                                                    navigator.openBike(id)
+                                                },
+                                            )
+                                        }
                                         entry<Destination.BikeEditor> { key ->
                                             BikeEditorRoute(
                                                 repository = dependencies.bikes,
+                                                catalog = dependencies.catalog,
                                                 id = key.id,
                                                 onBack = { navigator.back() },
                                                 onSaved = { id ->
@@ -747,6 +761,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         entry<Destination.BikeParts> { key ->
                                             BikePartsRoute(
                                                 repository = dependencies.bikes,
+                                                catalog = dependencies.catalog,
                                                 bikeId = key.bikeId,
                                                 onBack = { navigator.back() },
                                                 onAdd = {
@@ -811,6 +826,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         entry<Destination.BikePart> { key ->
                                             BikePartEditorRoute(
                                                 repository = dependencies.bikes,
+                                                catalog = dependencies.catalog,
                                                 bikeId = key.bikeId,
                                                 componentId = key.id,
                                                 onBack = { navigator.back() },

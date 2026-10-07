@@ -1,0 +1,17 @@
+{
+  "query": {
+    "brand": "Giant",
+    "model": "Contend",
+    "trim": "AR 1",
+    "year": 2024
+  },
+  "cached": false,
+  "previewId": null,
+  "previewExpiresAt": null,
+  "candidates": [],
+  "build": null,
+  "sourcesChecked": null,
+  "status": "upstream_unavailable",
+  "retryable": true,
+  "reason": "timeout"
+}

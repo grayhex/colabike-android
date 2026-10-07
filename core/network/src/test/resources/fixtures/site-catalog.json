@@ -1,0 +1,983 @@
+{
+  "version": 7,
+  "classification": {
+    "categories": [
+      {
+        "key": "mtb",
+        "name": "MTB",
+        "subtypes": [
+          {
+            "key": "xc",
+            "name": "XC"
+          },
+          {
+            "key": "trail",
+            "name": "Trail"
+          },
+          {
+            "key": "enduro",
+            "name": "Enduro"
+          },
+          {
+            "key": "downhill",
+            "name": "Downhill"
+          },
+          {
+            "key": "dirt_jump",
+            "name": "Dirt Jump"
+          }
+        ]
+      },
+      {
+        "key": "road_gravel",
+        "name": "Шоссе / гравел",
+        "subtypes": [
+          {
+            "key": "road",
+            "name": "Шоссе"
+          },
+          {
+            "key": "endurance",
+            "name": "Endurance"
+          },
+          {
+            "key": "aero",
+            "name": "Aero"
+          },
+          {
+            "key": "gravel",
+            "name": "Gravel"
+          },
+          {
+            "key": "cyclocross",
+            "name": "Cyclocross"
+          },
+          {
+            "key": "tt_triathlon",
+            "name": "TT / Triathlon"
+          },
+          {
+            "key": "track",
+            "name": "Track"
+          }
+        ]
+      },
+      {
+        "key": "urban_touring",
+        "name": "Город / туризм",
+        "subtypes": [
+          {
+            "key": "commuter",
+            "name": "Commuter"
+          },
+          {
+            "key": "fitness_hybrid",
+            "name": "Fitness / Hybrid"
+          },
+          {
+            "key": "trekking",
+            "name": "Trekking"
+          },
+          {
+            "key": "touring",
+            "name": "Touring"
+          },
+          {
+            "key": "cruiser",
+            "name": "Cruiser"
+          }
+        ]
+      },
+      {
+        "key": "bmx",
+        "name": "BMX",
+        "subtypes": [
+          {
+            "key": "bmx_race",
+            "name": "Race"
+          },
+          {
+            "key": "freestyle",
+            "name": "Freestyle"
+          },
+          {
+            "key": "street_park",
+            "name": "Street / Park"
+          }
+        ]
+      },
+      {
+        "key": "cargo_utility",
+        "name": "Грузовой / утилитарный",
+        "subtypes": [
+          {
+            "key": "cargo",
+            "name": "Cargo"
+          },
+          {
+            "key": "longtail",
+            "name": "Longtail"
+          },
+          {
+            "key": "utility",
+            "name": "Utility"
+          }
+        ]
+      },
+      {
+        "key": "special",
+        "name": "Специальный",
+        "subtypes": [
+          {
+            "key": "tandem",
+            "name": "Tandem"
+          },
+          {
+            "key": "recumbent",
+            "name": "Recumbent"
+          },
+          {
+            "key": "adaptive",
+            "name": "Adaptive"
+          },
+          {
+            "key": "other",
+            "name": "Другое"
+          }
+        ]
+      }
+    ],
+    "suspensions": [
+      {
+        "key": "rigid",
+        "name": "Rigid · без амортизации"
+      },
+      {
+        "key": "hardtail",
+        "name": "Hardtail"
+      },
+      {
+        "key": "full_suspension",
+        "name": "Full Suspension"
+      }
+    ],
+    "constructions": [
+      {
+        "key": "standard",
+        "name": "Обычная"
+      },
+      {
+        "key": "folding",
+        "name": "Folding · складной"
+      },
+      {
+        "key": "cargo",
+        "name": "Cargo · грузовой"
+      },
+      {
+        "key": "tandem",
+        "name": "Tandem · тандем"
+      },
+      {
+        "key": "recumbent",
+        "name": "Recumbent · лежачий"
+      }
+    ],
+    "uses": [
+      {
+        "key": "racing",
+        "name": "Racing"
+      },
+      {
+        "key": "xc",
+        "name": "XC"
+      },
+      {
+        "key": "trail",
+        "name": "Trail"
+      },
+      {
+        "key": "enduro",
+        "name": "Enduro"
+      },
+      {
+        "key": "downhill",
+        "name": "Downhill"
+      },
+      {
+        "key": "gravel",
+        "name": "Gravel"
+      },
+      {
+        "key": "cyclocross",
+        "name": "Cyclocross"
+      },
+      {
+        "key": "road_racing",
+        "name": "Road Racing"
+      },
+      {
+        "key": "audax_endurance",
+        "name": "Audax / Endurance"
+      },
+      {
+        "key": "commuting",
+        "name": "Commuting"
+      },
+      {
+        "key": "touring",
+        "name": "Touring"
+      },
+      {
+        "key": "bikepacking",
+        "name": "Bikepacking"
+      },
+      {
+        "key": "cargo",
+        "name": "Cargo"
+      },
+      {
+        "key": "leisure",
+        "name": "Leisure"
+      }
+    ],
+    "maxUses": 3
+  },
+  "purposes": [
+    {
+      "id": "city",
+      "name": "Город"
+    },
+    {
+      "id": "travel",
+      "name": "Путешествия"
+    },
+    {
+      "id": "sport",
+      "name": "Спорт"
+    },
+    {
+      "id": "winter",
+      "name": "Зима"
+    },
+    {
+      "id": "custom",
+      "name": "Самосбор"
+    }
+  ],
+  "brands": [
+    {
+      "name": "Canyon",
+      "models": [
+        "Grizl",
+        "Grail",
+        "Grand Canyon",
+        "Lux",
+        "Neuron",
+        "Spectral",
+        "Endurace",
+        "Ultimate",
+        "Aeroad"
+      ]
+    },
+    {
+      "name": "Specialized",
+      "models": [
+        "Diverge",
+        "Crux",
+        "Rockhopper",
+        "Epic",
+        "Stumpjumper",
+        "Allez",
+        "Tarmac",
+        "Roubaix",
+        "Aethos"
+      ]
+    },
+    {
+      "name": "Trek",
+      "models": [
+        "Checkpoint",
+        "Checkmate",
+        "Marlin",
+        "Procaliber",
+        "Fuel EX",
+        "Domane",
+        "Émonda",
+        "Madone"
+      ]
+    },
+    {
+      "name": "Cannondale",
+      "models": [
+        "Topstone",
+        "Trail",
+        "Scalpel",
+        "CAAD13",
+        "SuperSix EVO",
+        "Synapse"
+      ]
+    },
+    {
+      "name": "Giant",
+      "models": [
+        "Revolt",
+        "Talon",
+        "XTC",
+        "Trance",
+        "Contend",
+        "Defy",
+        "TCR",
+        "Propel"
+      ]
+    },
+    {
+      "name": "Scott",
+      "models": [
+        "Addict Gravel",
+        "Speedster Gravel",
+        "Scale",
+        "Spark",
+        "Addict",
+        "Foil"
+      ]
+    },
+    {
+      "name": "Merida",
+      "models": [
+        "Silex",
+        "Big.Nine",
+        "One-Twenty",
+        "Scultura",
+        "Reacto"
+      ]
+    },
+    {
+      "name": "Cube",
+      "models": [
+        "Nuroad",
+        "Aim",
+        "Reaction",
+        "Stereo"
+      ]
+    },
+    {
+      "name": "Orbea",
+      "models": [
+        "Terra",
+        "Alma",
+        "Oiz",
+        "Occam",
+        "Orca",
+        "Avant"
+      ]
+    },
+    {
+      "name": "BMC",
+      "models": [
+        "URS",
+        "Teammachine",
+        "Roadmachine"
+      ]
+    },
+    {
+      "name": "3T",
+      "models": [
+        "Exploro",
+        "Extrema",
+        "Strada"
+      ]
+    },
+    {
+      "name": "Cervélo",
+      "models": [
+        "Áspero",
+        "Caledonia",
+        "R5",
+        "S5"
+      ]
+    },
+    {
+      "name": "Marin",
+      "models": [
+        "Gestalt",
+        "Headlands"
+      ]
+    },
+    {
+      "name": "Kona",
+      "models": [
+        "Rove",
+        "Libre"
+      ]
+    },
+    {
+      "name": "Surly",
+      "models": [
+        "Straggler",
+        "Midnight Special"
+      ]
+    },
+    {
+      "name": "Santa Cruz",
+      "models": [
+        "Chameleon",
+        "Tallboy",
+        "Hightower"
+      ]
+    }
+  ],
+  "manufacturers": [
+    "Shimano",
+    "SRAM",
+    "Campagnolo",
+    "Brooks",
+    "Fizik",
+    "Selle Italia",
+    "Ergon",
+    "Ritchey",
+    "PRO",
+    "Zipp",
+    "DT Swiss",
+    "Mavic",
+    "Fulcrum",
+    "Hunt",
+    "Continental",
+    "Schwalbe",
+    "Maxxis",
+    "Vittoria",
+    "Panaracer",
+    "WTB",
+    "RockShox",
+    "FOX",
+    "Race Face",
+    "Hope",
+    "Magura",
+    "TRP",
+    "Garmin",
+    "Wahoo",
+    "Hammerhead",
+    "Bryton",
+    "Lezyne",
+    "Cateye",
+    "Knog",
+    "Fenix",
+    "Apidura",
+    "Ortlieb",
+    "Topeak",
+    "SKS",
+    "Elite",
+    "CamelBak",
+    "Crankbrothers",
+    "Look",
+    "KMC",
+    "ABUS",
+    "Kryptonite"
+  ],
+  "sizes": [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL"
+  ],
+  "components": {
+    "groups": [
+      {
+        "id": "frame",
+        "name": "Рама и подвеска",
+        "categories": [
+          "Рама",
+          "Вилка",
+          "Амортизатор"
+        ]
+      },
+      {
+        "id": "drivetrain",
+        "name": "Трансмиссия",
+        "categories": [
+          "Групсет",
+          "Задний переключатель",
+          "Передний переключатель",
+          "Манетки / дуалы",
+          "Левая манетка",
+          "Правая манетка",
+          "Система / шатуны",
+          "Каретка",
+          "Передняя звезда",
+          "Кассета",
+          "Трещотка",
+          "Цепь",
+          "Ремень",
+          "Задняя звезда",
+          "Педали",
+          "Измеритель мощности"
+        ]
+      },
+      {
+        "id": "brakes",
+        "name": "Тормоза",
+        "categories": [
+          "Тормоза",
+          "Передний тормоз",
+          "Задний тормоз",
+          "Тормозная ручка",
+          "Роторы",
+          "Передний ротор",
+          "Задний ротор"
+        ]
+      },
+      {
+        "id": "wheels",
+        "name": "Колёса",
+        "categories": [
+          "Колёса",
+          "Переднее колесо",
+          "Заднее колесо",
+          "Обода",
+          "Передний обод",
+          "Задний обод",
+          "Втулки",
+          "Передняя втулка",
+          "Задняя втулка",
+          "Покрышки",
+          "Передняя покрышка",
+          "Задняя покрышка",
+          "Камеры / бескамерка"
+        ]
+      },
+      {
+        "id": "cockpit",
+        "name": "Управление и посадка",
+        "categories": [
+          "Руль",
+          "Вынос",
+          "Рулевая",
+          "Грипсы / обмотка",
+          "Седло",
+          "Подседельный штырь",
+          "Дроппер",
+          "Подседельный зажим"
+        ]
+      },
+      {
+        "id": "electric",
+        "name": "Электрооборудование",
+        "categories": [
+          "Мотор",
+          "Батарея",
+          "Дисплей",
+          "Зарядное устройство"
+        ]
+      },
+      {
+        "id": "equipment",
+        "name": "Оборудование и аксессуары",
+        "categories": [
+          "Передний свет",
+          "Задний свет",
+          "Крылья",
+          "Багажник",
+          "Подножка",
+          "Звонок",
+          "Велокомпьютер",
+          "Датчики",
+          "Замок",
+          "Насос",
+          "Инструменты",
+          "Фляга / держатель",
+          "Подседельная сумка",
+          "Рамная сумка",
+          "Сумка на руль"
+        ]
+      }
+    ],
+    "buildCategories": [
+      "Рама",
+      "Вилка",
+      "Амортизатор",
+      "Групсет",
+      "Задний переключатель",
+      "Передний переключатель",
+      "Манетки / дуалы",
+      "Система / шатуны",
+      "Каретка",
+      "Кассета",
+      "Цепь",
+      "Тормоза",
+      "Роторы",
+      "Колёса",
+      "Втулки",
+      "Покрышки",
+      "Камеры / бескамерка",
+      "Руль",
+      "Вынос",
+      "Рулевая",
+      "Подседельный штырь",
+      "Седло",
+      "Грипсы / обмотка",
+      "Педали",
+      "Другое"
+    ],
+    "accessoryCategories": [
+      "Велокомпьютер",
+      "Датчики",
+      "Передний свет",
+      "Задний свет",
+      "Подседельная сумка",
+      "Рамная сумка",
+      "Сумка на руль",
+      "Багажник",
+      "Крылья",
+      "Фляга / держатель",
+      "Насос",
+      "Инструменты",
+      "Замок",
+      "Звонок",
+      "Другое"
+    ],
+    "names": [
+      {
+        "category": "Групсет",
+        "names": [
+          "Shimano GRX RX820",
+          "Shimano GRX RX600",
+          "Shimano DEORE XT",
+          "Shimano DEORE",
+          "Shimano SLX",
+          "Shimano XTR",
+          "Shimano 105",
+          "Shimano Ultegra",
+          "Shimano Dura-Ace",
+          "SRAM Apex",
+          "SRAM Rival AXS",
+          "SRAM Force AXS",
+          "SRAM Red AXS",
+          "SRAM GX Eagle",
+          "SRAM XX Eagle",
+          "Campagnolo Ekar",
+          "Campagnolo Super Record"
+        ]
+      },
+      {
+        "category": "Задний переключатель",
+        "names": [
+          "Shimano XT RD-M8100",
+          "Shimano GRX RD-RX820",
+          "Shimano GRX RD-RX822",
+          "Shimano 105 RD-R7100",
+          "SRAM GX Eagle",
+          "SRAM Rival XPLR AXS"
+        ]
+      },
+      {
+        "category": "Передний переключатель",
+        "names": [
+          "Shimano GRX FD-RX820",
+          "Shimano 105 FD-R7100",
+          "Shimano Ultegra FD-R8000"
+        ]
+      },
+      {
+        "category": "Манетки / дуалы",
+        "names": [
+          "Shimano GRX ST-RX820",
+          "Shimano 105 ST-R7120",
+          "Shimano XT SL-M8100",
+          "SRAM Rival AXS"
+        ]
+      },
+      {
+        "category": "Система / шатуны",
+        "names": [
+          "Shimano GRX FC-RX820",
+          "Shimano XT FC-M8100",
+          "Shimano 105 FC-R7100",
+          "SRAM GX Eagle"
+        ]
+      },
+      {
+        "category": "Каретка",
+        "names": [
+          "Shimano BB-MT800",
+          "Shimano SM-BBR60",
+          "SRAM DUB"
+        ]
+      },
+      {
+        "category": "Кассета",
+        "names": [
+          "Shimano XT CS-M8100 10–51T",
+          "Shimano CS-HG710 11–36T",
+          "SRAM XG-1275 10–52T"
+        ]
+      },
+      {
+        "category": "Цепь",
+        "names": [
+          "Shimano CN-M8100",
+          "Shimano CN-M7100",
+          "SRAM GX Eagle",
+          "KMC X12"
+        ]
+      },
+      {
+        "category": "Тормоза",
+        "names": [
+          "Shimano XT BR-M8100",
+          "Shimano XT BR-M8120",
+          "Shimano GRX BR-RX820",
+          "Shimano 105 BR-R7170",
+          "SRAM Code R",
+          "SRAM Level",
+          "Magura MT5",
+          "TRP Spyre"
+        ]
+      },
+      {
+        "category": "Роторы",
+        "names": [
+          "Shimano RT-MT800",
+          "Shimano SM-RT70",
+          "SRAM CenterLine"
+        ]
+      },
+      {
+        "category": "Колёса",
+        "names": [
+          "DT Swiss G 1800 SPLINE",
+          "DT Swiss GR 1600 SPLINE",
+          "DT Swiss ER 1600 SPLINE",
+          "DT Swiss X 1900 SPLINE",
+          "Mavic Allroad",
+          "Zipp 303 S",
+          "Hunt 4 Season Gravel",
+          "Fulcrum Rapid Red"
+        ]
+      },
+      {
+        "category": "Втулки",
+        "names": [
+          "DT Swiss 350",
+          "DT Swiss 240",
+          "Hope Pro 5"
+        ]
+      },
+      {
+        "category": "Покрышки",
+        "names": [
+          "Continental Terra Speed",
+          "Continental Grand Prix 5000",
+          "Continental Race King",
+          "Schwalbe G-One Allround",
+          "Schwalbe G-One Bite",
+          "Schwalbe Racing Ralph",
+          "Maxxis Ikon",
+          "Maxxis Ardent",
+          "Maxxis Minion DHF",
+          "Vittoria Corsa",
+          "Panaracer GravelKing SK",
+          "WTB Riddler"
+        ]
+      },
+      {
+        "category": "Руль",
+        "names": [
+          "Ritchey VentureMax",
+          "Ritchey WCS Butano",
+          "Zipp Service Course SL-70 XPLR",
+          "PRO Discover",
+          "Race Face Chester",
+          "Renthal Fatbar"
+        ]
+      },
+      {
+        "category": "Вынос",
+        "names": [
+          "Ritchey WCS C220",
+          "Zipp Service Course",
+          "PRO Discover",
+          "Race Face Turbine"
+        ]
+      },
+      {
+        "category": "Подседельный штырь",
+        "names": [
+          "Thomson Elite",
+          "Ritchey WCS",
+          "RockShox Reverb",
+          "OneUp Dropper Post"
+        ]
+      },
+      {
+        "category": "Седло",
+        "names": [
+          "Brooks C17",
+          "Brooks C17 Carved",
+          "Brooks B17",
+          "Fizik Terra Argo X5",
+          "Fizik Vento Argo",
+          "Selle Italia SLR",
+          "Selle Italia Model X",
+          "Ergon SM Pro",
+          "Specialized Power"
+        ]
+      },
+      {
+        "category": "Грипсы / обмотка",
+        "names": [
+          "Brooks Cambium Rubber Grips",
+          "Brooks Microfibre Bar Tape",
+          "Ergon GA3",
+          "Ergon GP1",
+          "ESI Chunky",
+          "Lizard Skins DSP",
+          "Supacaz Super Sticky Kush"
+        ]
+      },
+      {
+        "category": "Педали",
+        "names": [
+          "Shimano XT PD-M8100",
+          "Shimano PD-M520",
+          "Shimano PD-EH500",
+          "Crankbrothers Stamp 1",
+          "Look Keo 2 Max",
+          "Race Face Chester"
+        ]
+      },
+      {
+        "category": "Вилка",
+        "names": [
+          "RockShox SID",
+          "RockShox Reba",
+          "RockShox Pike",
+          "FOX 32",
+          "FOX 34",
+          "FOX 36"
+        ]
+      },
+      {
+        "category": "Амортизатор",
+        "names": [
+          "RockShox Deluxe",
+          "RockShox Super Deluxe",
+          "FOX Float"
+        ]
+      },
+      {
+        "category": "Велокомпьютер",
+        "names": [
+          "Garmin Edge 540",
+          "Garmin Edge 840",
+          "Garmin Edge 1040",
+          "Wahoo ELEMNT BOLT",
+          "Wahoo ELEMNT ROAM",
+          "Hammerhead Karoo",
+          "Bryton Rider 750"
+        ]
+      },
+      {
+        "category": "Датчики",
+        "names": [
+          "Garmin Speed Sensor 2",
+          "Garmin Cadence Sensor 2",
+          "Wahoo RPM Cadence"
+        ]
+      },
+      {
+        "category": "Передний свет",
+        "names": [
+          "Lezyne Lite Drive 1000XL",
+          "Lezyne Macro Drive",
+          "Cateye AMPP800",
+          "Fenix BC30"
+        ]
+      },
+      {
+        "category": "Задний свет",
+        "names": [
+          "Garmin Varia RTL515",
+          "Lezyne Strip Drive",
+          "Knog Blinder",
+          "Cateye Rapid X"
+        ]
+      },
+      {
+        "category": "Подседельная сумка",
+        "names": [
+          "Apidura Expedition Saddle Pack",
+          "Ortlieb Seat-Pack",
+          "Topeak BackLoader"
+        ]
+      },
+      {
+        "category": "Рамная сумка",
+        "names": [
+          "Apidura Expedition Frame Pack",
+          "Ortlieb Frame-Pack",
+          "Topeak MidLoader"
+        ]
+      },
+      {
+        "category": "Сумка на руль",
+        "names": [
+          "Ortlieb Handlebar-Pack",
+          "Apidura Expedition Handlebar Pack",
+          "Topeak FrontLoader"
+        ]
+      },
+      {
+        "category": "Багажник",
+        "names": [
+          "Tubus Logo",
+          "Ortlieb Quick-Rack"
+        ]
+      },
+      {
+        "category": "Крылья",
+        "names": [
+          "SKS Bluemels",
+          "SKS Speedrocker"
+        ]
+      },
+      {
+        "category": "Фляга / держатель",
+        "names": [
+          "Elite Custom Race Plus",
+          "Elite Fly",
+          "CamelBak Podium",
+          "Topeak Modula Cage"
+        ]
+      },
+      {
+        "category": "Насос",
+        "names": [
+          "Lezyne Pocket Drive",
+          "Topeak RaceRocket",
+          "Crankbrothers Gem"
+        ]
+      },
+      {
+        "category": "Инструменты",
+        "names": [
+          "Crankbrothers M19",
+          "Topeak Mini 20 Pro"
+        ]
+      },
+      {
+        "category": "Замок",
+        "names": [
+          "ABUS Bordo",
+          "Kryptonite Evolution"
+        ]
+      },
+      {
+        "category": "Звонок",
+        "names": [
+          "Knog Oi"
+        ]
+      }
+    ]
+  }
+}

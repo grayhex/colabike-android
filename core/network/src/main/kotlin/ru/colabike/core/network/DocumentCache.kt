@@ -6,17 +6,18 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * The last valid app config on the device: the server's answer as the client read it, the `ETag` to
- * ask with, and when the server last confirmed it. The format has an explicit version, a new one
- * simply does not match the old, and anything unreadable (a half-written file, a format of another
- * build) is a missing cache and is deleted: the app goes on with its built-in defaults. Nothing of
- * a person is in it: the config is the same for everybody.
+ * The last valid document of the server that is the same for everybody (the app config, the site's
+ * dictionaries) on the device: the server's answer as the client read it, the `ETag` to ask with,
+ * and when the server last confirmed it. The format has an explicit version, a new one simply does
+ * not match the old, and anything unreadable (a half-written file, a format of another build) is a
+ * missing cache and is deleted: the app goes on with its built-in defaults. Nothing of a person is
+ * in it: the document is the same for everybody.
  */
-class AppConfigCache(private val file: File) {
-    /** [body] is the config's JSON as the generated client writes it. */
+class DocumentCache(private val file: File) {
+    /** [body] is the document's JSON as the generated client writes it. */
     class Entry(val body: String, val etag: String?, val validatedAtMillis: Long) {
         // The body is the same for everybody, but it is not a line for a log.
-        override fun toString() = "AppConfigCache.Entry(validatedAt=$validatedAtMillis)"
+        override fun toString() = "DocumentCache.Entry(validatedAt=$validatedAtMillis)"
     }
 
     @Serializable

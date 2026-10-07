@@ -1,0 +1,60 @@
+{
+  "query": {
+    "brand": "Focus",
+    "model": "Atlas 6.7 Cues",
+    "trim": null,
+    "year": null
+  },
+  "cached": false,
+  "previewId": null,
+  "previewExpiresAt": null,
+  "candidates": [
+    {
+      "candidateId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "name": "Focus Atlas 6.7 Cues gravel bike",
+      "brand": "Focus",
+      "year": null,
+      "url": "https://www.tradeinn.com/bikeinn/focus/1234567/p",
+      "sourceHost": "www.tradeinn.com",
+      "sourceKind": "store",
+      "sourceName": "Bikeinn",
+      "drivetrain": "Shimano GRX 2x11",
+      "quality": {
+        "level": "complete",
+        "recognizedComponents": 18,
+        "coverage": 0.9
+      },
+      "warnings": [
+        "multiple_builds"
+      ],
+      "selectable": true,
+      "otherHosts": [
+        "a.example"
+      ]
+    },
+    {
+      "candidateId": null,
+      "name": "Focus Atlas 6.7 Cues 2023",
+      "brand": "Focus",
+      "year": 2023,
+      "url": "https://shop.example/focus",
+      "sourceHost": "shop.example",
+      "sourceKind": null,
+      "sourceName": null,
+      "drivetrain": null,
+      "quality": null,
+      "warnings": [],
+      "selectable": false,
+      "otherHosts": []
+    }
+  ],
+  "build": null,
+  "sourcesChecked": {
+    "asked": 2,
+    "answered": 1,
+    "complete": false
+  },
+  "status": "ambiguous",
+  "retryable": false,
+  "reason": null
+}

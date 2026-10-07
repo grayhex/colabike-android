@@ -130,6 +130,25 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
     fun bikesUploading(onProgress: (Float) -> Unit, onCall: (Call) -> Unit): BikesApi =
         BikesApi(config.apiBaseUrl, uploadingClient(onProgress, onCall))
 
+    /**
+     * Bikes for a search of a build: the service reads pages of shops and may take a minute and a
+     * half, longer than the base client waits, and the call is handed over ([onCall]) so that a
+     * search the person stopped really stops.
+     */
+    fun bikesResolving(onCall: (Call) -> Unit): BikesApi =
+        BikesApi(
+            config.apiBaseUrl,
+            client
+                .newBuilder()
+                .readTimeout(RESOLVE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .callTimeout(RESOLVE_TIMEOUT_SECONDS + 15, TimeUnit.SECONDS)
+                .addInterceptor { chain ->
+                    onCall(chain.call())
+                    chain.proceed(chain.request())
+                }
+                .build(),
+        )
+
     /** The journal for sending a picture of an entry, as [bikesUploading]. */
     fun journalUploading(onProgress: (Float) -> Unit, onCall: (Call) -> Unit): JournalApi =
         JournalApi(config.apiBaseUrl, uploadingClient(onProgress, onCall))
@@ -167,6 +186,7 @@ class ColaBikeApi(private val config: ApiConfig, private val client: OkHttpClien
 
     private companion object {
         const val UPLOAD_TIMEOUT_MINUTES = 5L
+        const val RESOLVE_TIMEOUT_SECONDS = 100L
         const val IDEMPOTENCY_KEY = "Idempotency-Key"
         val configured = AtomicBoolean(false)
 

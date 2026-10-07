@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import ru.colabike.app.R
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaCard
+import ru.colabike.core.designsystem.component.ColaComboField
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaTopBar
@@ -173,13 +174,16 @@ private fun Form(state: PartEditorUiState.Editing, editing: Boolean, actions: Pa
                                 }
                             }
                         }
-                        Field(
-                            R.string.part_field_name,
-                            form.name,
-                            actions.onName,
-                            "name",
-                            idle,
-                            state.has(ComponentProblem.NoName, ComponentProblem.NameTooLong),
+                        ColaComboField(
+                            label = stringResource(R.string.part_field_name),
+                            value = form.name,
+                            onValueChange = actions.onName,
+                            suggestions = state.nameSuggestions,
+                            enabled = idle,
+                            isError =
+                                state.has(ComponentProblem.NoName, ComponentProblem.NameTooLong),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            modifier = Modifier.fillMaxWidth().testTag("part-editor:name"),
                         )
                     }
                 }
@@ -345,7 +349,7 @@ private fun PartEditorUiState.Editing.has(vararg found: ComponentProblem): Boole
     it in found
 }
 
-private fun ComponentProblem.message(): Int =
+internal fun ComponentProblem.message(): Int =
     when (this) {
         ComponentProblem.NoCategory -> R.string.part_problem_no_category
         ComponentProblem.CategoryTooLong -> R.string.part_problem_category_long

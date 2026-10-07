@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.unit.Density
 import coil3.ColorImage
 import coil3.annotation.ExperimentalCoilApi
@@ -30,11 +31,22 @@ import java.time.Instant
 import java.time.LocalDate
 import ru.colabike.app.about.BuildInfo
 import ru.colabike.app.about.LocalBuildInfo
+import ru.colabike.app.bikes.BikeForm
 import ru.colabike.app.bikes.BikePhotosScreen
 import ru.colabike.app.bikes.BikePhotosUiState
+import ru.colabike.app.bikes.BikeWizardActions
+import ru.colabike.app.bikes.BikeWizardScreen
 import ru.colabike.app.bikes.PendingPhoto
 import ru.colabike.app.bikes.PendingState
 import ru.colabike.app.bikes.PhotosActions
+import ru.colabike.app.bikes.SearchFailure
+import ru.colabike.app.bikes.SearchPhase
+import ru.colabike.app.bikes.WizardBuild
+import ru.colabike.app.bikes.WizardOffer
+import ru.colabike.app.bikes.WizardPart
+import ru.colabike.app.bikes.WizardQuestion
+import ru.colabike.app.bikes.WizardStep
+import ru.colabike.app.bikes.WizardUiState
 import ru.colabike.app.config.LaunchFrame
 import ru.colabike.app.config.LaunchPlan
 import ru.colabike.app.config.OnboardingScreen
@@ -52,7 +64,9 @@ import ru.colabike.core.model.AccountDeletion
 import ru.colabike.core.model.AgreementChange
 import ru.colabike.core.model.AppNotice
 import ru.colabike.core.model.BikeId
+import ru.colabike.core.model.BikeProblem
 import ru.colabike.core.model.BikeRef
+import ru.colabike.core.model.BuildQuery
 import ru.colabike.core.model.Compatibility
 import ru.colabike.core.model.Feature
 import ru.colabike.core.model.FeedItem
@@ -80,8 +94,11 @@ import ru.colabike.core.model.PersonSummary
 import ru.colabike.core.model.Photo
 import ru.colabike.core.model.Relationship
 import ru.colabike.core.model.RequestedDateStatus
+import ru.colabike.core.model.ResolveRequest
 import ru.colabike.core.model.RideId
 import ru.colabike.core.model.ServiceLinks
+import ru.colabike.core.model.SourceKind
+import ru.colabike.core.model.SourcesChecked
 import ru.colabike.core.model.UpdateMode
 import ru.colabike.core.model.UpdateState
 import ru.colabike.core.model.UserId
@@ -171,10 +188,24 @@ enum class Screen(val file: String) {
     IntentOwn("intent_own"),
     IntentEditor("intent_editor"),
 
-    /** The form of a bike: empty, with its findings shown, and the question before a deletion. */
-    BikeEditorNew("bike_editor_new"),
+    /** The form of one's own bike, with its findings shown, and the question before a deletion. */
+    BikeEditorEdit("bike_editor_edit"),
     BikeEditorProblems("bike_editor_problems"),
     BikeEditorDelete("bike_editor_delete"),
+
+    /**
+     * The wizard of a new bike (docs/adr/0028): the search, a search on its way, a failure, the
+     * variants, the build to check, the details with their findings, and the question before a page
+     * of another model is used.
+     */
+    BikeWizardSearch("bike_wizard_search"),
+    BikeWizardResolving("bike_wizard_resolving"),
+    BikeWizardFailed("bike_wizard_failed"),
+    BikeWizardOffer("bike_wizard_offer"),
+    BikeWizardBuild("bike_wizard_build"),
+    BikeWizardDetails("bike_wizard_details"),
+    BikeWizardProblems("bike_wizard_problems"),
+    BikeWizardIdentity("bike_wizard_identity"),
 
     /**
      * The build of one's own bike: the parts, the order of groups; a part's form, with findings.
@@ -717,6 +748,24 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                                     ),
                             )
                         )
+                    Screen.BikeWizardSearch,
+                    Screen.BikeWizardResolving,
+                    Screen.BikeWizardFailed,
+                    Screen.BikeWizardOffer,
+                    Screen.BikeWizardBuild,
+                    Screen.BikeWizardDetails,
+                    Screen.BikeWizardProblems,
+                    Screen.BikeWizardIdentity ->
+                        // The shell paints the canvas under a screen; here nothing else does.
+                        ColaCanvas {
+                            BikeWizardScreen(
+                                state = wizardState(screen),
+                                actions = BikeWizardActions(),
+                                catalog = SiteCatalogFixtures.catalog,
+                            )
+                        }
+                    Screen.BikeEditorEdit,
+                    Screen.BikeEditorProblems,
                     Screen.BikeEditorDelete,
                     Screen.BikePhotos,
                     Screen.BikePhotosDelete,
@@ -870,10 +919,15 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
                 else -> Unit
             }
         }
-        Screen.BikeEditorNew -> onNodeWithTag("bikes:add").performClick()
+        Screen.BikeEditorEdit -> {
+            onNodeWithContentDescription("Мой трейл", substring = true).performClick()
+            onNodeWithTag("bike:edit").performClick()
+        }
         Screen.BikeEditorProblems -> {
-            onNodeWithTag("bikes:add").performClick()
-            // The findings are shown once the person tried to save an empty form.
+            onNodeWithContentDescription("Мой трейл", substring = true).performClick()
+            onNodeWithTag("bike:edit").performClick()
+            // The findings are shown once the person tried to save a form with no name.
+            reveal(onNodeWithTag("bike-editor:name")).performTextClearance()
             reveal(onNodeWithTag("bike-editor:save")).performClick()
             // The findings pushed the button down: bring it, and what is above it, back.
             reveal(onNodeWithTag("bike-editor:save"))
@@ -1024,6 +1078,101 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
     waitForIdle()
     settle()
     captureWhenDrawn("src/test/screenshots/${screen.file}_${window}_${look.file}.png")
+}
+
+private val wizardQuery = BuildQuery("Giant", "Contend", "AR 1", 2024)
+
+private val wizardParts =
+    listOf(
+        FakeBikeWizard.part("Рама", "ALUXX aluminium", "frame"),
+        FakeBikeWizard.part("Вилка", "Giant Contend carbon", "frame"),
+        FakeBikeWizard.part("Групсет", "Shimano 105", "drivetrain"),
+        FakeBikeWizard.part("Кассета", "Shimano 11-34", "drivetrain"),
+        FakeBikeWizard.part("Тормоза", "Shimano RS505", "brakes"),
+        FakeBikeWizard.part("Покрышки", "Giant Gavia 28", "wheels"),
+        FakeBikeWizard.part("Седло", "Giant Contact", "cockpit"),
+        FakeBikeWizard.part("Флягодержатель", "Giant Gateway", "", "accessories"),
+    )
+
+/** What the wizard holds on each of its screens: built by hand, so a picture never waits. */
+private fun wizardState(screen: Screen): WizardUiState {
+    val search = WizardUiState(searchText = wizardQuery.line)
+    val build = FakeBikeWizard.build(wizardQuery, parts = wizardParts)
+    val parts =
+        build.parts.mapIndexed { index, part ->
+            WizardPart(
+                key = index + 1L,
+                section = part.section,
+                category = part.category,
+                name = part.name,
+                notes = part.notes,
+                groupId = part.groupId,
+                price = if (index == 2) "28 900" else "",
+            )
+        }
+    val building =
+        search.copy(
+            step = WizardStep.Build,
+            query = wizardQuery,
+            found = WizardBuild(build, "pv-1", false),
+            parts = parts,
+            form = BikeForm(brand = "Giant", model = "Contend", trim = "AR 1", year = "2024"),
+        )
+    return when (screen) {
+        Screen.BikeWizardResolving ->
+            search.copy(
+                phase = SearchPhase.Resolving(ResolveRequest.Search(wizardQuery)),
+                garageName = "Шоссейник",
+            )
+        Screen.BikeWizardFailed ->
+            search.copy(phase = SearchPhase.Failed(SearchFailure.Unavailable("timeout", true)))
+        Screen.BikeWizardOffer ->
+            search.copy(
+                offer =
+                    WizardOffer(
+                        wizardQuery,
+                        listOf(
+                            FakeBikeWizard.candidate("c-1", "Giant Contend AR 1 2024", year = 2024),
+                            FakeBikeWizard.candidate(
+                                "c-2",
+                                "Giant Contend AR 1 2023",
+                                year = 2023,
+                                kind = SourceKind.Manufacturer,
+                            ),
+                            FakeBikeWizard.candidate(null, "Страница магазина без выбора"),
+                        ),
+                        SourcesChecked(asked = 3, answered = 2, complete = false),
+                    )
+            )
+        Screen.BikeWizardBuild -> building
+        Screen.BikeWizardDetails ->
+            building.copy(
+                step = WizardStep.Details,
+                form = building.form.copy(color = "", weight = ""),
+            )
+        Screen.BikeWizardProblems ->
+            building.copy(
+                step = WizardStep.Details,
+                problems = listOf(BikeProblem.NoCategory, BikeProblem.NoYear),
+                form = building.form.copy(year = ""),
+                problem = UiText.Res(R.string.bike_needs_email),
+            )
+        Screen.BikeWizardIdentity ->
+            building.copy(
+                question =
+                    WizardQuestion.Identity(
+                        FakeBikeWizard.build(
+                            wizardQuery,
+                            name = "Giant Contend AR 2",
+                            sourceYear = 2023,
+                            identityMismatch = true,
+                        ),
+                        asked = 2024,
+                        onSave = false,
+                    )
+            )
+        else -> search
+    }
 }
 
 /** The viewer's own bike, for the screens that change or delete one. */
