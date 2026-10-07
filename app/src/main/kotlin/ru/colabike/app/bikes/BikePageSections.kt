@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -128,9 +129,10 @@ internal fun PhotoActions(
 }
 
 /**
- * Who rides the bike, the like and the share on one line. The name opens the person; a like is
- * given on the others' public bikes only (the count shows on the rest); the share goes where the
- * bike is public.
+ * Who rides the bike, the like and the share on one line; at a large system font the like and the
+ * share go under the name, where it has the whole width and is not broken in the middle of a word.
+ * The name opens the person; a like is given on the others' public bikes only (the count shows on
+ * the rest); the share goes where the bike is public.
  */
 @Composable
 internal fun AuthorRow(
@@ -143,15 +145,24 @@ internal fun AuthorRow(
     onOpenAuthor: (ref: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-    ) {
+    val stacked = LocalDensity.current.fontScale >= LargeFont
+    val actions: @Composable () -> Unit = {
+        LikeButton(liked = liked, count = likes, onToggle = onToggleLike, busy = busy)
+        if (onShare != null) {
+            IconButton(onClick = onShare) {
+                Icon(
+                    painterResource(ColaIcons.Share),
+                    contentDescription =
+                        stringResource(ru.colabike.core.designsystem.R.string.cola_share),
+                )
+            }
+        }
+    }
+    val person: @Composable (Modifier) -> Unit = { personModifier ->
         if (author != null) {
             val open = stringResource(R.string.bike_open_author, author.displayName)
             Row(
-                Modifier.weight(1f)
+                personModifier
                     .heightIn(min = Spacing.touch)
                     .clip(MaterialTheme.shapes.medium)
                     .clickable(role = Role.Button, onClickLabel = open) {
@@ -183,20 +194,33 @@ internal fun AuthorRow(
                 }
             }
         } else {
-            Spacer(Modifier.weight(1f))
+            Spacer(personModifier)
         }
-        LikeButton(liked = liked, count = likes, onToggle = onToggleLike, busy = busy)
-        if (onShare != null) {
-            IconButton(onClick = onShare) {
-                Icon(
-                    painterResource(ColaIcons.Share),
-                    contentDescription =
-                        stringResource(ru.colabike.core.designsystem.R.string.cola_share),
-                )
+    }
+    if (stacked) {
+        Column(modifier.fillMaxWidth()) {
+            person(Modifier.fillMaxWidth())
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                actions()
             }
+        }
+    } else {
+        Row(
+            modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+        ) {
+            person(Modifier.weight(1f))
+            actions()
         }
     }
 }
+
+/** From this font scale on the author's row gives the like and the share a line of their own. */
+private const val LargeFont = 1.3f
 
 /**
  * The line under the name: what kind of bike it is and when it is from. The brand and model come
