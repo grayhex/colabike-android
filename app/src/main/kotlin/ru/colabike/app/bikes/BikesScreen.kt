@@ -3,11 +3,13 @@ package ru.colabike.app.bikes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -15,14 +17,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,14 +37,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,12 +59,11 @@ import ru.colabike.core.designsystem.component.BikeCard
 import ru.colabike.core.designsystem.component.BikeCardSkeleton
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
+import ru.colabike.core.designsystem.component.ColaSearchField
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.SkeletonGroup
-import ru.colabike.core.designsystem.component.colaFieldShape
-import ru.colabike.core.designsystem.component.colaTextFieldColors
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikeScope
@@ -112,7 +110,7 @@ fun BikesRoute(
  * Bikes as photo-first cards; as many columns as the pane width holds at 280 dp each. A tap on the
  * already selected Bikes tab arrives as [scrollToTop].
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun BikesScreen(
     state: BikesUiState,
@@ -136,28 +134,10 @@ fun BikesScreen(
         topBar = {
             ColaTopBar(
                 title = stringResource(R.string.bikes_title),
+                eyebrow = stringResource(R.string.app_name),
+                // At a large system font the three buttons would take the title's room.
+                actionsBelow = LocalDensity.current.fontScale >= LargeFont,
                 actions = {
-                    // A new bike of one's own.
-                    if (onCreate != null) {
-                        IconButton(
-                            onClick = onCreate,
-                            modifier = Modifier.testTag("bikes:add"),
-                        ) {
-                            Icon(
-                                painterResource(ColaIcons.Add),
-                                contentDescription = stringResource(R.string.bike_add),
-                            )
-                        }
-                    }
-                    // The wide search: builds by components and facets, and people.
-                    if (onOpenSearch != null) {
-                        IconButton(onClick = onOpenSearch) {
-                            Icon(
-                                painterResource(ColaIcons.Search),
-                                contentDescription = stringResource(R.string.search_open),
-                            )
-                        }
-                    }
                     // The catalog of component models, apart from the bikes that carry them.
                     if (onOpenCatalog != null) {
                         IconButton(onClick = onOpenCatalog) {
@@ -182,22 +162,57 @@ fun BikesScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            SearchField(state.typed, onSearchText)
-            if (showScopes) {
-                Row(
+            // The wide search (builds by components and facets, people) is the button at the end
+            // of the line, where the reference has its filters.
+            ColaSearchField(
+                value = state.typed,
+                onValueChange = onSearchText,
+                placeholder = stringResource(R.string.bikes_search_hint),
+                clearLabel = stringResource(R.string.bikes_search_clear),
+                filtersLabel = onOpenSearch?.let { stringResource(R.string.search_open) },
+                onFilters = onOpenSearch,
+                modifier = Modifier.padding(horizontal = Spacing.screen),
+            )
+            if (showScopes || onCreate != null) {
+                FlowRow(
                     Modifier.padding(horizontal = Spacing.screen),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                    itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    ColaFilterChip(
-                        selected = state.scope == BikeScope.Public,
-                        onClick = { onScope(BikeScope.Public) },
-                        label = stringResource(R.string.bikes_scope_public),
-                    )
-                    ColaFilterChip(
-                        selected = state.scope == BikeScope.Mine,
-                        onClick = { onScope(BikeScope.Mine) },
-                        label = stringResource(R.string.bikes_scope_mine),
-                    )
+                    if (showScopes) {
+                        ColaFilterChip(
+                            selected = state.scope == BikeScope.Public,
+                            onClick = { onScope(BikeScope.Public) },
+                            label = stringResource(R.string.bikes_scope_public),
+                        )
+                        ColaFilterChip(
+                            selected = state.scope == BikeScope.Mine,
+                            onClick = { onScope(BikeScope.Mine) },
+                            label = stringResource(R.string.bikes_scope_mine),
+                        )
+                    }
+                    // A new bike of one's own: an action, in the accent colour, not a filter.
+                    if (onCreate != null) {
+                        // TalkBack says the whole thing; the screen has room for one word.
+                        val addLabel = stringResource(R.string.bike_add)
+                        TextButton(
+                            onClick = onCreate,
+                            modifier =
+                                Modifier.testTag("bikes:add").semantics {
+                                    contentDescription = addLabel
+                                },
+                        ) {
+                            Icon(
+                                painterResource(ColaIcons.Add),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                stringResource(R.string.bike_add_short),
+                                modifier = Modifier.padding(start = Spacing.xs),
+                            )
+                        }
+                    }
                 }
             }
             LazyRow(
@@ -253,6 +268,9 @@ fun BikesScreen(
     }
 }
 
+/** From this font scale on the buttons of the header go under the title. */
+private const val LargeFont = 1.3f
+
 @Composable
 private fun BikeGrid(
     state: BikesUiState,
@@ -285,9 +303,9 @@ private fun BikeGrid(
     LazyVerticalGrid(
         state = grid,
         columns = GridCells.Adaptive(minSize = 280.dp),
-        contentPadding = PaddingValues(Spacing.screen),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.l),
-        verticalArrangement = Arrangement.spacedBy(Spacing.l),
+        contentPadding = PaddingValues(horizontal = Spacing.screen, vertical = Spacing.s),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+        verticalArrangement = Arrangement.spacedBy(Spacing.m),
         modifier = Modifier.fillMaxSize().testTag("bikes:grid"),
     ) {
         state.refreshError?.let { error ->
@@ -317,40 +335,6 @@ private fun BikeGrid(
     }
 }
 
-/**
- * The search line: what is typed is shown at once, the request follows a pause (the view model).
- * The keyboard's search key only hides the keyboard, since the list already follows the text.
- */
-@Composable
-private fun SearchField(text: String, onText: (String) -> Unit) {
-    val focus = LocalFocusManager.current
-    OutlinedTextField(
-        value = text,
-        onValueChange = onText,
-        placeholder = { Text(stringResource(R.string.bikes_search_hint)) },
-        leadingIcon = { Icon(painterResource(ColaIcons.Search), contentDescription = null) },
-        trailingIcon = {
-            if (text.isNotEmpty()) {
-                IconButton(onClick = { onText("") }) {
-                    Icon(
-                        painterResource(ColaIcons.Close),
-                        contentDescription = stringResource(R.string.bikes_search_clear),
-                    )
-                }
-            }
-        },
-        singleLine = true,
-        shape = colaFieldShape,
-        colors = colaTextFieldColors(),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
-        modifier =
-            Modifier.fillMaxWidth()
-                .padding(horizontal = Spacing.screen)
-                .padding(bottom = Spacing.s),
-    )
-}
-
 /** A failure inside the list: what went wrong and a retry of exactly that. */
 @Composable
 private fun RetryRow(message: String, onRetry: () -> Unit) {
@@ -370,9 +354,9 @@ private fun LoadingGrid() {
     SkeletonGroup(Modifier.fillMaxSize()) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 280.dp),
-            contentPadding = PaddingValues(Spacing.screen),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.l),
-            verticalArrangement = Arrangement.spacedBy(Spacing.l),
+            contentPadding = PaddingValues(horizontal = Spacing.screen, vertical = Spacing.s),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
             userScrollEnabled = false,
         ) {
             items(4) { BikeCardSkeleton() }

@@ -327,12 +327,6 @@ private fun announcing(
 private val photos = AsyncImagePreviewHandler { ColorImage(Color(0xFF7A8CA3).toArgb()) }
 
 /**
- * Renders [screen] with fake data and compares it with
- * src/test/screenshots/<screen>_<window>_<look>.png. Ripples are off: the platform draws them on
- * its own clock, so a click would make captures differ between runs.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-/**
  * Scrolls to [node] once the screen has stopped changing, and lets the scroll come to rest. The
  * distance is worked out from the layout of the moment: findings of a form or a card that arrives a
  * frame later move the node by a line, and the same screen comes out scrolled by a different amount
@@ -345,6 +339,12 @@ private fun ComposeContentTestRule.reveal(
     return node.performScrollTo().also { settle() }
 }
 
+/**
+ * Renders [screen] with fake data and compares it with
+ * src/test/screenshots/<screen>_<window>_<look>.png. Ripples are off: the platform draws them on
+ * its own clock, so a click would make captures differ between runs.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: Look) {
     setContent {
         CompositionLocalProvider(

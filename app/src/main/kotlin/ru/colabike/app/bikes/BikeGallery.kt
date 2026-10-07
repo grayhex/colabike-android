@@ -90,11 +90,13 @@ fun BikeGallery(photos: List<Photo>, aspect: Float, modifier: Modifier = Modifie
         HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
             val description = stringResource(R.string.cola_photo_n_of_m, page + 1, photos.size)
             val action = stringResource(R.string.bike_photo_open)
+            // The whole bike, wheels and handlebar: a photo is not cropped to fill the frame.
             BikePhoto(
                 photos[page].url,
                 Modifier.fillMaxSize()
                     .semantics { contentDescription = description }
                     .clickable(role = Role.Button, onClickLabel = action) { viewerAt = page },
+                contentScale = ContentScale.Fit,
             )
         }
         if (photos.size > 1)

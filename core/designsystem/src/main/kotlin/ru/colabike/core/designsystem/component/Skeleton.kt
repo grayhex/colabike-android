@@ -60,11 +60,12 @@ fun BikeCardSkeleton(modifier: Modifier = Modifier) {
     ColaCard(modifier = modifier.fillMaxWidth().clearAndSetSemantics {}) {
         Box(Modifier.fillMaxWidth().aspectRatio(BikePhotoAspect).skeleton(RectangleShape))
         Column(
-            Modifier.padding(Spacing.card),
+            Modifier.padding(horizontal = Spacing.card, vertical = Spacing.m),
             verticalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
-            Box(Modifier.fillMaxWidth(0.7f).height(18.dp).skeleton())
-            Box(Modifier.fillMaxWidth(0.45f).height(14.dp).skeleton())
+            Box(Modifier.fillMaxWidth(0.4f).height(14.dp).skeleton())
+            Box(Modifier.fillMaxWidth(0.7f).height(20.dp).skeleton())
+            Box(Modifier.fillMaxWidth(0.45f).height(16.dp).skeleton())
         }
     }
 }

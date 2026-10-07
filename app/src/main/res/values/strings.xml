@@ -44,6 +44,8 @@
     <string name="bikes_search_reset">Сбросить</string>
     <string name="bikes_pick">Выберите велосипед, чтобы увидеть подробности</string>
     <string name="bike_title">Велосипед</string>
+    <string name="bike_description_more">Читать полностью</string>
+    <string name="bike_description_less">Свернуть</string>
     <string name="bike_description">Описание</string>
     <string name="bike_specs">Характеристики</string>
     <string name="bike_build">Комплектация</string>
@@ -925,6 +927,7 @@
     <string name="bike_editor_new">Новый велосипед</string>
     <string name="bike_editor_edit">Изменить велосипед</string>
     <string name="bike_add">Добавить велосипед</string>
+    <string name="bike_add_short">Добавить</string>
     <string name="bike_edit_open">Изменить</string>
     <string name="bike_save">Сохранить</string>
     <string name="bike_saving">Сохраняем…</string>

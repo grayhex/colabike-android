@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -16,8 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -35,13 +34,16 @@ import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeSummary
 
-/** Landscape, like a bike photographed from the side: crops lose the least. */
-internal const val BikePhotoAspect = 4f / 3f
+/**
+ * Wide and low: a bike photographed from the side is shown whole, wheels and handlebar included,
+ * and the card stays short enough for two of them on a phone screen (see `BikesScreenSizeTest`).
+ */
+internal const val BikePhotoAspect = 2.4f
 
 /**
- * Photo-first bike card. The cover fills the card; the name sits on the photo in the serif voice,
- * on a gradient that fades into the card surface so it reads on any picture and in both themes.
- * Below the photo: the author and the counters. TalkBack reads one sentence and offers one action.
+ * A bike as a card: its picture whole on a quiet backing (a photo is never cropped here: free space
+ * at the sides is the price), then what it is, its name in full (it wraps, it is not cut), the
+ * author and the counters. TalkBack reads one sentence and offers one action.
  */
 @Composable
 fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -66,75 +68,73 @@ fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifi
                 }
             },
     ) {
-        val fade = MaterialTheme.colorScheme.surfaceContainer
         Box(Modifier.fillMaxWidth().aspectRatio(BikePhotoAspect)) {
-            BikePhoto(bike.cover?.url, Modifier.fillMaxSize())
-            Box(
-                Modifier.fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.45f to Color.Transparent,
-                            0.8f to fade.copy(alpha = 0.78f),
-                            1f to fade,
-                        )
-                    )
-            )
+            BikePhoto(bike.cover?.url, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             if (former != null) {
-                PillBadge(former, modifier = Modifier.padding(Spacing.m).align(Alignment.TopStart))
-            }
-            Column(
-                Modifier.align(Alignment.BottomStart).padding(Spacing.card),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                if (subtitle.isNotBlank()) Eyebrow(subtitle)
-                Text(
-                    bike.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                PillBadge(former, modifier = Modifier.padding(Spacing.s).align(Alignment.TopStart))
             }
         }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = Spacing.card, vertical = Spacing.m),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+        Column(
+            Modifier.fillMaxWidth()
+                .padding(horizontal = Spacing.card)
+                .padding(top = Spacing.m, bottom = Spacing.s),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
         ) {
-            bike.author?.let {
-                Avatar(it.displayName, it.avatarUrl, size = 24.dp)
+            if (subtitle.isNotBlank()) {
                 Text(
-                    it.displayName,
-                    style = MaterialTheme.typography.bodySmall,
+                    subtitle,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
                 )
-            } ?: Box(Modifier.weight(1f))
-            Counter(
-                if (bike.liked) ColaIcons.LikeFilled else ColaIcons.Like,
-                bike.likes,
-                liked = bike.liked,
-            )
-            Counter(ColaIcons.Comment, bike.comments)
+            }
+            Text(bike.name, style = MaterialTheme.typography.headlineSmall)
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 32.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+            ) {
+                bike.author?.let {
+                    Avatar(it.displayName, it.avatarUrl, size = 24.dp)
+                    Text(
+                        it.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                } ?: Box(Modifier.weight(1f))
+                Counter(
+                    if (bike.liked) ColaIcons.LikeFilled else ColaIcons.Like,
+                    bike.likes,
+                    liked = bike.liked,
+                )
+                Counter(ColaIcons.Comment, bike.comments)
+            }
         }
     }
 }
 
 /**
- * A bike's picture: the photo cropped to fill, or, when there is none, a quiet tile that says so. A
- * photo that cannot be loaded (deleted, no right to it, no connection) shows its own quiet tile,
- * not an empty grey box. Never a made-up picture.
+ * A bike's picture: the photo, or, when there is none, a quiet tile that says so. A photo that
+ * cannot be loaded (deleted, no right to it, no connection) shows its own quiet tile, not an empty
+ * grey box. Never a made-up picture. [contentScale] is `Crop` where the picture only fills a frame
+ * (a thumbnail), `Fit` where the bike has to be seen whole.
  */
 @Composable
-fun BikePhoto(url: String?, modifier: Modifier = Modifier) {
+fun BikePhoto(
+    url: String?,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
+) {
     Box(modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
         if (url != null) {
             SubcomposeAsyncImage(
                 model = url,
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
+                contentScale = contentScale,
                 loading = {},
                 error = { PhotoTile(stringResource(R.string.cola_photo_unavailable)) },
                 modifier = Modifier.fillMaxSize(),

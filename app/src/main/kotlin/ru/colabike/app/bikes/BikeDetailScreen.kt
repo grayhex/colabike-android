@@ -27,8 +27,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +48,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -70,6 +76,7 @@ import ru.colabike.core.designsystem.component.PillBadge
 import ru.colabike.core.designsystem.component.StatTile
 import ru.colabike.core.designsystem.component.UserRow
 import ru.colabike.core.designsystem.component.bikeSubtitle
+import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeDetail
 import ru.colabike.core.model.BikeId
@@ -200,19 +207,10 @@ fun BikeDetailScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
+            // The name is the page's own title under the photo; the bar only says what this is.
             ColaTopBar(
-                title = loaded?.summary?.name ?: stringResource(R.string.bike_title),
-                subtitle =
-                    loaded
-                        ?.let {
-                            bikeSubtitle(
-                                it.summary.brand,
-                                "${it.summary.model} ${it.trim}".trim(),
-                                it.summary.year,
-                            )
-                        }
-                        ?.ifBlank { null },
-                titleMaxLines = 4,
+                title = stringResource(R.string.bike_title),
+                compactTitle = true,
                 onBack = if (showBack) onBack else null,
                 actions = if (loaded != null) topActions else ({}),
             )
@@ -265,6 +263,48 @@ fun BikeDetailScreen(
     }
 }
 
+/**
+ * On a phone the photo is 1.6 : 1, a little wider than a bike is tall, and is shown whole: the
+ * facts under it are on the first screen.
+ */
+private const val PhonePhotoAspect = 1.6f
+
+/**
+ * Text that shows its first lines and offers the rest: "Read in full" only when there is a rest to
+ * read. It is the person's own long description, not a teaser: nothing is cut for good.
+ */
+@Composable
+private fun CollapsibleText(text: String) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var overflows by remember { mutableStateOf(false) }
+    Column {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = if (expanded) Int.MAX_VALUE else CollapsedLines,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { if (!expanded) overflows = it.hasVisualOverflow },
+        )
+        if (overflows || expanded) {
+            TextButton(onClick = { expanded = !expanded }) {
+                Text(
+                    stringResource(
+                        if (expanded) R.string.bike_description_less
+                        else R.string.bike_description_more
+                    )
+                )
+                Icon(
+                    painterResource(if (expanded) ColaIcons.ArrowUp else ColaIcons.ArrowDown),
+                    contentDescription = null,
+                    modifier = Modifier.padding(start = Spacing.xs).size(18.dp),
+                )
+            }
+        }
+    }
+}
+
+private const val CollapsedLines = 3
+
 /** From this pane width the photo is wide (16:9) so it does not push the facts off the screen. */
 private val WidePane = 600.dp
 
@@ -288,7 +328,7 @@ private fun BikeContent(
         val bike = state.bike
         val summary = bike.summary
         val locale = LocalConfiguration.current.locales[0]
-        val photoAspect = if (maxWidth >= WidePane) 16f / 9f else 4f / 3f
+        val photoAspect = if (maxWidth >= WidePane) 16f / 9f else PhonePhotoAspect
         val photos = bike.photos.ifEmpty { listOfNotNull(summary.cover) }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -301,29 +341,30 @@ private fun BikeContent(
                     .padding(top = Spacing.s, bottom = Spacing.xxl),
                 verticalArrangement = Arrangement.spacedBy(Spacing.section),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
                     BikeGallery(photos, photoAspect)
-                    val badges = BikeLabels.badges(summary.classification)
-                    if (badges.isNotEmpty() || summary.isFormer || !summary.isPublic) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                            verticalArrangement = Arrangement.spacedBy(Spacing.s),
-                        ) {
-                            badges.forEach { PillBadge(it) }
-                            if (summary.isFormer) {
-                                PillBadge(
-                                    stringResource(
-                                        ru.colabike.core.designsystem.R.string.cola_former_bike
-                                    )
-                                )
-                            }
-                            if (!summary.isPublic) {
-                                PillBadge(
-                                    stringResource(R.string.bike_private),
-                                    icon = ColaIcons.Lock,
-                                )
-                            }
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                        val subtitle =
+                            bikeSubtitle(
+                                summary.brand,
+                                "${summary.model} ${bike.trim}".trim(),
+                                summary.year,
+                            )
+                        if (subtitle.isNotBlank()) {
+                            Text(
+                                subtitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
+                        Text(
+                            summary.name,
+                            style = ColaTheme.textStyles.pageTitle,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                    }
+                    summary.author?.let { author ->
+                        UserRow(author, onClick = { onOpenAuthor(author.id.value) })
                     }
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
@@ -366,13 +407,32 @@ private fun BikeContent(
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         )
                     }
-                    summary.author?.let { author ->
-                        UserRow(author, onClick = { onOpenAuthor(author.id.value) })
+                    val badges = BikeLabels.badges(summary.classification)
+                    if (badges.isNotEmpty() || summary.isFormer || !summary.isPublic) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.s),
+                        ) {
+                            badges.forEach { PillBadge(it) }
+                            if (summary.isFormer) {
+                                PillBadge(
+                                    stringResource(
+                                        ru.colabike.core.designsystem.R.string.cola_former_bike
+                                    )
+                                )
+                            }
+                            if (!summary.isPublic) {
+                                PillBadge(
+                                    stringResource(R.string.bike_private),
+                                    icon = ColaIcons.Lock,
+                                )
+                            }
+                        }
                     }
                 }
                 if (bike.description.isNotBlank()) {
                     Section(stringResource(R.string.bike_description)) {
-                        Text(bike.description, style = MaterialTheme.typography.bodyLarge)
+                        CollapsibleText(bike.description)
                     }
                 }
                 val facts = passport(bike, locale)
@@ -388,6 +448,7 @@ private fun BikeContent(
                                     stringResource(R.string.bike_price),
                                     priceText(price, locale),
                                     Modifier.fillMaxWidth(),
+                                    compact = true,
                                 )
                             }
                         }
@@ -503,7 +564,7 @@ private fun passport(bike: BikeDetail, locale: Locale): List<Pair<String, String
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
         Text(
             title,
             style = MaterialTheme.typography.headlineMedium,
@@ -524,7 +585,7 @@ private fun Facts(facts: List<Pair<String, String>>) {
                 horizontalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
                 row.forEach { (label, value) ->
-                    StatTile(label, value, Modifier.weight(1f).fillMaxHeight())
+                    StatTile(label, value, Modifier.weight(1f).fillMaxHeight(), compact = true)
                 }
                 repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
             }
