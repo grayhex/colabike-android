@@ -544,7 +544,6 @@
     <string name="map_choice_yandex">Яндекс Карты</string>
     <string name="map_choice_yandex_hint">Если недоступна, откроется OpenStreetMap</string>
     <string name="bike_rides">Покатушки велосипеда</string>
-    <string name="market_open">Объявления</string>
     <string name="market_title">Объявления</string>
     <string name="market_seller_subtitle">Продавец @%1$s</string>
     <string name="market_search_hint">Название, описание или место</string>
