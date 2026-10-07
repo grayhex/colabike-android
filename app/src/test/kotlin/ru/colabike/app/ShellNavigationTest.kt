@@ -124,25 +124,25 @@ class ShellNavigationRailTest {
     @Test
     fun `a bike stays open, and is not loaded again, after a visit to another section`() {
         bike(1).performClick()
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
 
         section("Профиль").performClick()
         compose.onNodeWithText("Тестовый Райдер").assertIsDisplayed()
-        compose.onNodeWithText("Описание").assertDoesNotExist()
+        compose.onNodeWithText("Комплектация").assertDoesNotExist()
 
         section("Велосипеды").performClick()
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
         assertThat(bikes.detailCalls).isEqualTo(1)
     }
 
     @Test
     fun `a tap on the current section closes the bike`() {
         bike(1).performClick()
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
 
         section("Велосипеды").performClick()
 
-        compose.onNodeWithText("Описание").assertDoesNotExist()
+        compose.onNodeWithText("Комплектация").assertDoesNotExist()
         bike(0).assertIsDisplayed()
     }
 
@@ -154,7 +154,7 @@ class ShellNavigationRailTest {
         Espresso.pressBack()
         compose.waitForIdle()
 
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
     }
 }
 

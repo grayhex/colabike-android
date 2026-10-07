@@ -102,7 +102,8 @@ class PhotoViewerTest {
         SingletonImageLoader.setUnsafe(
             ImageLoader.Builder(ApplicationProvider.getApplicationContext<Context>())
                 .components { add(OkHttpNetworkFetcherFactory(callFactory = { client })) }
-                // A cache would answer for the server, and the next run would find the last one's photo.
+                // A cache would answer for the server, and the next run would find the last one's
+                // photo.
                 .memoryCachePolicy(CachePolicy.DISABLED)
                 .diskCachePolicy(CachePolicy.DISABLED)
                 .build()

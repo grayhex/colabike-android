@@ -109,6 +109,12 @@ class BikeFlowTest {
         compose.waitForIdle()
     }
 
+    /** The build is shut when the page opens; the title row opens it in place. */
+    private fun openEquipment() {
+        compose.onNodeWithText("Комплектация").performScrollTo().performClick()
+        compose.waitForIdle()
+    }
+
     /** The view model's pause is on the main looper's clock, which the test must move. */
     private fun waitForSearch() {
         ShadowLooper.idleMainLooper(1, TimeUnit.SECONDS)
@@ -169,12 +175,20 @@ class BikeFlowTest {
         start(dependencies())
         open("Городской Cube")
 
-        compose.onNodeWithText("Город / туризм · Touring").assertIsDisplayed()
+        // The kind and the year are one short line under the name.
+        compose.onNodeWithText("Город / туризм · Touring", substring = true).assertIsDisplayed()
 
-        compose.onNodeWithText("ЦЕНА").performScrollTo().assertIsDisplayed()
         compose
-            .onNode(hasText("85", substring = true) and hasText("₽", substring = true))
-            .assertExists()
+            .onNode(
+                hasText("Цена", substring = true) and
+                    hasText("85", substring = true) and
+                    hasText("₽", substring = true)
+            )
+            .performScrollTo()
+            .assertIsDisplayed()
+        // The build is shut: its components are not on the page until it is opened.
+        compose.onNodeWithText("Shimano Deore 10-speed").assertDoesNotExist()
+        openEquipment()
         compose.onNodeWithText("Shimano Deore 10-speed").performScrollTo().assertIsDisplayed()
     }
 
@@ -194,7 +208,8 @@ class BikeFlowTest {
         start(dependencies)
         open("Городской Cube")
 
-        compose.onNodeWithText("ЦЕНА").assertDoesNotExist()
+        compose.onNode(hasText("Цена", substring = true)).assertDoesNotExist()
+        openEquipment()
         compose.onNode(hasText("₽", substring = true)).assertDoesNotExist()
     }
 
@@ -203,6 +218,7 @@ class BikeFlowTest {
         start(dependencies())
         open("Городской Cube")
 
+        openEquipment()
         // PreviewData: groupOrder = drivetrain, frame.
         val drivetrain = compose.onNodeWithText("Shimano Deore 10-speed").performScrollTo()
         val frame = compose.onNodeWithText("Cube Aluminium Superlite").performScrollTo()
@@ -216,6 +232,7 @@ class BikeFlowTest {
         open("Городской Cube")
 
         compose.onNodeWithText("Страница производителя").performScrollTo().performClick()
+        openEquipment()
         compose
             .onNodeWithContentDescription(
                 "Страница компонента «Shimano Deore 10-speed» на сайте производителя"
@@ -271,7 +288,7 @@ class BikeFlowTest {
         start(dependencies())
         open("Городской Cube")
 
-        compose.onNodeWithText("Поделиться").performClick()
+        compose.onNodeWithContentDescription("Поделиться").performClick()
 
         assertThat(shared).containsExactly("Городской Cube" to "https://colabike.test/b/b-cube")
     }

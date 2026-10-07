@@ -323,7 +323,7 @@ class FeedFlowTest {
     private fun openBikeJournal() {
         compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
+        compose.onNodeWithTag("bike:journal-all").performScrollTo().performClick()
         compose.waitForIdle()
     }
 
@@ -333,7 +333,8 @@ class FeedFlowTest {
         start(dependencies)
 
         openBikeJournal()
-        assertThat(dependencies.journal.bikeCalls.map { it.first }).containsExactly(BikeId("b1"))
+        // The page asked for the latest entry, the list for the whole journal.
+        assertThat(dependencies.journal.bikeCalls.map { it.first }).contains(BikeId("b1"))
         compose.onNodeWithText("Велосипед 1").assertIsDisplayed() // the bike under the title
         compose.onNodeWithContentDescription("Запись 0", substring = true).assertIsDisplayed()
         compose.onNodeWithContentDescription("Запись 2", substring = true).assertIsDisplayed()
@@ -347,16 +348,19 @@ class FeedFlowTest {
         compose.onNodeWithContentDescription("Запись 0", substring = true).assertIsDisplayed()
         compose.onNodeWithContentDescription("Назад").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Журнал велосипеда").assertExists()
+        compose.onNodeWithTag("bike:journal-all").assertExists()
     }
 
     @Test
     fun `a bike without entries says so`() {
         start(dependencies(journal = FakeJournal(pages = mapOf(null to Page(emptyList(), null)))))
 
-        openBikeJournal()
+        compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+        compose.waitForIdle()
 
-        compose.onNodeWithText("В журнале пока нет записей").assertIsDisplayed()
+        // The page says so in one line: there is no list to open.
+        compose.onNodeWithText("Записей пока нет").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("bike:journal-all").assertDoesNotExist()
     }
 
     @Test
@@ -365,11 +369,14 @@ class FeedFlowTest {
         start(dependencies(journal = journal))
         journal.nextError = DataError.Offline(java.io.IOException())
 
-        openBikeJournal()
-        compose.onNodeWithText("Повторить").performClick()
+        // The section of the page fails, the page does not; the retry is in the section.
+        compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Не удалось загрузить журнал").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Повторить").performScrollTo().performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithContentDescription("Запись 0", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("bike:journal-entry").performScrollTo().assertIsDisplayed()
     }
 
     @Test

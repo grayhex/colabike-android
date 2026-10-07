@@ -346,7 +346,7 @@ class AccountFlowTest {
         compose.onNodeWithText("Войти").performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
         assertThat(dependencies.pending.destination.value).isNull()
     }
 
@@ -359,7 +359,7 @@ class AccountFlowTest {
         compose.onNodeWithText("Смотреть без входа").performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
         assertThat(dependencies.pending.destination.value).isNull()
     }
 
@@ -372,7 +372,7 @@ class AccountFlowTest {
         dependencies.pending.offer(Destination.Bike("b2"))
         compose.waitForIdle()
 
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
         // Back is the bikes list, not the profile the person came from.
         Espresso.pressBack()
         compose.waitForIdle()

@@ -791,6 +791,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onBack = { navigator.back() },
                                                 onOpenGarage = { navigator.toRoot() },
                                                 photoFiles = dependencies.photoFiles,
+                                                pickOnOpen = key.add,
                                             )
                                         }
                                         entry<Destination.BikePart> { key ->
@@ -830,6 +831,11 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                 onEditPhotos = { id ->
                                                     navigator.open(Destination.BikePhotos(id.value))
                                                 },
+                                                onAddPhoto = { id ->
+                                                    navigator.open(
+                                                        Destination.BikePhotos(id.value, add = true)
+                                                    )
+                                                },
                                                 onNewJournalEntry = { id ->
                                                     navigator.open(
                                                         Destination.JournalEditor(id.value)
@@ -846,10 +852,8 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                         Destination.BikeJournal(id.value, name)
                                                     )
                                                 },
-                                                onOpenComments = { id, name ->
-                                                    navigator.open(
-                                                        Destination.Comments("bike", id.value, name)
-                                                    )
+                                                onOpenJournalEntry = { id ->
+                                                    navigator.open(Destination.Journal(id.value))
                                                 },
                                                 onOpenRides = { id, name ->
                                                     navigator.open(
@@ -860,6 +864,9 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                     navigator.open(Destination.Component(modelId))
                                                 },
                                                 commentChanges = dependencies.comments.countChanges,
+                                                journal = dependencies.journal,
+                                                comments = dependencies.comments,
+                                                drafts = dependencies.drafts,
                                             )
                                         }
                                         entry<Destination.Person> { key ->

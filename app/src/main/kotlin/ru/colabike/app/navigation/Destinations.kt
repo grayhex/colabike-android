@@ -44,8 +44,11 @@ sealed interface Destination : NavKey {
     /** The pictures of one's own journal entry: sent and removed. */
     @Serializable data class JournalPhotos(val id: String) : Destination
 
-    /** The pictures of one's own bike: sent, made the cover, removed. */
-    @Serializable data class BikePhotos(val bikeId: String) : Destination
+    /**
+     * The pictures of one's own bike: sent, made the cover, removed. With [add] the system picker
+     * opens at once: "+ Фото" on the page of the bike.
+     */
+    @Serializable data class BikePhotos(val bikeId: String, val add: Boolean = false) : Destination
 
     /** The form of a part of a bike's build: a new one when [id] is null, else a change of it. */
     @Serializable data class BikePart(val bikeId: String, val id: String? = null) : Destination

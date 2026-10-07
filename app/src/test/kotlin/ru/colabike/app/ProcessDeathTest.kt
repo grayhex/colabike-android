@@ -45,11 +45,11 @@ class ProcessDeathTest {
     fun `an open bike is still open, and back still leads to the list`() {
         start()
         compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
 
         die()
 
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
         Espresso.pressBack()
         compose.waitForIdle()
         compose.onNodeWithTag("bikes:grid").assertIsDisplayed()
@@ -79,7 +79,7 @@ class ProcessDeathTest {
 
         compose.onNodeWithText("Тестовый Райдер").assertIsDisplayed()
         compose.section("Велосипеды").performClick()
-        compose.onNodeWithText("Описание").assertIsDisplayed()
+        compose.onNodeWithText("Комплектация").assertIsDisplayed()
     }
 
     @Test

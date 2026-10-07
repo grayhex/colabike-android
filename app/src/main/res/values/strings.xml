@@ -46,8 +46,6 @@
     <string name="bike_title">Велосипед</string>
     <string name="bike_description_more">Читать полностью</string>
     <string name="bike_description_less">Свернуть</string>
-    <string name="bike_description">Описание</string>
-    <string name="bike_specs">Характеристики</string>
     <string name="bike_build">Комплектация</string>
     <string name="bike_accessories">Аксессуары</string>
     <string name="bike_other_components">Другое</string>
@@ -61,11 +59,48 @@
     <string name="bike_price_value">%1$s&#160;₽</string>
     <string name="bike_photo_open">Открыть на весь экран</string>
     <string name="bike_photo_failed">Не удалось загрузить фото</string>
+    <string name="bike_photo_add">Фото</string>
+    <string name="bike_photo_add_description">Добавить фото</string>
+    <string name="bike_photos_manage">Управлять</string>
+    <string name="bike_photos_manage_description">Управлять фотографиями</string>
+    <string name="bike_equipment_expand">Показать комплектацию</string>
+    <string name="bike_equipment_collapse">Скрыть комплектацию</string>
+    <string name="bike_equipment_edit">Изменить комплектацию</string>
+    <string name="bike_equipment_edit_short">Изменить</string>
+    <string name="bike_equipment_empty">Комплектация пока не заполнена.</string>
+    <string name="bike_equipment_expanded">развёрнута</string>
+    <string name="bike_equipment_collapsed">свёрнута</string>
+    <string name="bike_open_author">Профиль: %1$s</string>
+    <string name="bike_note_more">Подробнее</string>
+    <string name="bike_note_less">Свернуть</string>
+    <string name="journal_section">Журнал</string>
+    <string name="journal_add">Запись</string>
+    <string name="journal_add_description">Добавить запись в журнал</string>
+    <string name="journal_all">Все записи</string>
+    <string name="journal_preview_empty">Записей пока нет</string>
+    <string name="journal_preview_failed">Не удалось загрузить журнал</string>
+    <string name="journal_preview_open">Запись: %1$s</string>
+    <string name="comments_prompt">Начните обсуждение велосипеда</string>
+    <string name="comments_prompt_guest">Комментариев пока нет. Войдите, чтобы написать первым.</string>
+    <string name="comments_all">Все комментарии</string>
+    <string name="comments_collapse">Свернуть</string>
+    <string name="comments_more_roots">Ещё комментарии</string>
+    <string name="comments_text_more">Ещё</string>
+    <string name="comments_text_less">Свернуть</string>
+    <string name="comments_author_badge">Автор</string>
+    <string name="comments_menu">Действия с комментарием</string>
+    <string name="comments_replies_shown">ответы показаны</string>
+    <string name="comments_replies_hidden">ответы скрыты</string>
+    <plurals name="comments_replies">
+        <item quantity="one">%d ответ</item>
+        <item quantity="few">%d ответа</item>
+        <item quantity="many">%d ответов</item>
+        <item quantity="other">%d ответа</item>
+    </plurals>
     <string name="cola_photo_n_of_m_short">%1$d / %2$d</string>
     <string name="cola_photo_n_of_m">Фото %1$d из %2$d</string>
     <string name="bike_component_link">Страница компонента «%1$s» на сайте производителя</string>
     <string name="bike_manufacturer">Страница производителя</string>
-    <string name="bike_manufacturer_hint">Откроется в браузере</string>
     <string name="bike_private_hint">Если это приватный велосипед, войдите в свой аккаунт.</string>
     <string name="bike_private">Виден только вам</string>
 
@@ -265,8 +300,6 @@
     <string name="journal_open_bike">Открыть велосипед</string>
     <string name="journal_private_hint">Если это закрытая запись, войдите в свой аккаунт.</string>
     <string name="journal_updated">Изменено %1$s</string>
-    <string name="bike_journal">Журнал велосипеда</string>
-    <string name="bike_journal_hint">Записи о сборке, обслуживании и поездках</string>
     <string name="profile_saved">Записи журнала</string>
 
     <string name="comments_title">Комментарии</string>
@@ -504,7 +537,6 @@
     <string name="map_choice_yandex">Яндекс Карты</string>
     <string name="map_choice_yandex_hint">Если недоступна, откроется OpenStreetMap</string>
     <string name="bike_rides">Покатушки велосипеда</string>
-    <string name="bike_rides_hint">Состоявшиеся публичные поездки</string>
     <string name="market_open">Объявления</string>
     <string name="market_title">Объявления</string>
     <string name="market_seller_subtitle">Продавец @%1$s</string>
@@ -1016,8 +1048,6 @@
     <string name="bike_problem_link">Ссылка должна начинаться с https:// и быть без логина и пароля.</string>
     <string name="bike_problem_price">Цена: число от 0 до 999 999 999 ₽.</string>
     <!-- Build editor (docs/adr/0022) -->
-    <string name="parts_open">Комплектация</string>
-    <string name="parts_open_hint">Добавить деталь, изменить, порядок групп</string>
     <string name="parts_title">Комплектация</string>
     <string name="parts_add">Добавить деталь</string>
     <string name="parts_empty">В комплектации пока ничего нет. Добавьте раму, трансмиссию, колёса: так страницу велосипеда читают и сравнивают.</string>
@@ -1048,8 +1078,6 @@
     <string name="part_problem_no_name">Назовите деталь.</string>
     <string name="part_problem_name_long">Название длиннее 150 знаков.</string>
     <string name="part_problem_notes_long">Заметка длиннее 500 знаков.</string>
-    <string name="photos_open">Фотографии</string>
-    <string name="photos_open_hint">Добавить, выбрать обложку, удалить</string>
     <string name="photos_title">Фотографии</string>
     <string name="photos_add">Добавить фото</string>
     <string name="photos_count">Фото: %1$d из %2$d</string>
@@ -1081,8 +1109,6 @@
     <string name="journal_editor_saving">Сохраняем…</string>
     <string name="journal_unavailable_title">Запись недоступна</string>
     <string name="journal_cannot_edit">Этой записи или велосипеда нет, или они не ваши: изменить запись нельзя.</string>
-    <string name="journal_new_open">Новая запись в журнале</string>
-    <string name="journal_new_open_hint">Рассказать о сборке, обслуживании или поездке</string>
     <string name="journal_edit">Изменить запись</string>
     <string name="journal_section_main">Запись</string>
     <string name="journal_field_kind">О чём запись</string>

@@ -91,7 +91,7 @@ class JournalEditorFlowTest {
 
     private fun openEntry() {
         openBike()
-        compose.onNodeWithText("Журнал велосипеда").performScrollTo().performClick()
+        compose.onNodeWithTag("bike:journal-all").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("journal:j-own").performClick()
         compose.waitForIdle()

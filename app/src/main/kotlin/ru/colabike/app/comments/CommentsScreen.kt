@@ -145,21 +145,21 @@ fun CommentsRoute(
     val reported = reporting
     if (safety != null && reported != null) {
         ReportDialog(
-            target =
-                ReportTarget(
-                    when (target.kind) {
-                        CommentKind.Bike -> ReportKind.BikeComment
-                        CommentKind.Journal -> ReportKind.JournalComment
-                        CommentKind.Ride -> ReportKind.RideComment
-                        CommentKind.Component -> ReportKind.ComponentComment
-                    },
-                    reported.id,
-                ),
+            target = ReportTarget(reportKindOf(target.kind), reported.id),
             safety = safety,
             onDismiss = { reporting = null },
         )
     }
 }
+
+/** What a comment under [kind] is reported as. */
+internal fun reportKindOf(kind: CommentKind): ReportKind =
+    when (kind) {
+        CommentKind.Bike -> ReportKind.BikeComment
+        CommentKind.Journal -> ReportKind.JournalComment
+        CommentKind.Ride -> ReportKind.RideComment
+        CommentKind.Component -> ReportKind.ComponentComment
+    }
 
 /** What the discussion can do. Callbacks, so the screen never touches the model itself. */
 class CommentsActions(
@@ -633,7 +633,7 @@ private fun SignInBar(onSignIn: () -> Unit) {
 }
 
 @Composable
-private fun DeleteQuestion(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+internal fun DeleteQuestion(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
