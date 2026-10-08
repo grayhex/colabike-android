@@ -93,6 +93,70 @@ class IntentsRepositoryTest {
         )
 
     @Test
+    fun `area survives create read replace and removal over the v1 HTTP endpoints`() = runTest {
+        val original = intent()
+        val changed =
+            original
+                .replace("Парк Горького", "Другой парк")
+                .replace("[37.6,55.73]", "[30.31,59.94]")
+                .replace("5000", "12000")
+        val textOnly = changed.replace(",\"center\":[30.31,59.94],\"radiusM\":12000", "")
+        site.json(201, original, "ETag", "\"i1\"")
+        site.json(200, original, "ETag", "\"i1\"")
+        site.json(200, changed, "ETag", "\"i2\"")
+        site.json(200, textOnly, "ETag", "\"i3\"")
+
+        val created = intents.create(draft, key)
+        val read = intents.get(created.id)
+        assertThat(read.passport.area).isEqualTo(draft.passport.area)
+        val replacement =
+            read
+                .toDraft()
+                .copy(
+                    passport =
+                        read.passport.copy(
+                            areaLabel = "Другой парк",
+                            area = RideAreaPoint(30.31, 59.94, 12000),
+                        )
+                )
+        val edited = intents.replace(read.id, replacement, read.version)
+        assertThat(edited.passport.area).isEqualTo(replacement.passport.area)
+        assertThat(edited.passport.areaLabel).isEqualTo("Другой парк")
+        val removed =
+            intents.replace(
+                edited.id,
+                edited.toDraft().copy(passport = edited.passport.copy(area = null)),
+                edited.version,
+            )
+        assertThat(removed.passport.area).isNull()
+        assertThat(removed.passport.areaLabel).isEqualTo("Другой парк")
+
+        val createRequest = site.server.takeRequest()
+        assertThat(createRequest.method).isEqualTo("POST")
+        assertThat(createRequest.url.encodedPath).isEqualTo("/api/v1/ride-intents")
+        val readRequest = site.server.takeRequest()
+        assertThat(readRequest.method).isEqualTo("GET")
+        assertThat(readRequest.url.encodedPath).isEqualTo("/api/v1/ride-intents/$id")
+        val editRequest = site.server.takeRequest()
+        assertThat(editRequest.headers["If-Match"]).isEqualTo("\"i1\"")
+        val body = Json.parseToJsonElement(editRequest.body!!.utf8()).jsonObject
+        val area = body.getValue("passport").jsonObject.getValue("area").jsonObject
+        assertThat(area.getValue("center").jsonArray.map { it.jsonPrimitive.content })
+            .containsExactly("30.31", "59.94")
+            .inOrder()
+        assertThat(area.getValue("radiusM").jsonPrimitive.content).isEqualTo("12000")
+        assertThat(body.getValue("visibility").jsonPrimitive.content).isEqualTo("private")
+        val removal =
+            Json.parseToJsonElement(site.server.takeRequest().body!!.utf8())
+                .jsonObject
+                .getValue("passport")
+                .jsonObject
+                .getValue("area")
+                .jsonObject
+        assertThat(removal.keys).containsExactly("label")
+    }
+
+    @Test
     fun `an intention is read with its version, its windows and its zone`() = runTest {
         site.json(200, intent(), "ETag", "\"i1\"")
 

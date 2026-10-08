@@ -54,6 +54,7 @@ import ru.colabike.app.R
 import ru.colabike.app.links.LocalLinkOpener
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.GeoPoint
+import ru.colabike.core.model.RideAreaPoint
 import ru.colabike.core.model.RideRoute
 
 /**
@@ -73,6 +74,17 @@ class MapLibreRouteMaps(private val styleOverride: String?) : RouteMaps {
         val dark = MaterialTheme.colorScheme.background.luminance() < DARK_LUMINANCE
         MapLibreRoute(route, BasemapStyle.choose(styleOverride, dark), modifier)
     }
+
+    @Composable
+    override fun Area(point: RideAreaPoint, onCenter: (GeoPoint) -> Unit, modifier: Modifier) {
+        val dark = MaterialTheme.colorScheme.background.luminance() < DARK_LUMINANCE
+        MapLibreRoute(
+            areaOutline(point),
+            BasemapStyle.choose(styleOverride, dark),
+            modifier,
+            onPick = onCenter,
+        )
+    }
 }
 
 /** What an instrumented test can look at: the style loaded and the route is on it. */
@@ -90,6 +102,7 @@ internal fun MapLibreRoute(
     style: BasemapStyle?,
     modifier: Modifier = Modifier,
     probe: MapProbe? = null,
+    onPick: ((GeoPoint) -> Unit)? = null,
 ) {
     val styleUrl = style?.url
     val context = LocalContext.current
@@ -102,12 +115,19 @@ internal fun MapLibreRoute(
             line = scheme.primary.toArgb(),
         )
     val density = LocalDensity.current.density
-    val description = stringResource(R.string.route_map_description)
+    val description =
+        stringResource(
+            if (onPick == null) R.string.route_map_description
+            else R.string.intent_area_map_description
+        )
+    val pick by rememberUpdatedState(onPick)
     // Where the hand left the camera, kept over a turn of the screen; null until it is moved.
     var camera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
     var remoteFailed by remember(styleUrl) { mutableStateOf(false) }
     val currentStyleUrl by rememberUpdatedState(styleUrl)
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
+    var renderedStyle by remember { mutableStateOf<Style?>(null) }
+    val currentRoute by rememberUpdatedState(route)
 
     val mapView = remember {
         MapLibre.getInstance(context.applicationContext)
@@ -140,6 +160,12 @@ internal fun MapLibreRoute(
                 if (target != null) {
                     camera = doubleArrayOf(target.latitude, target.longitude, position.zoom)
                 }
+            }
+            ready.addOnMapClickListener { point ->
+                val callback = pick
+                if (callback != null && !remoteFailed)
+                    callback(GeoPoint(point.latitude, point.longitude))
+                callback != null
             }
             map = ready
         }
@@ -212,7 +238,7 @@ internal fun MapLibreRoute(
     }
 
     val ready = map
-    LaunchedEffect(ready, route, style, look, remoteFailed) {
+    LaunchedEffect(ready, style, look, remoteFailed) {
         if (ready == null) return@LaunchedEffect
         val remote = styleUrl?.takeIf { !remoteFailed }
         // An override names its sources through the library's button; the built-in style has the
@@ -221,18 +247,29 @@ internal fun MapLibreRoute(
         val builder =
             if (remote != null) Style.Builder().fromUri(remote)
             else Style.Builder().fromJson(blankStyle(look.background))
+        renderedStyle = null
         ready.setStyle(builder) { style ->
-            showRoute(style, route, look)
+            showRoute(style, currentRoute, look, onPick != null)
+            renderedStyle = style
             val saved = camera
             if (saved != null) {
                 ready.moveCamera(
                     CameraUpdateFactory.newLatLngZoom(LatLng(saved[0], saved[1]), saved[2])
                 )
             } else {
-                fit(ready, route, (FIT_PADDING_DP * density).toInt())
+                fit(ready, currentRoute, (FIT_PADDING_DP * density).toInt())
             }
             probe?.routeShown = style.getLayer(LINE_LAYER) != null
         }
+    }
+
+    LaunchedEffect(renderedStyle, route) {
+        val drawn = renderedStyle ?: return@LaunchedEffect
+        drawn.getSourceAs<GeoJsonSource>(ROUTE_SOURCE)?.setGeoJson(multiLineString(route))
+        val start = if (onPick != null) route.lines.last().first() else route.lines.first().first()
+        drawn.getSourceAs<GeoJsonSource>(START_SOURCE)?.setGeoJson(point(start))
+        drawn.getSourceAs<GeoJsonSource>(END_SOURCE)?.setGeoJson(point(route.lines.last().last()))
+        if (onPick != null && ready != null) fit(ready, route, (FIT_PADDING_DP * density).toInt())
     }
 
     Box(modifier) {
@@ -310,7 +347,7 @@ private fun blankStyle(background: Int): String {
         """[{"id":"background","type":"background","paint":{"background-color":"$hex"}}]}"""
 }
 
-private fun showRoute(style: Style, route: RideRoute, look: MapLook) {
+private fun showRoute(style: Style, route: RideRoute, look: MapLook, area: Boolean) {
     // One source with all the lines of the route: the cuts stay cuts, nothing joins them.
     style.addSource(GeoJsonSource(ROUTE_SOURCE, multiLineString(route)))
     style.addLayer(
@@ -331,7 +368,7 @@ private fun showRoute(style: Style, route: RideRoute, look: MapLook) {
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             )
     )
-    val start = route.lines.first().first()
+    val start = if (area) route.lines.last().first() else route.lines.first().first()
     val end = route.lines.last().last()
     style.addSource(GeoJsonSource(START_SOURCE, point(start)))
     style.addSource(GeoJsonSource(END_SOURCE, point(end)))

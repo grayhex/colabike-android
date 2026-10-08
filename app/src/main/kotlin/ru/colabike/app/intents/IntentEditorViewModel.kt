@@ -11,15 +11,22 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 import java.util.UUID
+import kotlin.math.round
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import ru.colabike.app.R
+import ru.colabike.app.nearby.CoarseLocation
+import ru.colabike.app.nearby.CoarseResult
+import ru.colabike.app.nearby.NoCoarseLocation
 import ru.colabike.app.ui.UiText
 import ru.colabike.app.ui.toUiText
 import ru.colabike.core.model.DataError
+import ru.colabike.core.model.GeoPoint
 import ru.colabike.core.model.IntentDraft
 import ru.colabike.core.model.IntentFold
 import ru.colabike.core.model.IntentProblem
@@ -28,6 +35,7 @@ import ru.colabike.core.model.IntentRules
 import ru.colabike.core.model.IntentVisibility
 import ru.colabike.core.model.IntentWindowDraft
 import ru.colabike.core.model.IntentsRepository
+import ru.colabike.core.model.RideAreaPoint
 import ru.colabike.core.model.RideIntent
 import ru.colabike.core.model.RidePassport
 import ru.colabike.core.model.toDraft
@@ -91,6 +99,7 @@ sealed interface IntentEditorUiState {
         val canReload: Boolean = false,
         /** Saved; the screen closes and shows this intention. */
         val saved: RideIntent? = null,
+        val areaPicker: IntentAreaDraft? = null,
     ) : IntentEditorUiState
 }
 
@@ -106,18 +115,22 @@ class IntentEditorViewModel(
     private val phoneZone: ZoneId,
     private val id: String?,
     private val newKey: () -> String = { UUID.randomUUID().toString() },
+    private val location: CoarseLocation = NoCoarseLocation,
 ) : ViewModel() {
     private val mutable = MutableStateFlow<IntentEditorUiState>(IntentEditorUiState.Loading)
     val state: StateFlow<IntentEditorUiState> = mutable.asStateFlow()
 
     /** The last create that was sent and the key it carried. */
     private var attempt: Pair<IntentDraft, String>? = null
+    private var locationJob: Job? = null
+    private var locationGeneration = 0L
 
     init {
         load()
     }
 
     fun load() {
+        cancelLocation()
         if (id == null) {
             mutable.value = IntentEditorUiState.Editing(newForm())
             return
@@ -160,8 +173,166 @@ class IntentEditorViewModel(
 
     fun setReadiness(value: IntentReadiness) = edit { it.copy(readiness = value) }
 
-    fun setAreaLabel(value: String) = edit {
-        it.copy(areaLabel = value.take(IntentDraft.MAX_AREA_LABEL + 1))
+    fun setAreaLabel(value: String) {
+        cancelArea()
+        edit {
+            val label = value.take(IntentDraft.MAX_AREA_LABEL + 1)
+            it.copy(
+                areaLabel = label,
+                base =
+                    if (label.trim() == it.areaLabel.trim()) it.base else it.base.copy(area = null),
+            )
+        }
+    }
+
+    fun openArea() {
+        val current = mutable.value as? IntentEditorUiState.Editing ?: return
+        if (current.saving || current.areaPicker != null) return
+        mutable.value =
+            current.copy(
+                areaPicker = IntentAreaDraft(current.form.areaLabel, current.form.base.area)
+            )
+    }
+
+    private fun changeArea(transform: (IntentAreaDraft) -> IntentAreaDraft) {
+        mutable.update { state ->
+            if (state is IntentEditorUiState.Editing && !state.saving && state.areaPicker != null) {
+                state.copy(areaPicker = transform(state.areaPicker))
+            } else state
+        }
+    }
+
+    fun setAreaDraftLabel(label: String) = changeArea {
+        it.copy(label = label.take(IntentDraft.MAX_AREA_LABEL + 1))
+    }
+
+    fun setAreaCenter(center: GeoPoint) {
+        if (
+            !center.longitude.isFinite() ||
+                !center.latitude.isFinite() ||
+                center.longitude !in -180.0..180.0 ||
+                center.latitude !in -90.0..90.0
+        )
+            return
+        cancelLocation()
+        changeArea {
+            it.copy(
+                point =
+                    RideAreaPoint(
+                        round(center.longitude * 100) / 100,
+                        round(center.latitude * 100) / 100,
+                        it.point?.radiusM ?: 5000,
+                    ),
+                locating = false,
+                problem = null,
+            )
+        }
+    }
+
+    fun setAreaRadius(radiusM: Int) = changeArea {
+        it.copy(point = it.point?.copy(radiusM = radiusM.coerceIn(1000, 100000)))
+    }
+
+    /** Called only from the explicit location action, before Android asks for permission. */
+    fun requestLocation(): Long? {
+        val current = (mutable.value as? IntentEditorUiState.Editing)?.areaPicker ?: return null
+        if (current.locating) return null
+        cancelLocation()
+        changeArea { it.copy(locating = true, problem = null) }
+        return locationGeneration
+    }
+
+    fun locationPermission(token: Long, granted: Boolean) {
+        if (!locationRequestActive(token)) return
+        if (!granted) {
+            changeArea {
+                it.copy(locating = false, problem = UiText.Res(R.string.intent_area_denied))
+            }
+            return
+        }
+        if (locationJob?.isActive == true) return
+        locationJob = viewModelScope.launch {
+            val result = withTimeoutOrNull(25000) { location.current() } ?: CoarseResult.Unavailable
+            if (!locationRequestActive(token)) return@launch
+            when (result) {
+                is CoarseResult.Located -> {
+                    val fix = result.fix
+                    if (
+                        fix.longitude.isFinite() &&
+                            fix.latitude.isFinite() &&
+                            fix.longitude in -180.0..180.0 &&
+                            fix.latitude in -90.0..90.0
+                    ) {
+                        changeArea {
+                            it.copy(
+                                point =
+                                    RideAreaPoint(
+                                        round(fix.longitude * 100) / 100,
+                                        round(fix.latitude * 100) / 100,
+                                        it.point?.radiusM ?: 5000,
+                                    ),
+                                locating = false,
+                                problem = null,
+                            )
+                        }
+                    } else locationFailure(R.string.intent_area_unavailable)
+                }
+                CoarseResult.NoPermission -> locationFailure(R.string.intent_area_denied)
+                CoarseResult.ServiceOff -> locationFailure(R.string.intent_area_off)
+                CoarseResult.Unavailable -> locationFailure(R.string.intent_area_unavailable)
+            }
+        }
+    }
+
+    private fun locationRequestActive(token: Long): Boolean =
+        token == locationGeneration &&
+            (mutable.value as? IntentEditorUiState.Editing)?.areaPicker?.locating == true
+
+    private fun locationFailure(message: Int) = changeArea {
+        it.copy(locating = false, problem = UiText.Res(message))
+    }
+
+    private fun cancelLocation() {
+        locationGeneration++
+        locationJob?.cancel()
+        locationJob = null
+    }
+
+    override fun onCleared() {
+        cancelLocation()
+    }
+
+    fun abandonLocation() {
+        cancelLocation()
+        changeArea { it.copy(locating = false) }
+    }
+
+    fun cancelArea() {
+        cancelLocation()
+        mutable.update { if (it is IntentEditorUiState.Editing) it.copy(areaPicker = null) else it }
+    }
+
+    fun confirmArea() {
+        val current = mutable.value as? IntentEditorUiState.Editing ?: return
+        val area = current.areaPicker ?: return
+        if (!area.canConfirm || current.saving) return
+        cancelLocation()
+        mutable.value =
+            current.copy(
+                form =
+                    current.form.copy(
+                        areaLabel = area.label.trim(),
+                        base = current.form.base.copy(area = area.point),
+                    ),
+                areaPicker = null,
+                problems = emptyList(),
+                problem = null,
+            )
+    }
+
+    fun removeAreaGeometry() {
+        cancelArea()
+        edit { it.copy(base = it.base.copy(area = null)) }
     }
 
     fun setPurpose(value: String) = edit { it.copy(purpose = value) }
@@ -240,7 +411,7 @@ class IntentEditorViewModel(
 
     fun save() {
         val current = mutable.value as? IntentEditorUiState.Editing ?: return
-        if (current.saving) return
+        if (current.saving || current.areaPicker != null) return
         val draft = current.form.toDraft()
         val problems = IntentRules.check(draft, clock.instant())
         if (problems.isNotEmpty()) {
@@ -341,3 +512,17 @@ private fun IntentWindowDraft.clearUnneededFolds(zone: ZoneId): IntentWindowDraf
         startFold = startFold.takeIf { zone.rules.getValidOffsets(start).size > 1 },
         endFold = endFold.takeIf { zone.rules.getValidOffsets(end).size > 1 },
     )
+
+/** An unconfirmed area, kept only in memory and independent of private Nearby settings. */
+@Immutable
+data class IntentAreaDraft(
+    val label: String,
+    val point: RideAreaPoint? = null,
+    val locating: Boolean = false,
+    val problem: UiText? = null,
+) {
+    val canConfirm: Boolean
+        get() = !locating && point != null && label.trim().length in 1..IntentDraft.MAX_AREA_LABEL
+
+    override fun toString() = "IntentAreaDraft(locating=$locating, hasPoint=${point != null})"
+}

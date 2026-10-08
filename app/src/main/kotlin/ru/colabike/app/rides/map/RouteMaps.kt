@@ -20,6 +20,7 @@ import kotlin.math.max
 import kotlin.math.min
 import ru.colabike.app.R
 import ru.colabike.core.model.GeoPoint
+import ru.colabike.core.model.RideAreaPoint
 import ru.colabike.core.model.RideRoute
 
 /**
@@ -49,6 +50,12 @@ interface RouteMaps {
 
     /** The route, panned and zoomed by the hand. Fills [modifier]. */
     @Composable fun Map(route: RideRoute, modifier: Modifier)
+
+    /** A confirmed or proposed coarse area. Taps explicitly move its centre; panning never does. */
+    @Composable
+    fun Area(point: RideAreaPoint, onCenter: (GeoPoint) -> Unit, modifier: Modifier) {
+        Map(areaOutline(point), modifier)
+    }
 }
 
 /** The route drawn by Compose alone: no tiles, no gestures, no network. */
@@ -135,4 +142,36 @@ internal class RouteFrame(route: RideRoute) {
         /** A route that is one point's worth still gets a box, not a division by zero. */
         const val MIN_SPAN = 1e-6
     }
+}
+
+/** Geodesic circle, plus its centre. Shared by both native map providers and screenshot fakes. */
+internal fun areaOutline(area: RideAreaPoint): RideRoute {
+    val latitude = Math.toRadians(area.latitude)
+    val longitude = Math.toRadians(area.longitude)
+    val distance = area.radiusM / 6371000.0
+    val ring =
+        (0..72).map { step ->
+            val bearing = step * 2 * Math.PI / 72
+            val lat =
+                kotlin.math.asin(
+                    kotlin.math.sin(latitude) * kotlin.math.cos(distance) +
+                        kotlin.math.cos(latitude) *
+                            kotlin.math.sin(distance) *
+                            kotlin.math.cos(bearing)
+                )
+            val lon =
+                longitude +
+                    kotlin.math.atan2(
+                        kotlin.math.sin(bearing) *
+                            kotlin.math.sin(distance) *
+                            kotlin.math.cos(latitude),
+                        kotlin.math.cos(distance) -
+                            kotlin.math.sin(latitude) * kotlin.math.sin(lat),
+                    )
+            // Keep longitudes in the centre's world copy. Wrapping each vertex at ±180°
+            // creates a 360° chord and makes both providers fit the entire world.
+            GeoPoint(Math.toDegrees(lat), Math.toDegrees(lon))
+        }
+    val center = GeoPoint(area.latitude, area.longitude)
+    return RideRoute(listOf(ring, listOf(center, center)))
 }
