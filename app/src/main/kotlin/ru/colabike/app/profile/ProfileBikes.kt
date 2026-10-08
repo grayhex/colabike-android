@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import ru.colabike.app.R
 import ru.colabike.app.ui.UiText
+import ru.colabike.app.ui.resolve
 import ru.colabike.app.ui.toUiText
 import ru.colabike.core.designsystem.component.BikePhoto
 import ru.colabike.core.designsystem.component.ColaCard
@@ -154,7 +155,7 @@ internal fun ProfileBikes(
         }
         if (state.error != null) {
             Text(
-                stringResource(R.string.profile_bikes_failed),
+                stringResource(R.string.profile_bikes_failed) + "\n" + state.error.resolve(),
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 style = MaterialTheme.typography.bodyMedium,
             )
