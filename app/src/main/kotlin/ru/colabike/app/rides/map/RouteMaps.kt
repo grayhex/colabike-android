@@ -168,7 +168,9 @@ internal fun areaOutline(area: RideAreaPoint): RideRoute {
                         kotlin.math.cos(distance) -
                             kotlin.math.sin(latitude) * kotlin.math.sin(lat),
                     )
-            GeoPoint(Math.toDegrees(lat), (Math.toDegrees(lon) + 540) % 360 - 180)
+            // Keep longitudes in the centre's world copy. Wrapping each vertex at ±180°
+            // creates a 360° chord and makes both providers fit the entire world.
+            GeoPoint(Math.toDegrees(lat), Math.toDegrees(lon))
         }
     val center = GeoPoint(area.latitude, area.longitude)
     return RideRoute(listOf(ring, listOf(center, center)))

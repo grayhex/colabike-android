@@ -20,8 +20,8 @@ compileSdk и targetSdk — 37 (Android 17). minSdk выбирается оди�
 | Компонент | Версия |
 | --- | --- |
 | AGP | 9.4.1 |
-| Gradle | 9.8.0 (wrapper с SHA-256) |
-| Kotlin | 2.4.20 |
+| Gradle | 9.8.1 (wrapper с SHA-256) |
+| Kotlin | 2.4.21 |
 | Compose BOM | 2026.09.00 (Compose 1.12.1, material3 1.4.0) |
 | Navigation 3 | 1.2.0 |
 | material3-adaptive | 1.3.0 |

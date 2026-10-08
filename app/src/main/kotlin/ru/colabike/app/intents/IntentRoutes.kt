@@ -6,7 +6,6 @@ import android.app.TimePickerDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -142,7 +141,6 @@ fun IntentEditorRoute(
             permissionToken?.let { viewModel.locationPermission(it, granted) }
             permissionToken = null
         }
-    DisposableEffect(viewModel) { onDispose { viewModel.abandonLocation() } }
     val saved = (state as? IntentEditorUiState.Editing)?.saved
     LaunchedEffect(saved?.id) { saved?.let { onSaved(it.id) } }
     val actions =

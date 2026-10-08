@@ -29,8 +29,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,6 +51,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.ui.NavDisplay
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -127,7 +132,48 @@ fun IntentEditorScreen(
     actions: IntentEditorActions,
     maps: RouteMaps = SketchRouteMaps,
 ) {
-    (state as? IntentEditorUiState.Editing)?.areaPicker?.let { IntentAreaPicker(it, maps, actions) }
+    val draft = (state as? IntentEditorUiState.Editing)?.areaPicker
+    // Retain the departing screen through the pop animation. The ViewModel owns the actual draft
+    // and commits/cancels it atomically; this snapshot is only used to draw the outgoing entry.
+    var departingDraft by remember { mutableStateOf(draft) }
+    SideEffect { if (draft != null) departingDraft = draft }
+    val visibleDraft = draft ?: departingDraft
+    // Navigation retains each entry's content lambda while its key stays on the stack.
+    val formContent =
+        rememberUpdatedState<@Composable () -> Unit> {
+            IntentEditorForm(state, editing, actions)
+        }
+    val areaContent =
+        rememberUpdatedState<@Composable () -> Unit> {
+            visibleDraft?.let { IntentAreaContent(it, maps, actions) }
+        }
+    NavDisplay(
+        backStack =
+            if (draft == null) listOf(EditorStep.Form)
+            else listOf(EditorStep.Form, EditorStep.Area),
+        onBack = actions.onCancelArea,
+        entryProvider = { step ->
+            NavEntry(step) {
+                when (step) {
+                    EditorStep.Form -> formContent.value()
+                    EditorStep.Area -> areaContent.value()
+                }
+            }
+        },
+    )
+}
+
+private enum class EditorStep {
+    Form,
+    Area,
+}
+
+@Composable
+private fun IntentEditorForm(
+    state: IntentEditorUiState,
+    editing: Boolean,
+    actions: IntentEditorActions,
+) {
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {

@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,8 +43,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import java.text.NumberFormat
 import kotlin.math.roundToInt
 import ru.colabike.app.R
@@ -55,24 +54,13 @@ import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.GeoPoint
 import ru.colabike.core.model.RideAreaPoint
 
-/** The proposed geometry never changes the form until the person confirms this screen. */
-@Composable
-fun IntentAreaPicker(draft: IntentAreaDraft, maps: RouteMaps, actions: IntentEditorActions) {
-    Dialog(
-        onDismissRequest = actions.onCancelArea,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        IntentAreaContent(draft, maps, actions)
-    }
-}
-
 @Composable
 internal fun IntentAreaContent(
     draft: IntentAreaDraft,
     maps: RouteMaps,
     actions: IntentEditorActions,
 ) {
-    var coordinates by remember { mutableStateOf(false) }
+    var coordinates by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -251,8 +239,8 @@ private fun CoordinatesFields(
     onDismiss: () -> Unit,
     onConfirm: (GeoPoint) -> Unit,
 ) {
-    var latitude by remember { mutableStateOf(point?.latitude?.toString().orEmpty()) }
-    var longitude by remember { mutableStateOf(point?.longitude?.toString().orEmpty()) }
+    var latitude by rememberSaveable { mutableStateOf(point?.latitude?.toString().orEmpty()) }
+    var longitude by rememberSaveable { mutableStateOf(point?.longitude?.toString().orEmpty()) }
     val lat =
         latitude.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it in -90.0..90.0 }
     val lon =
