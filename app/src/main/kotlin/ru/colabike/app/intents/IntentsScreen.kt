@@ -42,11 +42,14 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import java.text.NumberFormat
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import ru.colabike.app.R
 import ru.colabike.app.ui.PagedState
 import ru.colabike.app.ui.resolve
+import ru.colabike.app.ui.zoneLabel
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
@@ -54,8 +57,10 @@ import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.LoadingState
+import ru.colabike.core.designsystem.component.PersonByline
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.RideIntent
+import ru.colabike.core.model.RidePassport
 
 /** What the list can ask for. */
 data class IntentsActions(
@@ -207,7 +212,7 @@ private fun emptyMessage(segment: IntentSegment) =
 
 /** The first window as text in the intention's own zone, and how many more there are. */
 @Composable
-internal fun windowsLine(intent: RideIntent): String {
+internal fun windowsLine(intent: RideIntent, showZone: Boolean = true): String {
     val locale = LocalConfiguration.current.locales[0]
     val first = intent.windows.minByOrNull { it.startsAt } ?: return ""
     val day = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
@@ -231,8 +236,18 @@ internal fun windowsLine(intent: RideIntent): String {
                 time.format(end),
             )
         }
+    val phone = ZoneId.systemDefault()
+    val different =
+        phone.rules.getOffset(first.startsAt) != intent.timeZone.rules.getOffset(first.startsAt) ||
+            phone.rules.getOffset(first.endsAt) != intent.timeZone.rules.getOffset(first.endsAt)
+    val zone =
+        listOf(first.startsAt, first.endsAt)
+            .map { zoneLabel(intent.timeZone, it, locale) }
+            .distinct()
+            .joinToString(" / ")
+    val withZone = if (different && showZone) "$line · $zone" else line
     val more = intent.windows.size - 1
-    return if (more > 0) stringResource(R.string.intent_more_windows, line, more) else line
+    return if (more > 0) stringResource(R.string.intent_more_windows, withZone, more) else withZone
 }
 
 @Composable
@@ -248,7 +263,13 @@ internal fun intentFacts(intent: RideIntent): List<String> {
 @Composable
 fun IntentCard(intent: RideIntent, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val who = intent.author.displayName
-    val facts = intentFacts(intent)
+    val facts =
+        intentFacts(intent) +
+            listOfNotNull(
+                intent.passport.pace?.let { stringResource(paceLabel(it)) },
+                intent.passport.surface?.let { stringResource(surfaceLabel(it)) },
+            ) +
+            intentRanges(intent.passport)
     val windows = windowsLine(intent)
     val status = stringResource(intent.statusLabel())
     val description =
@@ -278,24 +299,24 @@ fun IntentCard(intent: RideIntent, onClick: () -> Unit, modifier: Modifier = Mod
             verticalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
             Text(
-                if (intent.own) stringResource(R.string.intent_yours) else who,
-                style = MaterialTheme.typography.titleMedium,
+                intent.passport.areaLabel ?: stringResource(R.string.intent_area_unknown),
+                style = MaterialTheme.typography.titleLarge,
             )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                facts.forEach { fact ->
-                    Text(fact, style = MaterialTheme.typography.labelLarge)
-                }
-            }
-            if (windows.isNotBlank()) {
+            if (windows.isNotBlank()) Text(windows, style = MaterialTheme.typography.bodyMedium)
+            PersonByline(intent.author, supporting = stringResource(intent.readinessLabel()))
+            val routeFacts =
+                listOfNotNull(
+                    intent.passport.purpose?.let { stringResource(purposeLabel(it)) },
+                    intent.passport.pace?.let { stringResource(paceLabel(it)) },
+                    intent.passport.surface?.let { stringResource(surfaceLabel(it)) },
+                )
+            val allFacts = routeFacts + intentRanges(intent.passport)
+            if (allFacts.isNotEmpty())
                 Text(
-                    windows,
-                    style = MaterialTheme.typography.bodyMedium,
+                    allFacts.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
             if (intent.own) {
                 Text(
                     status,
@@ -305,6 +326,32 @@ fun IntentCard(intent: RideIntent, onClick: () -> Unit, modifier: Modifier = Mod
             }
         }
     }
+}
+
+/** Only the ranges the author actually supplied; shared by the card and its page. */
+@Composable
+internal fun intentRanges(passport: RidePassport): List<String> {
+    val locale = LocalConfiguration.current.locales[0]
+    val numbers = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 1 }
+    return listOfNotNull(
+        passport.distanceKm?.let {
+            stringResource(R.string.ride_range_km, numbers.format(it.min), numbers.format(it.max))
+        },
+        passport.durationMinutes?.let {
+            stringResource(
+                R.string.ride_range_minutes,
+                numbers.format(it.min),
+                numbers.format(it.max),
+            )
+        },
+        passport.speedKmh?.let {
+            stringResource(
+                R.string.ride_range_speed,
+                numbers.format(it.min),
+                numbers.format(it.max),
+            )
+        },
+    )
 }
 
 // Labels ------------------------------------------------------------------------------------------

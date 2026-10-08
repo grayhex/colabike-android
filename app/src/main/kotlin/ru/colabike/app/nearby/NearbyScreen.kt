@@ -119,17 +119,9 @@ private fun Settings(state: NearbyUiState.Loaded, actions: NearbyActions) {
                 Modifier.widthIn(max = ContentWidth).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.l),
             ) {
-                Text(
-                    stringResource(R.string.nearby_intro),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 Outcome(state)
-                SwitchCard(state, actions)
                 AreaCard(state, actions)
                 state.draft?.let { DraftCard(state, it, actions) }
-                HorizonCard(state, actions)
-                FiltersCard(state, actions)
                 actions.onOpenOffers?.let { open ->
                     ColaListItem(
                         title = stringResource(R.string.nearby_offers_open),
@@ -139,11 +131,35 @@ private fun Settings(state: NearbyUiState.Loaded, actions: NearbyActions) {
                         modifier = Modifier.testTag("nearby:offers"),
                     )
                 }
+                SwitchCard(state, actions)
+                HorizonCard(state, actions)
+                FiltersCard(state, actions)
+                PrivacyHelp()
                 ForgetCard(state, actions)
             }
         }
     }
     if (state.askReplace) ReplaceDialog(actions)
+}
+
+/** Storage/push details are available on demand; consent before location is unchanged. */
+@Composable
+private fun PrivacyHelp() {
+    var explaining by rememberSaveable { mutableStateOf(false) }
+    TextButton(onClick = { explaining = true }, modifier = Modifier.testTag("nearby:privacy")) {
+        Text(stringResource(R.string.nearby_privacy_title))
+    }
+    if (explaining)
+        AlertDialog(
+            onDismissRequest = { explaining = false },
+            title = { Text(stringResource(R.string.nearby_privacy_title)) },
+            text = { Text(stringResource(R.string.nearby_intro)) },
+            confirmButton = {
+                TextButton(onClick = { explaining = false }) {
+                    Text(stringResource(R.string.nearby_privacy_close))
+                }
+            },
+        )
 }
 
 /** The result of the last change, announced when it appears. */

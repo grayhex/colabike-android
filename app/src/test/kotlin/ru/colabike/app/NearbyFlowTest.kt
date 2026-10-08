@@ -68,10 +68,18 @@ class NearbyFlowTest {
         start()
 
         compose.onNodeWithTag("nearby").assertIsDisplayed()
+        tag("area-none").assertIsDisplayed()
+        compose
+            .onNodeWithText("Включение поиска не включает push", substring = true)
+            .assertDoesNotExist()
+        scrolled("privacy").performClick()
         compose
             .onNodeWithText("Включение поиска не включает push", substring = true)
             .assertIsDisplayed()
-        tag("area-none").assertIsDisplayed()
+        compose.onNodeWithText("Понятно").performClick()
+        compose
+            .onNodeWithText("Включение поиска не включает push", substring = true)
+            .assertDoesNotExist()
     }
 
     @Test

@@ -47,9 +47,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -60,6 +62,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -256,6 +259,8 @@ private fun ZoomablePhoto(photo: Photo, active: Boolean, onZoomed: (Boolean) -> 
     var offsetY by remember { mutableFloatStateOf(0f) }
     var attempt by remember { mutableIntStateOf(0) }
     var photoAvailable by remember(photo.url) { mutableStateOf(false) }
+    var imageSize by remember(photo.url) { mutableStateOf(IntSize.Zero) }
+    var viewport by remember { mutableStateOf(IntSize.Zero) }
     val reportZoom by rememberUpdatedState(onZoomed)
     var gesturing by remember { mutableStateOf(false) }
     val reduced = LocalReducedMotion.current
@@ -275,7 +280,20 @@ private fun ZoomablePhoto(photo: Photo, active: Boolean, onZoomed: (Boolean) -> 
             reportZoom(false)
         }
     }
+    LaunchedEffect(viewport, imageSize, photoAvailable) {
+        if (!photoAvailable) {
+            scale = 1f
+            offsetX = 0f
+            offsetY = 0f
+            reportZoom(false)
+        } else {
+            val limits = photoPanLimits(viewport, imageSize, scale)
+            offsetX = offsetX.coerceIn(-limits.x, limits.x)
+            offsetY = offsetY.coerceIn(-limits.y, limits.y)
+        }
+    }
     fun toggleZoom() {
+        if (!photoAvailable) return
         scale = if (scale > 1f) 1f else DOUBLE_TAP_ZOOM
         offsetX = 0f
         offsetY = 0f
@@ -284,6 +302,7 @@ private fun ZoomablePhoto(photo: Photo, active: Boolean, onZoomed: (Boolean) -> 
     Box(
         Modifier.fillMaxSize()
             .testTag("gallery:photo:${photo.id}")
+            .onSizeChanged { viewport = it }
             .pointerInput(Unit) {
                 detectTapGestures(onDoubleTap = { toggleZoom() })
             }
@@ -292,18 +311,20 @@ private fun ZoomablePhoto(photo: Photo, active: Boolean, onZoomed: (Boolean) -> 
                     awaitFirstDown(requireUnconsumed = false)
                     gesturing = true
                     scale = latestScale
-                    var transforming = scale > 1f
+                    var transforming = photoAvailable && scale > 1f
                     do {
                         val event = awaitPointerEvent()
-                        if (event.changes.count { it.pressed } > 1) transforming = true
+                        if (photoAvailable && event.changes.count { it.pressed } > 1)
+                            transforming = true
                         if (transforming) {
                             val zoom = event.calculateZoom()
                             val pan = event.calculatePan()
                             val centroid = event.calculateCentroid(useCurrent = false)
                             val next = (scale * zoom).coerceIn(1f, MAX_ZOOM)
                             val factor = next / scale
-                            val limitX = size.width * (next - 1f) / 2f
-                            val limitY = size.height * (next - 1f) / 2f
+                            val limits = photoPanLimits(size, imageSize, next)
+                            val limitX = limits.x
+                            val limitY = limits.y
                             if (centroid.x.isFinite() && centroid.y.isFinite()) {
                                 offsetX =
                                     (offsetX * factor +
@@ -331,7 +352,10 @@ private fun ZoomablePhoto(photo: Photo, active: Boolean, onZoomed: (Boolean) -> 
         key(attempt) {
             SubcomposeAsyncImage(
                 model = photo.fullscreenUrl(),
-                onSuccess = { photoAvailable = true },
+                onSuccess = {
+                    imageSize = IntSize(it.result.image.width, it.result.image.height)
+                    photoAvailable = true
+                },
                 onError = { photoAvailable = false },
                 onLoading = { photoAvailable = false },
                 contentDescription = null,
@@ -400,4 +424,16 @@ private fun PhotoFailure(cause: Throwable, onRetry: () -> Unit) {
             }
         }
     }
+}
+
+/** Fit preserves the source aspect ratio: letterboxing must not become empty pan space at zoom. */
+internal fun photoPanLimits(viewport: IntSize, image: IntSize, scale: Float): Offset {
+    if (viewport.width <= 0 || viewport.height <= 0 || image.width <= 0 || image.height <= 0)
+        return Offset.Zero
+    val fit =
+        minOf(viewport.width.toFloat() / image.width, viewport.height.toFloat() / image.height)
+    return Offset(
+        ((image.width * fit * scale - viewport.width) / 2f).coerceAtLeast(0f),
+        ((image.height * fit * scale - viewport.height) / 2f).coerceAtLeast(0f),
+    )
 }

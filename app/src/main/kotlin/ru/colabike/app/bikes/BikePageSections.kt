@@ -64,7 +64,6 @@ import ru.colabike.app.R
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaIcons
-import ru.colabike.core.designsystem.component.Eyebrow
 import ru.colabike.core.designsystem.component.LikeButton
 import ru.colabike.core.designsystem.component.PersonByline
 import ru.colabike.core.designsystem.component.journalKindLabel
@@ -239,7 +238,10 @@ internal fun passport(bike: BikeDetail, locale: Locale): List<Pair<String, Strin
             .takeIf { it > 0 }
             ?.let {
                 stringResource(R.string.bike_mileage) to
-                    stringResource(R.string.bike_mileage_value, it)
+                    stringResource(
+                        R.string.bike_mileage_value,
+                        NumberFormat.getIntegerInstance(locale).format(it),
+                    )
             },
         bike.size.takeIf { it.isNotBlank() }?.let { stringResource(R.string.bike_size) to it },
         bike.color.takeIf { it.isNotBlank() }?.let { stringResource(R.string.bike_color) to it },
@@ -466,7 +468,11 @@ private fun EquipmentRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
-            Eyebrow(component.category, maxLines = 2)
+            Text(
+                component.category,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             // A long name is read in full: it is what the owner wrote.
             Text(component.name, style = MaterialTheme.typography.bodyLarge)
             if (note != null) ShutNote(note)

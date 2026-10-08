@@ -68,7 +68,7 @@ class ParticipationFlowTest {
             .assertTextContains("Воскресный выезд", substring = true)
         compose
             .onNodeWithTag("participation:when")
-            .assertTextContains("Europe/Moscow", substring = true)
+            .assertTextContains("UTC+03:00", substring = true)
         scrolled("meeting")
         compose
             .onNodeWithTag("participation:meeting")
