@@ -1,6 +1,7 @@
 package ru.colabike.app.rides.map
 
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.BackgroundLayer
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
@@ -24,7 +25,17 @@ internal fun snapshotStyle(route: RideRoute, uri: String?, look: SnapshotLook): 
     fun point(at: GeoPoint) = """{"type":"Point","coordinates":[${at.longitude},${at.latitude}]}"""
     val builder =
         if (uri != null) Style.Builder().fromUri(uri)
-        else Style.Builder().fromJson(blankStyle(look.background))
+        else {
+            // MapLibre 13.6.1 loads inline JSON synchronously in the JNI constructor. Its
+            // builder callback would add sources before the snapshotter's native peer exists.
+            // A local asset loads asynchronously, with no network or route data written to disk.
+            Style.Builder()
+                .fromUri("asset://map-preview.json")
+                .withLayer(
+                    BackgroundLayer("preview-background")
+                        .withProperties(PropertyFactory.backgroundColor(look.background))
+                )
+        }
     return builder
         .withSource(GeoJsonSource("preview-route", geojson))
         .withSource(GeoJsonSource("preview-start", point(route.lines.first().first())))
