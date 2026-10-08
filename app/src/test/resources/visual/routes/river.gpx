@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="ColaBike visual fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+<metadata><desc>Synthetic QA geometry, CC0. Not a recorded ride or navigation advice. Separate segments represent omitted data.</desc></metadata>
+<trk><name>river</name>
+<trkseg>
+<trkpt lat="55.7151" lon="37.5411"/>
+<trkpt lat="55.7138" lon="37.5457"/>
+<trkpt lat="55.7127" lon="37.5513"/>
+<trkpt lat="55.7129" lon="37.5573"/>
+<trkpt lat="55.7154" lon="37.5639"/>
+<trkpt lat="55.7191" lon="37.5697"/>
+<trkpt lat="55.7231" lon="37.5751"/>
+</trkseg>
+<trkseg>
+<trkpt lat="55.7263" lon="37.5798"/>
+<trkpt lat="55.7299" lon="37.5844"/>
+<trkpt lat="55.7335" lon="37.5888"/>
+<trkpt lat="55.7371" lon="37.5924"/>
+<trkpt lat="55.7404" lon="37.5947"/>
+<trkpt lat="55.7431" lon="37.5969"/>
+</trkseg>
+</trk></gpx>
