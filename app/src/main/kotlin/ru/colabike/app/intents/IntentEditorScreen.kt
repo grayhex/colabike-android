@@ -670,7 +670,7 @@ private fun VisibilityCard(state: IntentEditorUiState.Editing, actions: IntentEd
 private fun Chooser(
     keys: List<String>,
     selected: String?,
-    label: (String) -> Int,
+    label: (String) -> Int?,
     tag: String,
     enabled: Boolean,
     onChoose: (String) -> Unit,
@@ -684,7 +684,7 @@ private fun Chooser(
             ColaFilterChip(
                 selected = key == selected,
                 onClick = { if (enabled) onChoose(key) },
-                label = stringResource(label(key)),
+                label = passportWord(key, label),
                 icon = icon?.invoke(key),
                 modifier = Modifier.testTag("intent-editor:$tag:$key"),
             )

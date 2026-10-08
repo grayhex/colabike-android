@@ -255,7 +255,7 @@ internal fun intentFacts(intent: RideIntent): List<String> {
     val facts = mutableListOf<String>()
     facts += stringResource(intent.readinessLabel())
     intent.passport.areaLabel?.let { facts += it }
-    intent.passport.purpose?.let { facts += stringResource(purposeLabel(it)) }
+    intent.passport.purpose?.let { facts += passportWord(it, ::purposeLabel) }
     return facts
 }
 
@@ -266,8 +266,8 @@ fun IntentCard(intent: RideIntent, onClick: () -> Unit, modifier: Modifier = Mod
     val facts =
         intentFacts(intent) +
             listOfNotNull(
-                intent.passport.pace?.let { stringResource(paceLabel(it)) },
-                intent.passport.surface?.let { stringResource(surfaceLabel(it)) },
+                intent.passport.pace?.let { passportWord(it, ::paceLabel) },
+                intent.passport.surface?.let { passportWord(it, ::surfaceLabel) },
             ) +
             intentRanges(intent.passport)
     val windows = windowsLine(intent)
@@ -306,9 +306,9 @@ fun IntentCard(intent: RideIntent, onClick: () -> Unit, modifier: Modifier = Mod
             PersonByline(intent.author, supporting = stringResource(intent.readinessLabel()))
             val routeFacts =
                 listOfNotNull(
-                    intent.passport.purpose?.let { stringResource(purposeLabel(it)) },
-                    intent.passport.pace?.let { stringResource(paceLabel(it)) },
-                    intent.passport.surface?.let { stringResource(surfaceLabel(it)) },
+                    intent.passport.purpose?.let { passportWord(it, ::purposeLabel) },
+                    intent.passport.pace?.let { passportWord(it, ::paceLabel) },
+                    intent.passport.surface?.let { passportWord(it, ::surfaceLabel) },
                 )
             val allFacts = routeFacts + intentRanges(intent.passport)
             if (allFacts.isNotEmpty())
@@ -375,29 +375,35 @@ internal fun RideIntent.statusLabel(): Int =
             }
     }
 
-internal fun purposeLabel(key: String): Int =
+internal fun purposeLabel(key: String): Int? =
     when (key) {
         "leisure" -> R.string.nearby_purpose_leisure
         "social" -> R.string.nearby_purpose_social
         "training" -> R.string.nearby_purpose_training
         "exploration" -> R.string.nearby_purpose_exploration
         "adventure" -> R.string.nearby_purpose_adventure
-        else -> R.string.intent_purpose_other
+        "other" -> R.string.intent_purpose_other
+        else -> null
     }
 
-internal fun paceLabel(key: String): Int =
+internal fun paceLabel(key: String): Int? =
     when (key) {
         "relaxed" -> R.string.nearby_pace_relaxed
         "moderate" -> R.string.nearby_pace_moderate
         "sporty" -> R.string.nearby_pace_sporty
-        else -> R.string.intent_purpose_other
+        else -> null
     }
 
-internal fun surfaceLabel(key: String): Int =
+internal fun surfaceLabel(key: String): Int? =
     when (key) {
         "asphalt" -> R.string.nearby_surface_asphalt
         "gravel" -> R.string.nearby_surface_gravel
         "trail" -> R.string.nearby_surface_trail
         "mixed" -> R.string.nearby_surface_mixed
-        else -> R.string.intent_purpose_other
+        else -> null
     }
+
+/** Passport vocabularies are open: only known keys are translated. */
+@Composable
+internal fun passportWord(key: String, label: (String) -> Int?): String =
+    label(key)?.let { stringResource(it) } ?: key

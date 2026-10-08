@@ -221,9 +221,9 @@ private fun Terms(intent: RideIntent) {
         )
         val kinds =
             listOfNotNull(
-                passport.purpose?.let { stringResource(purposeLabel(it)) },
-                passport.pace?.let { stringResource(paceLabel(it)) },
-                passport.surface?.let { stringResource(surfaceLabel(it)) },
+                passport.purpose?.let { passportWord(it, ::purposeLabel) },
+                passport.pace?.let { passportWord(it, ::paceLabel) },
+                passport.surface?.let { passportWord(it, ::surfaceLabel) },
             )
         if (kinds.isNotEmpty()) {
             Text(kinds.joinToString(" · "), style = MaterialTheme.typography.bodyMedium)
