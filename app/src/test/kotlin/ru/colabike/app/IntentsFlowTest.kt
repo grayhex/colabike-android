@@ -52,6 +52,30 @@ class IntentsFlowTest {
     private fun scrolled(tag: String) = compose.onNodeWithTag(tag).performScrollTo()
 
     @Test
+    fun `unknown passport words survive the card and detail`() {
+        val intent =
+            sampleIntent(1).let {
+                it.copy(
+                    passport =
+                        it.passport.copy(
+                            purpose = "Дальняя прогулка",
+                            pace = "Без гонки",
+                            surface = "Грунт после дождя",
+                        )
+                )
+            }
+        start(FakeIntents(community = listOf(intent)))
+        val card = compose.onNodeWithTag("intent:${intent.id}")
+        for (word in listOf("Дальняя прогулка", "Без гонки", "Грунт после дождя")) {
+            compose.onNodeWithText(word, substring = true).assertExists()
+        }
+        card.performClick()
+        for (word in listOf("Дальняя прогулка", "Без гонки", "Грунт после дождя")) {
+            compose.onNodeWithText(word, substring = true).assertExists()
+        }
+    }
+
+    @Test
     fun `a radius from the website is displayed and saved without truncation`() {
         val original =
             own.copy(
