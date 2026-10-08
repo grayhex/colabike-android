@@ -12,16 +12,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import java.text.NumberFormat
 import java.util.Locale
 import ru.colabike.app.R
@@ -136,9 +144,32 @@ internal fun AnalysisSection(
             val analysis = state.analysis
             if (analysis.channels.isEmpty()) return
             val locale = LocalConfiguration.current.locales[0]
+            val measurer = rememberTextMeasurer()
+            val density = LocalDensity.current
+            val labelStyle = MaterialTheme.typography.labelSmall
+            val labels =
+                analysis.channels.flatMap { channel ->
+                    val values = analysis.runs(channel).flatten()
+                    val unit = stringResource(channel.unit(), "%s")
+                    val numbers = channel.format(locale)
+                    if (values.isEmpty()) emptyList()
+                    else
+                        listOf(values.minOf { it.y }, values.maxOf { it.y }).map {
+                            unit.replace("%s", numbers.format(it))
+                        }
+                }
+            val axisWidth =
+                with(density) {
+                    (labels.maxOfOrNull { measurer.measure(it, labelStyle).size.width } ?: 0).toDp()
+                }
+            val distances =
+                remember(analysis) {
+                    analysis.segments.flatten().mapNotNull { it.distanceM?.div(1000.0) }
+                }
+            val domain = (distances.minOrNull() ?: 0.0)..(distances.maxOrNull() ?: 0.0)
             Section(modifier) {
                 analysis.channels.forEach { channel ->
-                    key(channel) { Chart(analysis, channel, locale) }
+                    key(channel) { Chart(analysis, channel, locale, axisWidth, domain) }
                 }
                 if (analysis.downsampled) {
                     Text(
@@ -165,24 +196,33 @@ private fun Section(modifier: Modifier, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Chart(analysis: RideAnalysis, channel: AnalysisChannel, locale: Locale) {
+private fun Chart(
+    analysis: RideAnalysis,
+    channel: AnalysisChannel,
+    locale: Locale,
+    axisWidth: Dp,
+    domain: ClosedFloatingPointRange<Double>,
+) {
     val title = stringResource(channel.title())
     val unit = stringResource(channel.unit(), "%s")
     val numbers = remember(locale, channel) { channel.format(locale) }
     val kilometres = remember(locale) { NumberFormat.getNumberInstance(locale) }
     val runs = remember(analysis, channel) { analysis.runs(channel) }
-    val points = runs.flatten()
-    if (points.size < 2) return
+    val points = remember(runs) { runs.flatten() }
+    if (points.isEmpty()) return
     val low = points.minOf { it.y }
     val high = points.maxOf { it.y }
-    val first = points.minOf { it.x }
-    val last = points.maxOf { it.x }
+    val first = domain.start
+    val last = domain.endInclusive
     val withUnit = { value: Double -> unit.replace("%s", numbers.format(value)) }
     val kmPattern = stringResource(R.string.analysis_km, "%s")
     val km = { value: Double -> kmPattern.replace("%s", kilometres.format(value.roundTo1())) }
     val summary = stringResource(R.string.analysis_summary, withUnit(low), withUnit(high), km(last))
     val spoken =
         if (runs.size > 1) stringResource(R.string.analysis_summary_breaks, summary) else summary
+    var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
+    val selected = selectedIndex.coerceIn(points.indices)
+    val measurement = points[selected]
     SeriesChart(
         ChartSeries(
             title = title,
@@ -192,7 +232,14 @@ private fun Chart(analysis: RideAnalysis, channel: AnalysisChannel, locale: Loca
             startLabel = km(first),
             endLabel = km(last),
             summary = spoken,
-        )
+        ),
+        modifier = Modifier.testTag("analysis:chart:${channel.name}"),
+        axisWidth = axisWidth,
+        xRange = domain,
+        selectedIndex = selected,
+        selectionLabel =
+            stringResource(R.string.analysis_selected, withUnit(measurement.y), km(measurement.x)),
+        onSelect = { selectedIndex = it },
     )
 }
 

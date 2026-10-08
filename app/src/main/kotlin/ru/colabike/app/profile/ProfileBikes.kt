@@ -129,7 +129,7 @@ internal fun ProfileBikes(
                 }
                 state.bikes.forEach { bike ->
                     ColaCard(
-                        modifier = Modifier.width(tileWidth),
+                        modifier = Modifier.width(tileWidth).fillMaxRowHeight(),
                         onClick = { onOpenBike(bike.id) },
                     ) {
                         BikePhoto(

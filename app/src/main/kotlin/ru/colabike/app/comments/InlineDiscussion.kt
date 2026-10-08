@@ -1,6 +1,8 @@
 package ru.colabike.app.comments
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -80,6 +82,8 @@ import ru.colabike.core.auth.AuthState
 import ru.colabike.core.designsystem.component.Avatar
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.PillBadge
+import ru.colabike.core.designsystem.theme.ColaMotion
+import ru.colabike.core.designsystem.theme.LocalReducedMotion
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.Account
 import ru.colabike.core.model.Comment
@@ -233,15 +237,27 @@ fun InlineDiscussion(
     // After "collapse" the section is short again: it is brought back into view instead of leaving
     // the person somewhere under the end of the page.
     var collapsed by remember { mutableStateOf(false) }
-    LaunchedEffect(collapsed) {
-        if (collapsed) {
+    var collapseFinished by remember { mutableStateOf(false) }
+    val reducedMotion = LocalReducedMotion.current
+    LaunchedEffect(expanded) { if (expanded) collapsed = false }
+    LaunchedEffect(collapsed, collapseFinished, reducedMotion) {
+        if (collapsed && (collapseFinished || reducedMotion)) {
             section.bringIntoView()
             collapsed = false
         }
     }
 
     Column(
-        modifier.fillMaxWidth().bringIntoViewRequester(section).testTag("discussion"),
+        modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(section)
+            .animateContentSize(
+                animationSpec = if (reducedMotion) snap() else ColaMotion.spatial(),
+                finishedListener = { before, after ->
+                    if (after.height < before.height) collapseFinished = true
+                },
+            )
+            .testTag("discussion"),
         verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
         DiscussionHeader(
@@ -249,6 +265,7 @@ fun InlineDiscussion(
             expanded = expanded,
             onCollapse = {
                 expanded = false
+                collapseFinished = false
                 collapsed = true
             },
         )

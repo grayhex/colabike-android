@@ -214,12 +214,6 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
     }
     val listDetail = rememberListDetailSceneStrategy<NavKey>()
     val windowSize = currentWindowAdaptiveInfo().windowSizeClass
-    // Read through State: NavEntries are built once per stack, so a plain value would stay at what
-    // the window was when the entry was created (fold or unfold would leave the wrong back arrow).
-    val twoPane by
-        rememberUpdatedState(
-            windowSize.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
-        )
     val bottomBar =
         !windowSize.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
     // The bar steps aside on a phone where the bottom edge belongs to something else: the box to
@@ -865,16 +859,6 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         entry<Destination.Bike>(
                                             metadata = ListDetailSceneStrategy.detailPane()
                                         ) { key ->
-                                            // Side by side with the list there is nothing to go
-                                            // back
-                                            // from; opened over a person or a search it fills the
-                                            // area
-                                            // and needs its arrow.
-                                            val stack = state.currentStack
-                                            val besideList =
-                                                twoPane &&
-                                                    stack.getOrNull(stack.lastIndexOf(key) - 1) ==
-                                                        Destination.Bikes
                                             BikeDetailRoute(
                                                 repository = dependencies.bikes,
                                                 auth = dependencies.auth,
@@ -900,7 +884,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                                     )
                                                 },
                                                 id = BikeId(key.id),
-                                                showBack = !besideList,
+                                                showBack = true,
                                                 onBack = { navigator.back() },
                                                 onOpenAuthor = { ref ->
                                                     navigator.open(Destination.Person(ref))
@@ -1167,7 +1151,17 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         }
                                     }
                                 ),
-                            sceneStrategies = listOf(listDetail),
+                            // A collection fills the window until an object is selected. Keep the
+                            // same
+                            // decorated entries so changing scenes preserves list position and
+                            // models.
+                            sceneStrategies =
+                                if (
+                                    state.currentStack.size == 1 &&
+                                        state.currentStack.first() == Destination.Bikes
+                                )
+                                    emptyList()
+                                else listOf(listDetail),
                             onBack = { navigator.back() },
                         )
                     }
