@@ -7,22 +7,13 @@ import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
-import ru.colabike.core.model.GeoPoint
-import ru.colabike.core.model.RideRoute
 
 /** Native sources preserve each public segment. No line is drawn across an omitted section. */
-internal fun snapshotStyle(route: RideRoute, uri: String?, look: SnapshotLook): Style.Builder {
-    val geojson =
-        route.lines
-            .filter { it.size >= 2 }
-            .joinToString(
-                separator = ",",
-                prefix = """{"type":"MultiLineString","coordinates":[""",
-                postfix = "]}",
-            ) { line ->
-                line.joinToString(",", "[", "]") { "[${it.longitude},${it.latitude}]" }
-            }
-    fun point(at: GeoPoint) = """{"type":"Point","coordinates":[${at.longitude},${at.latitude}]}"""
+internal fun snapshotStyle(
+    geometry: SnapshotGeometry,
+    uri: String?,
+    look: SnapshotLook,
+): Style.Builder {
     val builder =
         if (uri != null) Style.Builder().fromUri(uri)
         else {
@@ -37,9 +28,9 @@ internal fun snapshotStyle(route: RideRoute, uri: String?, look: SnapshotLook): 
                 )
         }
     return builder
-        .withSource(GeoJsonSource("preview-route", geojson))
-        .withSource(GeoJsonSource("preview-start", point(route.lines.first().first())))
-        .withSource(GeoJsonSource("preview-end", point(route.lines.last().last())))
+        .withSource(GeoJsonSource("preview-route", geometry.lineJson))
+        .withSource(GeoJsonSource("preview-start", geometry.startJson))
+        .withSource(GeoJsonSource("preview-end", geometry.endJson))
         .withLayer(
             LineLayer("preview-halo", "preview-route")
                 .withProperties(
