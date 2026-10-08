@@ -39,6 +39,7 @@ import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.CameraListener
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.CameraUpdateReason
+import com.yandex.mapkit.map.InputListener
 import com.yandex.mapkit.map.Map as YandexMap
 import com.yandex.mapkit.map.MapLoadedListener
 import com.yandex.mapkit.mapview.MapView
@@ -46,6 +47,8 @@ import com.yandex.runtime.image.ImageProvider
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.delay
 import ru.colabike.app.R
+import ru.colabike.core.model.GeoPoint
+import ru.colabike.core.model.RideAreaPoint
 import ru.colabike.core.model.RideRoute
 
 /**
@@ -67,6 +70,16 @@ internal enum class YandexFailure {
 internal interface YandexMaps {
     @Composable
     fun Map(route: RideRoute, modifier: Modifier, onUnavailable: (YandexFailure) -> Unit)
+
+    @Composable
+    fun Area(
+        point: RideAreaPoint,
+        onCenter: (GeoPoint) -> Unit,
+        modifier: Modifier,
+        onUnavailable: (YandexFailure) -> Unit,
+    ) {
+        Map(areaOutline(point), modifier, onUnavailable)
+    }
 }
 
 /** The Yandex Maps MapKit, started with the key of the owner's mobile app ([apiKey]). */
@@ -74,6 +87,14 @@ internal class MapKitRouteMaps(private val apiKey: String) : YandexMaps {
     @Composable
     override fun Map(route: RideRoute, modifier: Modifier, onUnavailable: (YandexFailure) -> Unit) =
         MapKitRoute(route, apiKey, modifier, onUnavailable)
+
+    @Composable
+    override fun Area(
+        point: RideAreaPoint,
+        onCenter: (GeoPoint) -> Unit,
+        modifier: Modifier,
+        onUnavailable: (YandexFailure) -> Unit,
+    ) = MapKitRoute(areaOutline(point), apiKey, modifier, onUnavailable, onPick = onCenter)
 }
 
 /** The SDK is started once per process, with the key it will have for the whole of it. */
@@ -98,6 +119,7 @@ internal fun MapKitRoute(
     modifier: Modifier = Modifier,
     onUnavailable: (YandexFailure) -> Unit,
     probe: MapProbe? = null,
+    onPick: ((GeoPoint) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -105,7 +127,12 @@ internal fun MapKitRoute(
     val dark = scheme.background.luminance() < DARK_LUMINANCE
     val look = YandexLook(line = scheme.primary.toArgb(), halo = scheme.surfaceContainer.toArgb())
     val density = LocalDensity.current.density
-    val description = stringResource(R.string.route_map_description)
+    val description =
+        stringResource(
+            if (onPick == null) R.string.route_map_description
+            else R.string.intent_area_map_description
+        )
+    val pick by rememberUpdatedState(onPick)
     val report by rememberUpdatedState(onUnavailable)
     // Where the hand left the camera: latitude, longitude, zoom. Kept over a turn of the screen.
     var camera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
@@ -160,6 +187,15 @@ internal fun MapKitRoute(
         }
     }
 
+    val inputListener = remember {
+        object : InputListener {
+            override fun onMapTap(map: YandexMap, point: Point) {
+                pick?.invoke(GeoPoint(point.latitude, point.longitude))
+            }
+
+            override fun onMapLongTap(map: YandexMap, point: Point) = Unit
+        }
+    }
     DisposableEffect(mapView) {
         val map = mapView.mapWindow.map
         // North stays up and the picture flat, as on the other map.
@@ -167,8 +203,10 @@ internal fun MapKitRoute(
         map.isTiltGesturesEnabled = false
         map.setMapLoadedListener(WeakReference(loadedListener))
         map.addCameraListener(WeakReference(cameraListener))
+        map.addInputListener(WeakReference(inputListener))
         onDispose {
             map.removeCameraListener(WeakReference(cameraListener))
+            map.removeInputListener(WeakReference(inputListener))
             map.setMapLoadedListener(WeakReference<MapLoadedListener>(null))
         }
     }
@@ -211,10 +249,10 @@ internal fun MapKitRoute(
 
     LaunchedEffect(mapView, route, look) {
         val map = mapView.mapWindow.map
-        showRoute(map, route, look, density)
+        showRoute(map, route, look, density, onPick != null)
         mapView.doOnLayout {
             val saved = camera
-            if (saved != null) {
+            if (saved != null && onPick == null) {
                 map.move(CameraPosition(Point(saved[0], saved[1]), saved[2].toFloat(), 0f, 0f))
             } else {
                 fit(mapView, map, route, FIT_PADDING_DP * density)
@@ -229,7 +267,13 @@ internal fun MapKitRoute(
     )
 }
 
-private fun showRoute(map: YandexMap, route: RideRoute, look: YandexLook, density: Float) {
+private fun showRoute(
+    map: YandexMap,
+    route: RideRoute,
+    look: YandexLook,
+    density: Float,
+    area: Boolean,
+) {
     val objects = map.mapObjects
     objects.clear()
     // One polyline per line the server gave: the cuts stay cuts, nothing joins them.
@@ -240,7 +284,7 @@ private fun showRoute(map: YandexMap, route: RideRoute, look: YandexLook, densit
         drawn.outlineColor = look.halo
         drawn.outlineWidth = HALO_WIDTH_DP
     }
-    val start = route.lines.first().first()
+    val start = if (area) route.lines.last().first() else route.lines.first().first()
     val end = route.lines.last().last()
     objects.addPlacemark(
         Point(start.latitude, start.longitude),

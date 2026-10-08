@@ -25,6 +25,8 @@ import ru.colabike.app.R
 import ru.colabike.app.settings.AppSettings
 import ru.colabike.app.settings.MapProvider
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.GeoPoint
+import ru.colabike.core.model.RideAreaPoint
 import ru.colabike.core.model.RideRoute
 
 /**
@@ -56,15 +58,37 @@ internal class ChoosingRouteMaps(
 
     @Composable
     override fun Map(route: RideRoute, modifier: Modifier) {
+        ChosenMap(
+            modifier,
+            osmContent = { osm.Map(route, it) },
+            yandexContent = { maps, mod, failed -> maps.Map(route, mod, failed) },
+        )
+    }
+
+    @Composable
+    override fun Area(point: RideAreaPoint, onCenter: (GeoPoint) -> Unit, modifier: Modifier) {
+        ChosenMap(
+            modifier,
+            osmContent = { osm.Area(point, onCenter, it) },
+            yandexContent = { maps, mod, failed -> maps.Area(point, onCenter, mod, failed) },
+        )
+    }
+
+    @Composable
+    private fun ChosenMap(
+        modifier: Modifier,
+        osmContent: @Composable (Modifier) -> Unit,
+        yandexContent: @Composable (YandexMaps, Modifier, (YandexFailure) -> Unit) -> Unit,
+    ) {
         val provider by settings.mapProvider.collectAsStateWithLifecycle()
         val failed by failure.collectAsStateWithLifecycle()
         val maps = yandex
         val wantsYandex = maps != null && provider == MapProvider.Yandex
         Box(modifier) {
             if (maps != null && wantsYandex && failed == null) {
-                maps.Map(route, Modifier.fillMaxSize()) { failure.value = it }
+                yandexContent(maps, Modifier.fillMaxSize()) { failure.value = it }
             } else {
-                osm.Map(route, Modifier.fillMaxSize())
+                osmContent(Modifier.fillMaxSize())
             }
             if (wantsYandex && failed != null) {
                 YandexFallbackNotice(

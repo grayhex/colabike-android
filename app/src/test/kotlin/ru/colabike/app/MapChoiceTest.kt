@@ -26,10 +26,12 @@ import ru.colabike.app.rides.map.ChoosingRouteMaps
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.rides.map.YandexFailure
 import ru.colabike.app.rides.map.YandexMaps
+import ru.colabike.app.rides.map.areaOutline
 import ru.colabike.app.settings.MapProvider
 import ru.colabike.app.ui.ColaBikeApp
 import ru.colabike.core.designsystem.theme.ColaBikeTheme
 import ru.colabike.core.model.GeoPoint
+import ru.colabike.core.model.RideAreaPoint
 import ru.colabike.core.model.RideRoute
 
 private val route =
@@ -84,6 +86,19 @@ class ChoosingRouteMapsTest {
             }
         }
         compose.waitForIdle()
+    }
+
+    @Test
+    fun `area uses the selected provider and falls back with the same geometry`() {
+        val point = RideAreaPoint(37.6, 55.73, 5000)
+        val yandex = FakeYandex(YandexFailure.NotLoaded)
+        val maps = ChoosingRouteMaps(FakeSettings(map = MapProvider.Yandex), osm, yandex)
+        compose.setContent { ColaBikeTheme { maps.Area(point, {}, Modifier.fillMaxSize()) } }
+        compose.waitForIdle()
+        compose.onNodeWithTag("map:osm").assertIsDisplayed()
+        compose.onNodeWithTag("map:yandex-fallback").assertIsDisplayed()
+        assertThat(yandex.routes.first()).isEqualTo(areaOutline(point))
+        assertThat(osm.routes.last()).isEqualTo(areaOutline(point))
     }
 
     @Test

@@ -901,7 +901,7 @@
     <string name="intent_fold_earlier">Первый раз</string>
     <string name="intent_fold_later">Второй раз</string>
     <string name="intent_area_label">Район</string>
-    <string name="intent_area_hint">Название района или места, не больше 100 знаков. Точку на карте приложение не отправляет.</string>
+    <string name="intent_area_hint">Название района или места, не больше 100 знаков. Область на карте можно выбрать отдельно.</string>
     <string name="intent_readiness">Насколько готовы</string>
     <string name="intent_more">Подробнее</string>
     <string name="intent_more_show">Показать темп, покрытие и другое</string>
@@ -1272,4 +1272,26 @@
     <string name="wizard_q_leave_no">Остаться</string>
     <string name="wizard_catalog_failed">Справочники сайта не загрузились: подсказок меньше, но всё можно ввести вручную.</string>
     <string name="wizard_catalog_retry">Обновить</string>
+    <string name="intent_area_choose">Выбрать область</string>
+    <string name="intent_area_edit">Изменить область</string>
+    <string name="intent_area_privacy">Используем только примерное местоположение. При публикации область будет видна сообществу. «Рядом со мной» не изменится.</string>
+    <string name="intent_area_locate">Использовать моё местоположение</string>
+    <string name="intent_area_locating">Определяем примерное место…</string>
+    <string name="intent_area_cancel_location">Отменить определение</string>
+    <string name="intent_area_denied">Нет доступа к приблизительному местоположению. Можно указать координаты или оставить только название района.</string>
+    <string name="intent_area_off">Геолокация выключена. Включите её или укажите область вручную.</string>
+    <string name="intent_area_unavailable">Не удалось определить место. Повторите попытку или укажите область вручную.</string>
+    <string name="intent_area_map_description">Примерная область намерения. Нажмите на карту, чтобы переместить центр.</string>
+    <string name="intent_area_map_hint">Нажмите на карту, чтобы переместить центр.</string>
+    <string name="intent_area_center">Центр: %1$.2f, %2$.2f</string>
+    <string name="intent_area_coordinates">Указать координаты</string>
+    <string name="intent_area_latitude">Широта (от −90 до 90)</string>
+    <string name="intent_area_longitude">Долгота (от −180 до 180)</string>
+    <string name="intent_area_apply_center">Применить центр</string>
+    <string name="intent_area_confirm_hint">Проверьте название и границы области.</string>
+    <string name="intent_area_confirm">Подтвердить область</string>
+    <string name="intent_area_cancel">Отмена</string>
+    <string name="intent_area_radius">Радиус %1$s км</string>
+    <string name="intent_area_selected">Область подтверждена · радиус %1$s км. Изменение названия удалит геометрию.</string>
+    <string name="intent_area_remove_geometry">Оставить только название</string>
 </resources>

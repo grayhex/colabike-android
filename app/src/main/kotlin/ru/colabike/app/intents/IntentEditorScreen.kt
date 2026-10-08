@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -52,6 +53,8 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import ru.colabike.app.R
+import ru.colabike.app.rides.map.RouteMaps
+import ru.colabike.app.rides.map.SketchRouteMaps
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaFilterChip
@@ -67,6 +70,7 @@ import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.component.colaTextFieldColors
 import ru.colabike.core.designsystem.theme.PillShape
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.GeoPoint
 import ru.colabike.core.model.IntentDraft
 import ru.colabike.core.model.IntentFold
 import ru.colabike.core.model.IntentProblem
@@ -81,6 +85,15 @@ data class IntentEditorActions(
     val onReload: () -> Unit = {},
     val onReadiness: (IntentReadiness) -> Unit = {},
     val onAreaLabel: (String) -> Unit = {},
+    val onOpenArea: () -> Unit = {},
+    val onCancelArea: () -> Unit = {},
+    val onConfirmArea: () -> Unit = {},
+    val onLocateArea: () -> Unit = {},
+    val onCancelLocation: () -> Unit = {},
+    val onAreaDraftLabel: (String) -> Unit = {},
+    val onAreaCenter: (GeoPoint) -> Unit = {},
+    val onAreaRadius: (Int) -> Unit = {},
+    val onRemoveAreaGeometry: () -> Unit = {},
     val onPurpose: (String) -> Unit = {},
     val onPace: (String) -> Unit = {},
     val onSurface: (String) -> Unit = {},
@@ -108,7 +121,13 @@ private val ContentWidth = 600.dp
  * choice: it is not what saving does by default.
  */
 @Composable
-fun IntentEditorScreen(state: IntentEditorUiState, editing: Boolean, actions: IntentEditorActions) {
+fun IntentEditorScreen(
+    state: IntentEditorUiState,
+    editing: Boolean,
+    actions: IntentEditorActions,
+    maps: RouteMaps = SketchRouteMaps,
+) {
+    (state as? IntentEditorUiState.Editing)?.areaPicker?.let { IntentAreaPicker(it, maps, actions) }
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -407,6 +426,7 @@ private fun RepeatedHour(
 
 @Composable
 private fun AreaCard(state: IntentEditorUiState.Editing, actions: IntentEditorActions) {
+    val focus = LocalFocusManager.current
     val form = state.form
     FormSection(R.string.intent_where) {
         OutlinedTextField(
@@ -423,6 +443,34 @@ private fun AreaCard(state: IntentEditorUiState.Editing, actions: IntentEditorAc
                 androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth().testTag("intent-editor:area"),
         )
+        TextButton(
+            onClick = {
+                focus.clearFocus()
+                actions.onOpenArea()
+            },
+            enabled = !state.saving,
+            modifier = Modifier.testTag("intent-editor:choose-area"),
+        ) {
+            Text(
+                stringResource(
+                    if (form.base.area == null) R.string.intent_area_choose
+                    else R.string.intent_area_edit
+                )
+            )
+        }
+        form.base.area?.let {
+            Text(
+                stringResource(R.string.intent_area_selected, areaRadiusKm(it.radiusM)),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            TextButton(
+                onClick = actions.onRemoveAreaGeometry,
+                enabled = !state.saving,
+                modifier = Modifier.testTag("intent-editor:remove-geometry"),
+            ) {
+                Text(stringResource(R.string.intent_area_remove_geometry))
+            }
+        }
     }
 }
 

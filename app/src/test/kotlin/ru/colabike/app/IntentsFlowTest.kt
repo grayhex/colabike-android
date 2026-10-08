@@ -1,6 +1,8 @@
 package ru.colabike.app
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -48,6 +50,82 @@ class IntentsFlowTest {
     }
 
     private fun scrolled(tag: String) = compose.onNodeWithTag(tag).performScrollTo()
+
+    @Test
+    fun `a radius from the website is displayed and saved without truncation`() {
+        val original =
+            own.copy(
+                passport =
+                    own.passport.copy(
+                        area = ru.colabike.core.model.RideAreaPoint(37.6, 55.73, 1500)
+                    )
+            )
+        val repository = FakeIntents(mine = listOf(original))
+        compose.setContent {
+            ColaBikeTheme {
+                ru.colabike.app.intents.IntentEditorRoute(
+                    FakeDependencies(intents = repository),
+                    original.id,
+                    {},
+                    {},
+                    {},
+                )
+            }
+        }
+        scrolled("intent-editor:choose-area").performClick()
+        compose.onNodeWithText("Радиус 1,5 км").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("intent-area:confirm").performClick()
+        compose.onNodeWithTag("intent-editor:save").performClick()
+        compose.waitForIdle()
+        assertThat(repository.replaced.single().second.passport.area?.radiusM).isEqualTo(1500)
+    }
+
+    @Test
+    fun `location is requested explicitly then confirmed before saving without touching nearby`() {
+        val location = FakeCoarseLocation()
+        val nearby = FakeNearby()
+        val dependencies =
+            FakeDependencies(intents = intents, coarseLocation = location, nearby = nearby)
+        compose.setContent { ColaBikeTheme { ColaBikeApp(dependencies) } }
+        compose.section("Покатушки").performClick()
+        compose.onNodeWithTag("rides:intents").performClick()
+        compose.onNodeWithTag("intents:create").performClick()
+        scrolled("intent-editor:choose-area").performClick()
+        assertThat(location.reads).isEqualTo(0)
+        compose.onNodeWithTag("intent-area:confirm").assertIsNotEnabled()
+        scrolled("intent-area:locate").performClick()
+        compose.waitForIdle()
+        assertThat(location.reads).isEqualTo(1)
+        scrolled("intent-area:label").performTextInput("Парк Горького")
+        compose.onNodeWithTag("intent-area:confirm").assertIsEnabled().performClick()
+        assertThat(intents.created).isEmpty()
+        compose.onNodeWithTag("intent-editor:save").performClick()
+        compose.waitForIdle()
+        assertThat(intents.created.single().first.passport.area)
+            .isEqualTo(ru.colabike.core.model.RideAreaPoint(37.62, 55.76, 5000))
+        assertThat(intents.created.single().first.allowSuggestions).isFalse()
+        assertThat(nearby.changes).isEmpty()
+        assertThat(nearby.confirmed).isEmpty()
+    }
+
+    @Test
+    fun `manual coordinates require a valid pair and cancelling picker keeps text-only intent`() {
+        start()
+        compose.onNodeWithTag("intents:create").performClick()
+        scrolled("intent-editor:area").performTextInput("Парк")
+        scrolled("intent-editor:choose-area").performClick()
+        scrolled("intent-area:coordinates").performClick()
+        scrolled("intent-area:latitude").performTextInput("55.73")
+        compose.onNodeWithTag("intent-area:apply-coordinates").assertIsNotEnabled()
+        scrolled("intent-area:longitude").performTextInput("37.6")
+        scrolled("intent-area:apply-coordinates").performClick()
+        Espresso.pressBack()
+        compose.waitForIdle()
+        compose.onNodeWithTag("intent-editor:save").performClick()
+        compose.waitForIdle()
+        assertThat(intents.created.single().first.passport.areaLabel).isEqualTo("Парк")
+        assertThat(intents.created.single().first.passport.area).isNull()
+    }
 
     @Test
     fun `the Rides section leads to the intentions of the community`() {

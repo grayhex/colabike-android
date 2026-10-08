@@ -1,11 +1,18 @@
 package ru.colabike.app.intents
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -125,9 +132,17 @@ fun IntentEditorRoute(
                 clock = dependencies.clock,
                 phoneZone = ZoneId.systemDefault(),
                 id = id,
+                location = dependencies.coarseLocation,
             )
         }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var permissionToken by rememberSaveable { mutableStateOf<Long?>(null) }
+    val permission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            permissionToken?.let { viewModel.locationPermission(it, granted) }
+            permissionToken = null
+        }
+    DisposableEffect(viewModel) { onDispose { viewModel.abandonLocation() } }
     val saved = (state as? IntentEditorUiState.Editing)?.saved
     LaunchedEffect(saved?.id) { saved?.let { onSaved(it.id) } }
     val actions =
@@ -138,6 +153,25 @@ fun IntentEditorRoute(
                 onReload = viewModel::load,
                 onReadiness = viewModel::setReadiness,
                 onAreaLabel = viewModel::setAreaLabel,
+                onOpenArea = viewModel::openArea,
+                onCancelArea = viewModel::cancelArea,
+                onConfirmArea = viewModel::confirmArea,
+                onCancelLocation = viewModel::abandonLocation,
+                onAreaDraftLabel = viewModel::setAreaDraftLabel,
+                onAreaCenter = viewModel::setAreaCenter,
+                onAreaRadius = viewModel::setAreaRadius,
+                onRemoveAreaGeometry = viewModel::removeAreaGeometry,
+                onLocateArea = {
+                    val token = viewModel.requestLocation()
+                    if (token != null) {
+                        if (dependencies.coarseLocation.granted())
+                            viewModel.locationPermission(token, true)
+                        else if (permissionToken == null) {
+                            permissionToken = token
+                            permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                        } else viewModel.abandonLocation()
+                    }
+                },
                 onPurpose = viewModel::setPurpose,
                 onPace = viewModel::setPace,
                 onSurface = viewModel::setSurface,
@@ -174,5 +208,5 @@ fun IntentEditorRoute(
                 },
             )
         }
-    IntentEditorScreen(state, editing = id != null, actions = actions)
+    IntentEditorScreen(state, editing = id != null, actions = actions, maps = dependencies.maps)
 }
