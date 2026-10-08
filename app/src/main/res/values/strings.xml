@@ -135,7 +135,7 @@
     <string name="theme_system">Как в системе</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
-    <string name="profile_unverified">Почта не подтверждена. Подтвердить её можно на сайте.</string>
+    <string name="profile_unverified">Почта пока не подтверждена. Откроется страница аккаунта.</string>
     <string name="profile_sign_out">Выйти</string>
 
     <string name="delete_account_title">Удаление аккаунта</string>
@@ -1304,4 +1304,10 @@
     <string name="map_scale_km">%1$s км</string>
     <string name="map_scale_description">Масштаб: %1$s</string>
     <string name="route_cuts_explanation">Часть маршрута скрыта. Линия между открытыми участками не проводится.</string>
+    <string name="profile_verify_email">Подтвердить почту на сайте</string>
+    <string name="profile_bikes">Велосипеды в профиле</string>
+    <string name="profile_bikes_empty">Здесь появятся ваши публичные велосипеды.</string>
+    <string name="profile_bikes_failed">Не удалось загрузить велосипеды.</string>
+    <string name="photo_zoom">Увеличить фото</string>
+    <string name="photo_fit">Фото целиком</string>
 </resources>

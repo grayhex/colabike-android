@@ -55,12 +55,13 @@ import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.Eyebrow
 import ru.colabike.core.designsystem.component.HaloTone
-import ru.colabike.core.designsystem.component.IconHalo
 import ru.colabike.core.designsystem.component.ListItemAction
 import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.component.PillBadge
 import ru.colabike.core.designsystem.component.SoftIconTile
 import ru.colabike.core.designsystem.theme.Spacing
+import ru.colabike.core.model.Account
+import ru.colabike.core.model.BikeId
 
 /** What the profile can open, as callbacks: the screen never touches navigation itself. */
 @Composable
@@ -74,6 +75,7 @@ fun ProfileRoute(
     onOpenPublicProfile: (id: String) -> Unit = {},
     onOpenSaved: () -> Unit = {},
     onOpenSavedMarket: (() -> Unit)? = {},
+    onOpenBike: (BikeId) -> Unit = {},
 ) {
     val viewModel = viewModel { ProfileViewModel(dependencies.account, dependencies.auth) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -110,6 +112,15 @@ fun ProfileRoute(
         onOpenAbout = onOpenAbout,
         onDeleteAccount = onDeleteAccount,
         onOpenBlocked = onOpenBlocked,
+        bikeContent = { account ->
+            ProfileBikesRoute(
+                dependencies.people,
+                dependencies.bikes,
+                account.id.value,
+                onOpenBike,
+                { onOpenPublicProfile(account.id.value) },
+            )
+        },
     )
 }
 
@@ -132,6 +143,7 @@ fun ProfileScreen(
     onOpenSaved: () -> Unit = {},
     onOpenSavedMarket: (() -> Unit)? = {},
     mapChoice: MapChoice? = null,
+    bikeContent: (@Composable (Account) -> Unit)? = null,
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -186,6 +198,7 @@ fun ProfileScreen(
                                         onManageOnWeb = onManageOnWeb,
                                         onDeleteAccount = onDeleteAccount,
                                         onOpenBlocked = onOpenBlocked,
+                                        bikeContent = bikeContent,
                                     )
                                 else -> Unit
                             }
@@ -276,6 +289,7 @@ private fun MemberSections(
     onManageOnWeb: () -> Unit,
     onDeleteAccount: () -> Unit,
     onOpenBlocked: () -> Unit,
+    bikeContent: (@Composable (Account) -> Unit)?,
 ) {
     val account = state.account
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
@@ -304,29 +318,18 @@ private fun MemberSections(
             Text(account.bio, style = MaterialTheme.typography.bodyLarge)
         }
     }
-    if (!account.emailVerified) {
-        ColaCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-            Row(
-                Modifier.padding(Spacing.l),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.l),
-            ) {
-                IconHalo(ColaIcons.MailUnread)
-                Text(
-                    stringResource(R.string.profile_unverified),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
+    if (bikeContent != null) {
+        bikeContent(account)
+    } else {
+        // The page of the person as others see it: the one row the reference sets apart, in the
+        // accent.
+        ColaListItem(
+            title = stringResource(R.string.profile_public),
+            supporting = stringResource(R.string.profile_public_hint),
+            icon = ColaIcons.Person,
+            onClick = { onOpenPublicProfile(account.id.value) },
+        )
     }
-    // The page of the person as others see it: the one row the reference sets apart, in the accent.
-    ColaListItem(
-        title = stringResource(R.string.profile_public),
-        supporting = stringResource(R.string.profile_public_hint),
-        icon = ColaIcons.Person,
-        onClick = { onOpenPublicProfile(account.id.value) },
-    )
     Section(stringResource(R.string.profile_section_saved)) {
         ColaRowGroup {
             ColaListItem(
@@ -351,6 +354,19 @@ private fun MemberSections(
     }
     Section(stringResource(R.string.profile_section_account)) {
         ColaRowGroup {
+            if (!account.emailVerified) {
+                ColaListItem(
+                    title = stringResource(R.string.profile_verify_email),
+                    supporting = stringResource(R.string.profile_unverified),
+                    icon = ColaIcons.MailUnread,
+                    tone = HaloTone.Secondary,
+                    action = ListItemAction.External,
+                    onClick = onManageOnWeb,
+                    grouped = true,
+                )
+                ColaRowDivider()
+            }
+
             ColaListItem(
                 title = stringResource(R.string.profile_notifications),
                 supporting = stringResource(R.string.profile_notifications_hint),

@@ -300,15 +300,22 @@ private fun ComposeContentTestRule.openCompletedRide() {
     onNodeWithContentDescription("Покатушка 0", substring = true).performClick()
 }
 
+/** The second item can be outside the viewport at 200%: scroll before opening it. */
+private fun ComposeContentTestRule.openSampleBike() {
+    onNodeWithTag("bikes:grid")
+        .performScrollToNode(hasContentDescription("Велосипед 1", substring = true))
+    onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+}
+
 /** From the list to the first bike's page and from there to its journal. */
 private fun ComposeContentTestRule.openJournal() {
-    onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+    openSampleBike()
     reveal(onNodeWithTag("bike:journal-all")).performClick()
 }
 
 /** From the list to the first bike's page and from there to its author. */
 private fun ComposeContentTestRule.openAuthor() {
-    onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+    openSampleBike()
     reveal(onNodeWithTag("bike:author")).performClick()
 }
 
@@ -819,18 +826,17 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
     }
     waitForIdle()
     when (screen) {
-        Screen.BikeDetail ->
-            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+        Screen.BikeDetail -> openSampleBike()
         Screen.BikeDetailOwner ->
             onNodeWithContentDescription("Мой трейл", substring = true).performClick()
         Screen.BikeDetailBuild -> {
-            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            openSampleBike()
             // The build is shut when the page opens; the title row opens it in place.
             reveal(onNodeWithText("Комплектация")).performClick()
             reveal(onNodeWithText("Shimano Deore 10-speed"))
         }
         Screen.BikeDetailComments -> {
-            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            openSampleBike()
             reveal(onNodeWithTag("discussion:all")).performClick()
             reveal(onNodeWithText("3 ответа")).performClick()
             reveal(onNodeWithText("Согласен"))
@@ -861,7 +867,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         }
         Screen.PersonBlocked -> openAuthor()
         Screen.ReportDialog -> {
-            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            openSampleBike()
             onNodeWithContentDescription("Ещё").performClick()
             onNodeWithText("Пожаловаться").performClick()
         }
@@ -881,7 +887,7 @@ fun ComposeContentTestRule.captureScreen(screen: Screen, window: String, look: L
         Screen.CommentsGuest -> {
             // The full screen of a discussion is reached from an entry of the journal; the page of
             // a bike has its discussion in place.
-            onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
+            openSampleBike()
             reveal(onNodeWithTag("bike:journal-entry")).performClick()
             reveal(onNodeWithText("Комментарии")).performClick()
         }

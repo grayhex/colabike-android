@@ -19,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ru.colabike.core.designsystem.R
 import ru.colabike.core.designsystem.theme.Spacing
@@ -59,19 +58,15 @@ fun UserRow(
         ) {
             Avatar(person.displayName, person.avatarUrl)
             Column(Modifier.weight(1f)) {
-                // A name is never cut for good: at a big system font it takes a second line.
+                // Names and handles may use as many lines as the system font needs.
                 Text(
                     person.displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     supporting ?: stringResource(R.string.cola_username, person.username),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
             when {

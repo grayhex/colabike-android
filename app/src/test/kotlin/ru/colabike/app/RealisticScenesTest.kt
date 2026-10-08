@@ -176,6 +176,9 @@ fun realisticDependencies(): FakeDependencies {
             bio = "Гравий, небольшие города и кофе в дороге. Ищу компанию на воскресенье.",
             emailVerified = true,
         )
+    val myAuthor = Person(viewer.id, viewer.username, viewer.name, viewer.avatarUrl)
+    val myBlue = blue.copy(id = BikeId("visual-own-blue"), author = myAuthor, isOwner = true)
+    val myDark = dark.copy(id = BikeId("visual-own-dark"), author = myAuthor, isOwner = true)
     val journal =
         PreviewData.journal.copy(
             title = "Выходные выше облаков",
@@ -189,7 +192,13 @@ fun realisticDependencies(): FakeDependencies {
     return FakeDependencies(
         bikes =
             FakeBikes(mapOf(null to Page(listOf(blue, dark, green), null))).apply {
-                details = mapOf(blue.id.value to bike)
+                details =
+                    mapOf(
+                        blue.id.value to bike,
+                        myBlue.id.value to bike.copy(summary = myBlue),
+                        myDark.id.value to
+                            bike.copy(summary = myDark, photos = listOf(myDark.cover!!)),
+                    )
             },
         rides =
             FakeRides(
@@ -223,6 +232,7 @@ fun realisticDependencies(): FakeDependencies {
                     )
             ),
         journal = FakeJournal(pages = mapOf(null to Page(listOf(journal), null))),
+        people = FakePeople(bikesOfPerson = Page(listOf(myBlue, myDark), null)),
         auth = FakeAuth(AuthState.SignedIn(viewer)),
         account = FakeAccount { viewer },
         notifications = FakeNotifications(unread = NotificationCount(128, capped = true)),

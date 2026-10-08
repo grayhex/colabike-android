@@ -1,5 +1,7 @@
 package ru.colabike.app.bikes
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -66,7 +68,9 @@ import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.LoadingState
 import ru.colabike.core.designsystem.component.PillBadge
+import ru.colabike.core.designsystem.theme.ColaMotion
 import ru.colabike.core.designsystem.theme.ColaTheme
+import ru.colabike.core.designsystem.theme.LocalReducedMotion
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
 import ru.colabike.core.model.BikesRepository
@@ -315,7 +319,8 @@ private const val PhonePhotoAspect = 1.6f
 private fun CollapsibleText(text: String) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var overflows by remember { mutableStateOf(false) }
-    Column {
+    val reduced = LocalReducedMotion.current
+    Column(Modifier.animateContentSize(if (reduced) snap() else ColaMotion.spatial())) {
         Text(
             text,
             style = MaterialTheme.typography.bodyMedium,

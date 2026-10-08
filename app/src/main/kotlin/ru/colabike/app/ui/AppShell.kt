@@ -997,6 +997,7 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                                         entry<Destination.Profile> {
                                             ProfileRoute(
                                                 dependencies,
+                                                onOpenBike = { id -> navigator.openBike(id.value) },
                                                 onOpenDevices = {
                                                     navigator.open(Destination.Devices)
                                                 },

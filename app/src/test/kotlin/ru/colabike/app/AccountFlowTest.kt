@@ -263,6 +263,32 @@ class AccountFlowTest {
         compose.onNodeWithText("Тестовый Райдер").assertExists()
     }
 
+    @Test
+    fun `email verification is an explicit external action in account settings`() {
+        val viewer = account.copy(emailVerified = false)
+        val dependencies =
+            FakeDependencies(
+                auth = FakeAuth(AuthState.SignedIn(viewer)),
+                account = FakeAccount { viewer },
+            )
+        start(dependencies)
+        section("Профиль").performClick()
+        compose.onNodeWithText("Велосипеды в профиле").assertIsDisplayed()
+        compose.onNodeWithText("Подтвердить почту на сайте").performScrollTo().performClick()
+        assertThat(opened).containsExactly(dependencies.links.account)
+    }
+
+    @Test
+    fun `public bike preview opens a bike and returns to the profile content`() {
+        start(FakeDependencies())
+        section("Профиль").performClick()
+        compose.onNodeWithText("Велосипед 0").performScrollTo().performClick()
+        compose.onNodeWithTag("bike:author").assertExists()
+        compose.onNodeWithContentDescription("Назад").performClick()
+        compose.onNodeWithText("Велосипеды в профиле").assertExists()
+        compose.onNodeWithText("Велосипед 0").assertExists()
+    }
+
     // --- theme, pages in the browser -------------------------------------------------------
 
     @Test
