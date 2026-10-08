@@ -57,4 +57,8 @@
     <string name="cola_notification_new">Новое</string>
     <string name="cola_notification_mark_read">Отметить прочитанным</string>
     <string name="cola_like_saving">Сохраняем</string>
+    <string name="cola_ride_distance">Дистанция</string>
+    <string name="cola_ride_moving_time">В движении</string>
+    <string name="cola_ride_elevation">Набор высоты</string>
+    <string name="cola_ride_metres">%1$s м</string>
 </resources>

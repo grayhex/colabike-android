@@ -46,6 +46,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
+import ru.colabike.app.rides.LocalRidePreviewEntry
+import ru.colabike.app.rides.PreviewRideCard
 import ru.colabike.app.ui.HeaderActions
 import ru.colabike.app.ui.LocalSignInRequest
 import ru.colabike.app.ui.PagedState
@@ -60,7 +62,6 @@ import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.JournalCard
 import ru.colabike.core.designsystem.component.ListingCard
-import ru.colabike.core.designsystem.component.RideCard
 import ru.colabike.core.designsystem.component.SkeletonGroup
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
@@ -100,7 +101,14 @@ fun FeedRoute(
             state = state,
             actions = actions,
             onFilter = viewModel::select,
-            onRefresh = viewModel::refresh,
+            onRefresh =
+                run {
+                    val previews = LocalRidePreviewEntry.current?.model
+                    {
+                        previews?.refresh()
+                        viewModel.refresh()
+                    }
+                },
             onRetry = viewModel::retry,
             onLoadMore = viewModel::loadMore,
             scrollToTop = scrollToTop,
@@ -271,7 +279,7 @@ private fun FeedGrid(
                         modifier = Modifier.testTag("journal:${item.entry.id.value}"),
                     )
                 is FeedItem.Ride ->
-                    RideCard(
+                    PreviewRideCard(
                         item.ride,
                         onClick = { actions.onOpenRide(item.ride.id) },
                         modifier = Modifier.testTag("ride:${item.ride.id.value}"),

@@ -1,5 +1,6 @@
 package ru.colabike.core.designsystem.component
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,6 +83,46 @@ fun UserRow(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp),
                     )
+            }
+        }
+    }
+}
+
+/** An author attached to content, with no surrounding card or truncated name. */
+@Composable
+fun PersonByline(
+    person: Person,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    val open = stringResource(R.string.cola_open)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = Spacing.touch)
+            .then(
+                if (onClick == null) Modifier
+                else
+                    Modifier.clickable(
+                        role = Role.Button,
+                        onClickLabel = open,
+                        onClick = onClick,
+                    )
+            )
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        Avatar(person.displayName, person.avatarUrl, size = 32.dp)
+        Column(Modifier.weight(1f)) {
+            Text(person.displayName, style = MaterialTheme.typography.titleSmall)
+            supporting?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

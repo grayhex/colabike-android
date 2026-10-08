@@ -1,6 +1,6 @@
 package ru.colabike.app.rides
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,12 +26,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +44,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -56,6 +59,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.ui.NavDisplay
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -68,7 +73,6 @@ import kotlinx.coroutines.flow.emptyFlow
 import ru.colabike.app.R
 import ru.colabike.app.auth.AuthActions
 import ru.colabike.app.rides.map.RouteMaps
-import ru.colabike.app.rides.map.RouteSketch
 import ru.colabike.app.rides.map.SketchRouteMaps
 import ru.colabike.app.safety.ReportMenu
 import ru.colabike.app.ui.LocalSignInRequest
@@ -80,8 +84,8 @@ import ru.colabike.core.designsystem.component.ColaListItem
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.LoadingState
+import ru.colabike.core.designsystem.component.PersonByline
 import ru.colabike.core.designsystem.component.PillBadge
-import ru.colabike.core.designsystem.component.UserRow
 import ru.colabike.core.designsystem.theme.ColaTheme
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
@@ -165,94 +169,138 @@ fun RideScreen(
     maps: RouteMaps = SketchRouteMaps,
     topActions: @Composable RowScope.() -> Unit = {},
 ) {
-    val loaded = state as? RideUiState.Loaded
-    val route = loaded?.ride?.route
     var mapOpen by rememberSaveable { mutableStateOf(false) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= WidePane
-        // Only a phone opens the map on its own screen; beside the page it is always there.
-        val fullMap = mapOpen && route != null && !wide
-        BackHandler(enabled = fullMap) { mapOpen = false }
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                ColaTopBar(
-                    title =
-                        stringResource(
-                            when {
-                                fullMap -> R.string.route_title
-                                loaded?.ride?.summary?.status == RideStatus.Planned ->
-                                    R.string.ride_plan_title
-                                else -> R.string.ride_title
-                            }
-                        ),
-                    compactTitle = true,
-                    onBack = if (fullMap) ({ mapOpen = false }) else actions.onBack,
-                    actions = if (loaded != null && !fullMap) topActions else ({}),
+        val showMap = mapOpen && (state as? RideUiState.Loaded)?.ride?.route != null && !wide
+        val content =
+            rememberUpdatedState<@Composable (Boolean) -> Unit> { fullMap ->
+                RideScreenContent(
+                    state,
+                    actions,
+                    onRetry,
+                    onSignIn,
+                    analysis,
+                    onLoadAnalysis,
+                    maps,
+                    topActions,
+                    wide,
+                    fullMap,
+                    { mapOpen = true },
+                    { mapOpen = false },
                 )
-            },
-        ) { padding ->
-            Box(Modifier.padding(padding).fillMaxSize()) {
-                when (state) {
-                    RideUiState.Loading -> LoadingState(Modifier.fillMaxSize())
-                    is RideUiState.Failed ->
-                        Column(
-                            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            ErrorState(state.message.resolve(), onRetry = onRetry)
-                            if (state.notFound && onSignIn != null) {
-                                Text(
-                                    stringResource(R.string.ride_private_hint),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(horizontal = Spacing.xl),
-                                )
-                                Button(
-                                    onClick = onSignIn,
-                                    modifier =
-                                        Modifier.padding(Spacing.l).heightIn(min = Spacing.touch),
-                                ) {
-                                    Text(stringResource(R.string.profile_sign_in))
-                                }
+            }
+        NavDisplay(
+            backStack =
+                if (showMap) listOf(RideStep.Detail, RideStep.Map) else listOf(RideStep.Detail),
+            onBack = { mapOpen = false },
+            entryProvider = { step -> NavEntry(step) { content.value(step == RideStep.Map) } },
+        )
+    }
+}
+
+private enum class RideStep {
+    Detail,
+    Map,
+}
+
+@Composable
+private fun RideScreenContent(
+    state: RideUiState,
+    actions: RideActions,
+    onRetry: () -> Unit,
+    onSignIn: (() -> Unit)?,
+    analysis: AnalysisUiState,
+    onLoadAnalysis: () -> Unit,
+    maps: RouteMaps,
+    topActions: @Composable RowScope.() -> Unit,
+    wide: Boolean,
+    fullMap: Boolean,
+    onOpenMap: () -> Unit,
+    onCloseMap: () -> Unit,
+) {
+    val loaded = state as? RideUiState.Loaded
+    val route = loaded?.ride?.route
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            ColaTopBar(
+                title =
+                    stringResource(
+                        when {
+                            fullMap -> R.string.route_title
+                            loaded?.ride?.summary?.status == RideStatus.Planned ->
+                                R.string.ride_plan_title
+                            else -> R.string.ride_title
+                        }
+                    ),
+                compactTitle = true,
+                onBack = if (fullMap) onCloseMap else actions.onBack,
+                actions = if (loaded != null && !fullMap) topActions else ({}),
+            )
+        },
+    ) { padding ->
+        Box(Modifier.padding(padding).fillMaxSize()) {
+            when (state) {
+                RideUiState.Loading -> LoadingState(Modifier.fillMaxSize())
+                is RideUiState.Failed ->
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        ErrorState(state.message.resolve(), onRetry = onRetry)
+                        if (state.notFound && onSignIn != null) {
+                            Text(
+                                stringResource(R.string.ride_private_hint),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = Spacing.xl),
+                            )
+                            Button(
+                                onClick = onSignIn,
+                                modifier =
+                                    Modifier.padding(Spacing.l).heightIn(min = Spacing.touch),
+                            ) {
+                                Text(stringResource(R.string.profile_sign_in))
                             }
                         }
-                    is RideUiState.Loaded -> {
-                        val ride = state.ride
-                        // The charts are a request of their own, made once the page shows a route.
-                        LaunchedEffect(ride.route != null) {
-                            if (ride.route != null) onLoadAnalysis()
-                        }
-                        when {
-                            fullMap && route != null -> FullMap(route, maps)
-                            wide ->
-                                Row(Modifier.fillMaxSize()) {
-                                    Ride(
-                                        ride,
-                                        actions,
-                                        analysis,
-                                        onLoadAnalysis,
-                                        route = null,
-                                        onOpenMap = {},
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    if (route != null) {
-                                        MapPane(route, maps, Modifier.weight(1f))
-                                    }
-                                }
-                            else ->
+                    }
+                is RideUiState.Loaded -> {
+                    val ride = state.ride
+                    // The charts are a request of their own, made once the page shows a route.
+                    LaunchedEffect(ride.route != null) {
+                        if (ride.route != null) onLoadAnalysis()
+                    }
+                    when {
+                        fullMap && route != null -> FullMap(route, maps)
+                        wide ->
+                            Row(Modifier.fillMaxSize()) {
                                 Ride(
                                     ride,
                                     actions,
                                     analysis,
                                     onLoadAnalysis,
-                                    route = route,
-                                    onOpenMap = { mapOpen = true },
-                                    modifier = Modifier.fillMaxSize(),
+                                    route = null,
+                                    onOpenMap = {},
+                                    modifier = Modifier.weight(1f),
                                 )
-                        }
+                                if (route != null) {
+                                    MapPane(route, maps, Modifier.weight(1f))
+                                }
+                            }
+                        else ->
+                            Ride(
+                                ride,
+                                actions,
+                                analysis,
+                                onLoadAnalysis,
+                                route = route,
+                                onOpenMap = onOpenMap,
+                                modifier = Modifier.fillMaxSize(),
+                                maps = maps,
+                            )
                     }
                 }
             }
@@ -290,8 +338,10 @@ private fun RouteNotes(
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         if (route.lines.size > 1) {
+            val explanation = stringResource(R.string.route_cuts_explanation)
             Text(
                 stringResource(R.string.route_cut_note),
+                modifier = Modifier.clearAndSetSemantics { contentDescription = explanation },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -306,71 +356,57 @@ private fun RouteNotes(
     }
 }
 
-/**
- * On a phone: the drawing of the route in a card with its heading and the way to the real map. The
- * drawing is low (the card, the figures and the note have to share the first screen).
- */
+/** A stable static map with one open action; the entire preview and caption are tappable. */
 @Composable
-private fun RouteCard(route: RideRoute, onOpenMap: () -> Unit) {
-    ColaCard(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.padding(Spacing.m),
-            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+private fun RouteCard(route: RideRoute, maps: RouteMaps, onOpenMap: () -> Unit) {
+    val open = stringResource(R.string.route_open_map)
+    Column(
+        Modifier.fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(role = Role.Button, onClickLabel = open, onClick = onOpenMap)
+            .testTag("ride:map-preview")
+    ) {
+        Box(
+            Modifier.fillMaxWidth()
+                .height(SketchHeight)
+                .clip(MaterialTheme.shapes.medium)
+                .clearAndSetSemantics {}
         ) {
-            // The heading and the way to the map: side by side, one under the other at a big font.
-            val title: @Composable (Modifier) -> Unit = {
-                Text(
-                    stringResource(R.string.route_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = it.semantics { heading() },
-                )
-            }
-            val open: @Composable () -> Unit = {
-                TextButton(onClick = onOpenMap) {
-                    Icon(
-                        painterResource(ColaIcons.Route),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        stringResource(R.string.route_open_map),
-                        modifier = Modifier.padding(start = Spacing.xs),
-                    )
-                }
-            }
-            if (LocalDensity.current.fontScale > LargeFont) {
-                title(Modifier)
-                open()
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    title(Modifier.weight(1f))
-                    open()
-                }
-            }
-            RouteSketch(
-                route,
-                Modifier.fillMaxWidth().height(SketchHeight).clip(MaterialTheme.shapes.small),
+            maps.Preview(route, Modifier.fillMaxSize())
+        }
+        val stacked = LocalDensity.current.fontScale > LargeFont
+        if (stacked) RouteNotes(route, !maps.hasBasemap, Modifier.padding(top = Spacing.s))
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = Spacing.touch),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+        ) {
+            if (!stacked) RouteNotes(route, !maps.hasBasemap, Modifier.weight(1f))
+            Text(
+                open,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
             )
-            RouteNotes(route, basemapMissing = false)
+            Icon(
+                painterResource(ColaIcons.Map),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
 
-/** A line of text of the person's own in a card: the note of a ride, the words of a plan. */
+/** The person's note on the page, without another frame around their words. */
 @Composable
 private fun NoteCard(label: String, text: String) {
-    ColaCard(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.padding(Spacing.card),
-            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(text, style = MaterialTheme.typography.bodyLarge)
-        }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(text, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -384,6 +420,7 @@ private fun Ride(
     route: RideRoute?,
     onOpenMap: () -> Unit,
     modifier: Modifier = Modifier,
+    maps: RouteMaps = SketchRouteMaps,
 ) {
     val summary = ride.summary
     val locale = LocalConfiguration.current.locales[0]
@@ -396,6 +433,7 @@ private fun Ride(
             Modifier.widthIn(max = ContentWidth).fillMaxWidth().padding(Spacing.screen),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
+            if (route != null) RouteCard(route, maps, onOpenMap)
             Text(
                 summary.title,
                 style = ColaTheme.textStyles.pageTitle,
@@ -413,7 +451,7 @@ private fun Ride(
                             else ru.colabike.core.designsystem.R.string.cola_ride_completed
                         ),
                         icon = if (planned) ColaIcons.Schedule else ColaIcons.CheckCircle,
-                        accent = !planned,
+                        accent = false,
                     )
                     if (summary.recurrence == RideRecurrence.Weekly) {
                         PillBadge(
@@ -428,8 +466,11 @@ private fun Ride(
                 When(ride, locale, zone)
             }
             // The route first: on a page of a ride it is what the ride was.
-            if (route != null) RouteCard(route, onOpenMap)
             Metrics(ride, locale)
+            PersonByline(
+                summary.author,
+                onClick = { actions.onOpenAuthor(summary.author.id.value) },
+            )
             if (ride.description.isNotBlank()) {
                 NoteCard(
                     stringResource(if (planned) R.string.ride_description else R.string.ride_note),
@@ -477,10 +518,6 @@ private fun Ride(
                     onClick = { actions.onOpenBike(bike.id) },
                 )
             }
-            UserRow(
-                summary.author,
-                onClick = { actions.onOpenAuthor(summary.author.id.value) },
-            )
             ColaListItem(
                 title = stringResource(R.string.comments_open),
                 supporting =
@@ -508,7 +545,7 @@ private fun When(ride: RideDetail, locale: Locale, zone: ZoneId) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
         summary.time?.let {
-            val moment = "${zoned(it, locale, zone)} ${zoneName(zone, locale)}"
+            val moment = "${zoned(it, locale, zone)} ${zoneName(zone, locale, it)}"
             Text(
                 if (planned) stringResource(R.string.ride_when_planned, moment) else moment,
                 style = MaterialTheme.typography.bodyLarge,
@@ -539,14 +576,14 @@ private fun zoned(instant: Instant, locale: Locale, zone: ZoneId): String =
         .format(instant)
 
 /** "MSK" or "GMT+3": the zone as the device calls it. */
-private fun zoneName(zone: ZoneId, locale: Locale): String =
-    DateTimeFormatter.ofPattern("zzz", locale).withZone(zone).format(Instant.now())
+private fun zoneName(zone: ZoneId, locale: Locale, instant: Instant): String =
+    DateTimeFormatter.ofPattern("zzz", locale).withZone(zone).format(instant)
 
 /**
  * What the ride measured, only the numbers it has. The first two (the distance and the time on the
  * move) are the figures of the page, large, side by side; the others (all the time, the average
- * speed, the climb) are three columns in a card under them, a value over its caption. At a large
- * system font everything stands in one column.
+ * speed, the climb) follow a divider, a value over its caption. At a large system font everything
+ * stands in one column.
  */
 @Composable
 private fun Metrics(ride: RideDetail, locale: Locale) {
@@ -583,8 +620,8 @@ private fun Metrics(ride: RideDetail, locale: Locale) {
     val hero = tiles.take(2)
     val rest = tiles.drop(2)
     if (LocalDensity.current.fontScale > LargeFont) {
-        ColaCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(horizontal = Spacing.card, vertical = Spacing.s)) {
+        Column(Modifier.fillMaxWidth()) {
+            Column {
                 tiles.forEachIndexed { index, (label, value) ->
                     if (index > 0) {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -629,16 +666,15 @@ private fun Metrics(ride: RideDetail, locale: Locale) {
                 Text(
                     figure(value, ColaTheme.textStyles.numeral),
                     style = ColaTheme.textStyles.numeral,
-                    color =
-                        if (index == 0) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
     }
     if (rest.isNotEmpty()) {
-        ColaCard(Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(vertical = Spacing.m).height(IntrinsicSize.Min)) {
+        Column(Modifier.fillMaxWidth()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(Modifier.padding(vertical = Spacing.s).height(IntrinsicSize.Min)) {
                 rest.forEachIndexed { index, (label, value) ->
                     if (index > 0) {
                         VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -810,7 +846,7 @@ private val ContentWidth = 720.dp
 /** From this width the map stands beside the page instead of opening on its own screen. */
 private val WidePane = 840.dp
 
-private val SketchHeight = 140.dp
+private val SketchHeight = 176.dp
 
 /** From this font scale on, metric tiles stack. */
 private const val LargeFont = 1.3f

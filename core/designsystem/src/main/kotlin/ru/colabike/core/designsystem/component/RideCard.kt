@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -11,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -18,6 +20,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextOverflow
+import kotlin.math.roundToInt
 import ru.colabike.core.designsystem.R
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.RideRecurrence
@@ -25,7 +28,7 @@ import ru.colabike.core.model.RideStatus
 import ru.colabike.core.model.RideSummary
 
 /**
- * A ride or a plan in a list: title and what it is, then when, how far, how long, on which bike and
+ * A ride or a plan in a list: author and date, optional map, title and results, then the bike and
  * (for a plan) how many answered. [badges] are extra short facts the list adds (a role, a private
  * ride), [note] a line under the facts (a plan that changed). Without [onClick] the card only tells
  * (a ride that has no page, such as one's private ride) and says no "open".
@@ -38,6 +41,7 @@ fun RideCard(
     onClick: (() -> Unit)? = null,
     badges: List<String> = emptyList(),
     note: String? = null,
+    preview: (@Composable () -> Unit)? = null,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val status =
@@ -70,9 +74,14 @@ fun RideCard(
         ride.participants?.let {
             stringResource(R.string.cola_ride_participants, it.going, it.maybe)
         }
+    val elevation =
+        ride.metrics.elevationGainM?.let {
+            stringResource(R.string.cola_ride_metres, integer(it.roundToInt(), locale))
+        }
     val description =
         listOfNotNull(
                 ride.title,
+                ride.author.displayName,
                 status,
                 weekly,
                 *badges.toTypedArray(),
@@ -81,6 +90,9 @@ fun RideCard(
                 duration,
                 ride.bike?.name,
                 participants,
+                elevation,
+                pluralStringResource(R.plurals.cola_likes, ride.likes, ride.likes),
+                pluralStringResource(R.plurals.cola_comments, ride.comments, ride.comments),
                 note,
             )
             .joinToString(", ")
@@ -100,17 +112,24 @@ fun RideCard(
                 }
             },
     ) {
-        Column(
-            Modifier.padding(Spacing.l),
-            verticalArrangement = Arrangement.spacedBy(Spacing.m),
-        ) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                status?.let { PillBadge(it) }
-                weekly?.let { PillBadge(it, icon = ColaIcons.Calendar) }
-                badges.forEach { PillBadge(it) }
+        PersonByline(
+            ride.author,
+            Modifier.padding(horizontal = Spacing.l, vertical = Spacing.s),
+            supporting =
+                listOfNotNull(day, status.takeIf { ride.status == RideStatus.Completed })
+                    .joinToString(" · "),
+        )
+        preview?.invoke()
+        Column(Modifier.padding(Spacing.l), verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+            if (ride.status != RideStatus.Completed || weekly != null || badges.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
+                    if (ride.status != RideStatus.Completed) status?.let { PillBadge(it) }
+                    weekly?.let { PillBadge(it, icon = ColaIcons.Calendar) }
+                    badges.forEach { PillBadge(it) }
+                }
             }
             Text(
                 ride.title,
@@ -119,14 +138,22 @@ fun RideCard(
                 overflow = TextOverflow.Ellipsis,
             )
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
-                Fact(ColaIcons.Calendar, day)
-                distance?.let { Fact(ColaIcons.Route, it) }
-                duration?.let { Fact(ColaIcons.Timer, it) }
-                ride.bike?.let { Fact(ColaIcons.Bike, it.name) }
-                participants?.let { Fact(ColaIcons.Person, it) }
+                distance?.let { RideMetric(it, stringResource(R.string.cola_ride_distance)) }
+                duration?.let { RideMetric(it, stringResource(R.string.cola_ride_moving_time)) }
+                elevation?.let { RideMetric(it, stringResource(R.string.cola_ride_elevation)) }
+            }
+            participants?.let { Fact(ColaIcons.Person, it) }
+            ride.bike?.let { Fact(ColaIcons.Bike, it.name) }
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.l)) {
+                Counter(
+                    if (ride.liked) ColaIcons.LikeFilled else ColaIcons.Like,
+                    ride.likes,
+                    ride.liked,
+                )
+                Counter(ColaIcons.Comment, ride.comments)
             }
             note?.let {
                 Text(
@@ -136,5 +163,17 @@ fun RideCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun RideMetric(value: String, label: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+        Text(value, style = MaterialTheme.typography.titleLarge)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
