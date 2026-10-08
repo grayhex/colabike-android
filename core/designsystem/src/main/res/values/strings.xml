@@ -61,4 +61,7 @@
     <string name="cola_ride_moving_time">В движении</string>
     <string name="cola_ride_elevation">Набор высоты</string>
     <string name="cola_ride_metres">%1$s м</string>
+    <string name="cola_chart_previous">Предыдущее измерение</string>
+    <string name="cola_chart_next">Следующее измерение</string>
+    <string name="cola_chart_position">Измерение %1$d из %2$d</string>
 </resources>

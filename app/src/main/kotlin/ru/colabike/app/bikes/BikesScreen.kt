@@ -132,23 +132,25 @@ fun BikesScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            ColaTopBar(
-                title = stringResource(R.string.bikes_title),
-                // At a large system font the buttons would take the title's room.
-                actionsBelow = LocalDensity.current.fontScale >= LargeFont,
-                actions = {
-                    // The catalog of component models, apart from the bikes that carry them.
-                    if (onOpenCatalog != null) {
-                        IconButton(onClick = onOpenCatalog) {
-                            Icon(
-                                painterResource(ColaIcons.Build),
-                                contentDescription = stringResource(R.string.components_open),
-                            )
+            BoxWithConstraints {
+                ColaTopBar(
+                    title = stringResource(R.string.bikes_title),
+                    // A narrow list pane needs the same room for actions as enlarged text.
+                    actionsBelow = LocalDensity.current.fontScale >= LargeFont || maxWidth < 360.dp,
+                    actions = {
+                        // The catalog of component models, apart from the bikes that carry them.
+                        if (onOpenCatalog != null) {
+                            IconButton(onClick = onOpenCatalog) {
+                                Icon(
+                                    painterResource(ColaIcons.Build),
+                                    contentDescription = stringResource(R.string.components_open),
+                                )
+                            }
                         }
-                    }
-                    HeaderActions()
-                },
-            )
+                        HeaderActions()
+                    },
+                )
+            }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {

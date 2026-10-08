@@ -190,9 +190,9 @@ data class RideAnalysis(
     val downsampled: Boolean,
     val segments: List<List<AnalysisPoint>>,
 ) {
-    /** The channels that have at least two values somewhere: enough to draw a line. */
+    /** Channels with a measured value at a known distance; a singleton is a dot, not absence. */
     val channels: List<AnalysisChannel> =
         AnalysisChannel.entries.filter { channel ->
-            segments.sumOf { segment -> segment.count { channel in it.values } } >= 2
+            segments.any { segment -> segment.any { it.distanceM != null && channel in it.values } }
         }
 }

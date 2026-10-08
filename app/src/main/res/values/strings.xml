@@ -1312,4 +1312,5 @@
     <string name="intent_phone_window">На вашем телефоне: %1$s</string>
     <string name="nearby_privacy_title">Район и приватность</string>
     <string name="nearby_privacy_close">Понятно</string>
+    <string name="analysis_selected">%1$s · %2$s</string>
 </resources>

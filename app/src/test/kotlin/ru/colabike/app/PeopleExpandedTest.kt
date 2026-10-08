@@ -1,6 +1,7 @@
 package ru.colabike.app
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.dp
 import java.util.concurrent.TimeUnit
 import org.junit.Rule
 import org.junit.Test
@@ -85,13 +87,14 @@ class PeopleExpandedTest {
     }
 
     @Test
-    fun `beside the list the bike has no Back arrow`() {
+    fun `Back beside the list restores the full catalog grid`() {
         compose.setContent { ColaBikeTheme { ColaBikeApp(FakeDependencies()) } }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Велосипед 1", substring = true).performClick()
         compose.waitForIdle()
 
         compose.onNodeWithContentDescription("Нравится", substring = true).assertExists()
-        compose.onNodeWithContentDescription("Назад").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Назад").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("bikes:grid").assertWidthIsAtLeast(950.dp)
     }
 }
