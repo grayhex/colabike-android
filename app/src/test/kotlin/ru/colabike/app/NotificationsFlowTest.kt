@@ -86,7 +86,8 @@ class NotificationsFlowTest {
     fun `a member's bell says how many are unread, and a guest has no bell`() {
         start(dependencies())
         compose.onNodeWithContentDescription("Уведомления, 2 непрочитанных").assertIsDisplayed()
-        compose.onNodeWithText("2").assertIsDisplayed()
+        // The digits are visual; the merged button speaks the full count once.
+        compose.onNodeWithText("2", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -109,8 +110,8 @@ class NotificationsFlowTest {
         compose
             .onNodeWithContentDescription("Уведомления, непрочитанных не меньше ста")
             .assertExists()
-        compose.onNodeWithText("99+").assertIsDisplayed()
-        compose.onNodeWithText("100").assertDoesNotExist()
+        compose.onNodeWithText("99+", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("100", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
