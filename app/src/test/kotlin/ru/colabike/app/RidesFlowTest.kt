@@ -332,10 +332,7 @@ class RidesFlowTest {
         compose.onNode(hasText("32,5", substring = true)).assertIsDisplayed()
         compose.onNodeWithText("Показатели датчиков").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("avgHeartRate").performScrollTo().assertIsDisplayed()
-        compose
-            .onNodeWithContentDescription("Схема маршрута", substring = true)
-            .performScrollTo()
-            .assertIsDisplayed()
+        compose.onNodeWithTag("ride:map-preview").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -444,11 +441,13 @@ class RidesFlowTest {
     fun `a ride with a route shows its drawing and the way to the map`() {
         openCompleted()
 
+        compose.onNodeWithTag("ride:map-preview").performScrollTo().assertIsDisplayed()
         compose
-            .onNodeWithContentDescription("Схема маршрута", substring = true)
-            .performScrollTo()
-            .assertIsDisplayed()
-        compose.onNodeWithText("Маршрут разорван", substring = true).assertExists()
+            .onNodeWithContentDescription(
+                "Часть маршрута скрыта. Линия между открытыми участками не проводится.",
+                substring = true,
+            )
+            .assertExists()
         compose.onNodeWithText("Открыть карту").assertExists()
     }
 
@@ -460,7 +459,7 @@ class RidesFlowTest {
         compose.waitForIdle()
 
         compose.onNodeWithText("Маршрут").assertIsDisplayed()
-        compose.onNodeWithText("Подложка карты не подключена", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Схема без подложки карты.").assertIsDisplayed()
         compose.onNodeWithText("Открыть карту").assertDoesNotExist()
 
         compose.onNodeWithContentDescription("Назад").performClick()
@@ -495,7 +494,7 @@ class RidesFlowTest {
         val rides = FakeRides(analyses = emptyMap())
         openCompleted(rides)
 
-        compose.onNodeWithContentDescription("Схема маршрута", substring = true).assertExists()
+        compose.onNodeWithTag("ride:map-preview").assertExists()
         compose.onNodeWithText("Разбор маршрута").assertDoesNotExist()
     }
 

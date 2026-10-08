@@ -105,9 +105,14 @@ import ru.colabike.app.people.PersonActions
 import ru.colabike.app.people.PersonRoute
 import ru.colabike.app.profile.ProfileRoute
 import ru.colabike.app.rides.BikeRidesRoute
+import ru.colabike.app.rides.LocalRidePreviewEntry
 import ru.colabike.app.rides.RideActions
+import ru.colabike.app.rides.RidePreviewEntry
+import ru.colabike.app.rides.RidePreviews
 import ru.colabike.app.rides.RideRoute
 import ru.colabike.app.rides.RidesRoute
+import ru.colabike.app.rides.map.LocalMapSnapshots
+import ru.colabike.app.rides.map.MapSnapshots
 import ru.colabike.app.safety.BlockedRoute
 import ru.colabike.app.search.SearchRoute
 import ru.colabike.core.auth.AuthState
@@ -274,7 +279,16 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
             if (chatOn) ChatsEntry { navigator.open(Destination.Messages) } else null
         }
 
+    // SessionScope owns these ViewModels: rotation retains them, sign-out clears geometry/images.
+    val ridePreviews = viewModel { RidePreviews(dependencies.rides) }
+    val mapSnapshots = viewModel { MapSnapshots() }
+    val previewEntry =
+        remember(ridePreviews, dependencies.maps) {
+            RidePreviewEntry(ridePreviews, dependencies.maps)
+        }
     CompositionLocalProvider(
+        LocalRidePreviewEntry provides previewEntry,
+        LocalMapSnapshots provides mapSnapshots,
         LocalNotificationsEntry provides bell,
         LocalChatsEntry provides chats,
     ) {

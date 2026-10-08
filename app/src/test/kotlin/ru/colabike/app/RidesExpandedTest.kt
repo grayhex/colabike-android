@@ -38,7 +38,7 @@ class RidesExpandedTest {
         compose.onNodeWithText("Покатушка 0").assertIsDisplayed()
         compose.onNodeWithContentDescription("Схема маршрута", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Открыть карту").assertDoesNotExist()
-        compose.onNodeWithText("Подложка карты не подключена", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Схема без подложки карты.").assertIsDisplayed()
     }
 
     @Test

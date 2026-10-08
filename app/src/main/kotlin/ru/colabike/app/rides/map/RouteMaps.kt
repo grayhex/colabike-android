@@ -51,6 +51,9 @@ interface RouteMaps {
     /** The route, panned and zoomed by the hand. Fills [modifier]. */
     @Composable fun Map(route: RideRoute, modifier: Modifier)
 
+    /** A static preview: implementations must not create a live MapView for a scrolling row. */
+    @Composable fun Preview(route: RideRoute, modifier: Modifier) = RouteSketch(route, modifier)
+
     /** A confirmed or proposed coarse area. Taps explicitly move its centre; panning never does. */
     @Composable
     fun Area(point: RideAreaPoint, onCenter: (GeoPoint) -> Unit, modifier: Modifier) {

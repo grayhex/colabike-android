@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.location.Location
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -136,6 +138,7 @@ internal fun MapKitRoute(
     val report by rememberUpdatedState(onUnavailable)
     // Where the hand left the camera: latitude, longitude, zoom. Kept over a turn of the screen.
     var camera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
+    var metresPerDp by remember { mutableStateOf<Double?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var reported by remember { mutableStateOf(false) }
 
@@ -183,6 +186,21 @@ internal fun MapKitRoute(
             if (finished) {
                 val target = position.target
                 camera = doubleArrayOf(target.latitude, target.longitude, position.zoom.toDouble())
+                val x = mapView.width / 2f
+                val y = mapView.height / 2f
+                val left = mapView.mapWindow.screenToWorld(ScreenPoint(x - 48 * density, y))
+                val right = mapView.mapWindow.screenToWorld(ScreenPoint(x + 48 * density, y))
+                if (left != null && right != null) {
+                    val distance = FloatArray(1)
+                    Location.distanceBetween(
+                        left.latitude,
+                        left.longitude,
+                        right.latitude,
+                        right.longitude,
+                        distance,
+                    )
+                    metresPerDp = distance[0] / 96.0
+                }
             }
         }
     }
@@ -261,10 +279,16 @@ internal fun MapKitRoute(
         }
     }
 
-    AndroidView(
-        factory = { mapView },
-        modifier = modifier.fillMaxSize().semantics { contentDescription = description },
-    )
+    Box(modifier) {
+        AndroidView(
+            factory = { mapView },
+            modifier = Modifier.fillMaxSize().semantics { contentDescription = description },
+        )
+        if (onPick == null)
+            MapControls(metresPerDp) {
+                fit(mapView, mapView.mapWindow.map, route, FIT_PADDING_DP * density)
+            }
+    }
 }
 
 private fun showRoute(

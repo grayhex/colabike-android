@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -12,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -65,6 +65,11 @@ internal class ChoosingRouteMaps(
         )
     }
 
+    // Previews use the lightweight OSM snapshot in either provider mode; its attribution is
+    // embedded. The full interactive map still honours the person's chosen provider.
+    @Composable
+    override fun Preview(route: RideRoute, modifier: Modifier) = osm.Preview(route, modifier)
+
     @Composable
     override fun Area(point: RideAreaPoint, onCenter: (GeoPoint) -> Unit, modifier: Modifier) {
         ChosenMap(
@@ -84,18 +89,20 @@ internal class ChoosingRouteMaps(
         val failed by failure.collectAsStateWithLifecycle()
         val maps = yandex
         val wantsYandex = maps != null && provider == MapProvider.Yandex
-        Box(modifier) {
-            if (maps != null && wantsYandex && failed == null) {
-                yandexContent(maps, Modifier.fillMaxSize()) { failure.value = it }
-            } else {
-                osmContent(Modifier.fillMaxSize())
-            }
+        Column(modifier) {
             if (wantsYandex && failed != null) {
                 YandexFallbackNotice(
                     onRetry = { failure.value = null },
                     onKeepOpenStreetMap = { settings.setMapProvider(MapProvider.OpenStreetMap) },
-                    modifier = Modifier.align(Alignment.TopCenter).padding(Spacing.s),
+                    modifier = Modifier.fillMaxWidth().padding(Spacing.s),
                 )
+            }
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                if (maps != null && wantsYandex && failed == null) {
+                    yandexContent(maps, Modifier.fillMaxSize()) { failure.value = it }
+                } else {
+                    osmContent(Modifier.fillMaxSize())
+                }
             }
         }
     }

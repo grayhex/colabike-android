@@ -27,7 +27,7 @@ stream = "7.13.0"
 rustorePush = "7.5.0"
 openapiGenerator = "7.26.0"
 
-spotless = "8.10.3"
+spotless = "8.10.4"
 ktfmt = "0.64"
 
 junit = "4.13.2"

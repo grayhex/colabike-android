@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -76,6 +77,10 @@ class MapLibreRouteMaps(private val styleOverride: String?) : RouteMaps {
     }
 
     @Composable
+    override fun Preview(route: RideRoute, modifier: Modifier) =
+        MapLibrePreview(route, styleOverride, modifier)
+
+    @Composable
     override fun Area(point: RideAreaPoint, onCenter: (GeoPoint) -> Unit, modifier: Modifier) {
         val dark = MaterialTheme.colorScheme.background.luminance() < DARK_LUMINANCE
         MapLibreRoute(
@@ -125,6 +130,8 @@ internal fun MapLibreRoute(
     var camera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
     var remoteFailed by remember(styleUrl) { mutableStateOf(false) }
     val currentStyleUrl by rememberUpdatedState(styleUrl)
+    var captionHeight by remember { mutableStateOf(0) }
+    var metresPerDp by remember { mutableStateOf<Double?>(null) }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var renderedStyle by remember { mutableStateOf<Style?>(null) }
     val currentRoute by rememberUpdatedState(route)
@@ -159,6 +166,8 @@ internal fun MapLibreRoute(
                 val target = position.target
                 if (target != null) {
                     camera = doubleArrayOf(target.latitude, target.longitude, position.zoom)
+                    metresPerDp =
+                        ready.projection.getMetersPerPixelAtLatitude(target.latitude) * density
                 }
             }
             ready.addOnMapClickListener { point ->
@@ -277,11 +286,18 @@ internal fun MapLibreRoute(
             factory = { mapView },
             modifier = Modifier.fillMaxSize().semantics { contentDescription = description },
         )
+        if (onPick == null)
+            MapControls(metresPerDp, maxOf(60.dp, (captionHeight / density).dp + Spacing.s)) {
+                map?.let { fit(it, route, (FIT_PADDING_DP * density).toInt()) }
+            }
         BasemapCaption(
             attributionShown = style?.builtIn == true && !remoteFailed,
             failed = remoteFailed,
             onRetry = { remoteFailed = false },
-            modifier = Modifier.align(Alignment.BottomStart).padding(CAPTION_PADDING_DP.dp),
+            modifier =
+                Modifier.align(Alignment.BottomStart)
+                    .onSizeChanged { captionHeight = it.height }
+                    .padding(CAPTION_PADDING_DP.dp),
         )
     }
 }
@@ -341,7 +357,7 @@ internal fun BasemapCaption(
 }
 
 /** The style of a map with nothing on it, but the colour of the page. */
-private fun blankStyle(background: Int): String {
+internal fun blankStyle(background: Int): String {
     val hex = "#%06X".format(background and 0xFFFFFF)
     return """{"version":8,"sources":{},"layers":""" +
         """[{"id":"background","type":"background","paint":{"background-color":"$hex"}}]}"""
@@ -394,16 +410,18 @@ private fun showRoute(style: Style, route: RideRoute, look: MapLook, area: Boole
 
 /** GeoJSON is longitude first. Numbers are written the same way in every language. */
 private fun multiLineString(route: RideRoute): String =
-    route.lines.joinToString(
-        separator = ",",
-        prefix =
-            """{"type":"Feature","properties":{},"geometry":{"type":"MultiLineString","coordinates":[""",
-        postfix = "]}}",
-    ) { line ->
-        line.joinToString(separator = ",", prefix = "[", postfix = "]") {
-            "[${it.longitude},${it.latitude}]"
+    route.lines
+        .filter { it.size >= 2 }
+        .joinToString(
+            separator = ",",
+            prefix =
+                """{"type":"Feature","properties":{},"geometry":{"type":"MultiLineString","coordinates":[""",
+            postfix = "]}}",
+        ) { line ->
+            line.joinToString(separator = ",", prefix = "[", postfix = "]") {
+                "[${it.longitude},${it.latitude}]"
+            }
         }
-    }
 
 private fun point(point: GeoPoint): String =
     """{"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":""" +
@@ -411,7 +429,7 @@ private fun point(point: GeoPoint): String =
 
 private fun fit(map: MapLibreMap, route: RideRoute, padding: Int) {
     val places = route.lines.flatten().map { LatLng(it.latitude, it.longitude) }
-    val bounds = LatLngBounds.Builder().includes(places).build()
+    val bounds = LatLngBounds.Builder().includes(places).include(places.first()).build()
     if (bounds.latitudeSpan < TINY_SPAN && bounds.longitudeSpan < TINY_SPAN) {
         // All the points are one place: a box without size cannot be fitted.
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(bounds.center, SINGLE_PLACE_ZOOM))

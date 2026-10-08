@@ -59,7 +59,6 @@ import ru.colabike.core.designsystem.component.ColaSearchField
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
-import ru.colabike.core.designsystem.component.RideCard
 import ru.colabike.core.designsystem.component.SkeletonGroup
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeId
@@ -96,7 +95,14 @@ fun RidesRoute(
         onSegment = viewModel::select,
         onSearchText = viewModel::onSearchText,
         onClearSearch = viewModel::clearSearch,
-        onRefresh = viewModel::refresh,
+        onRefresh =
+            run {
+                val previews = LocalRidePreviewEntry.current?.model
+                {
+                    previews?.refresh()
+                    viewModel.refresh()
+                }
+            },
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
         onOpen = onOpen,
@@ -125,7 +131,14 @@ fun BikeRidesRoute(
         onBack = onBack,
         onSearchText = viewModel::onSearchText,
         onClearSearch = viewModel::clearSearch,
-        onRefresh = viewModel::refresh,
+        onRefresh =
+            run {
+                val previews = LocalRidePreviewEntry.current?.model
+                {
+                    previews?.refresh()
+                    viewModel.refresh()
+                }
+            },
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
         onOpen = onOpen,
@@ -405,7 +418,7 @@ private fun RideRowCard(row: RideRow, onOpen: (RideId) -> Unit) {
             note = lines.joinToString(" ").ifEmpty { null }
         }
     }
-    RideCard(
+    PreviewRideCard(
         row.ride,
         onClick = if (row.hasPage) ({ onOpen(row.ride.id) }) else null,
         badges = badges,
