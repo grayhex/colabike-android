@@ -1,5 +1,8 @@
 package ru.colabike.app.bikes
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -59,12 +62,14 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import ru.colabike.app.R
 import ru.colabike.app.ui.resolve
-import ru.colabike.core.designsystem.component.Avatar
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.Eyebrow
 import ru.colabike.core.designsystem.component.LikeButton
+import ru.colabike.core.designsystem.component.PersonByline
 import ru.colabike.core.designsystem.component.journalKindLabel
+import ru.colabike.core.designsystem.theme.ColaMotion
+import ru.colabike.core.designsystem.theme.LocalReducedMotion
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeComponent
 import ru.colabike.core.model.BikeDetail
@@ -160,39 +165,16 @@ internal fun AuthorRow(
     }
     val person: @Composable (Modifier) -> Unit = { personModifier ->
         if (author != null) {
-            val open = stringResource(R.string.bike_open_author, author.displayName)
-            Row(
-                personModifier
-                    .heightIn(min = Spacing.touch)
-                    .clip(MaterialTheme.shapes.medium)
-                    .clickable(role = Role.Button, onClickLabel = open) {
-                        onOpenAuthor(author.id.value)
-                    }
-                    .padding(end = Spacing.s)
-                    .testTag("bike:author"),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.m),
-            ) {
-                Avatar(author.displayName, author.avatarUrl, size = 40.dp)
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        author.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        stringResource(
-                            ru.colabike.core.designsystem.R.string.cola_username,
-                            author.username,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+            PersonByline(
+                author,
+                personModifier.testTag("bike:author"),
+                supporting =
+                    stringResource(
+                        ru.colabike.core.designsystem.R.string.cola_username,
+                        author.username,
+                    ),
+                onClick = { onOpenAuthor(author.id.value) },
+            )
         } else {
             Spacer(personModifier)
         }
@@ -303,12 +285,25 @@ internal fun EquipmentCard(
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val reduced = LocalReducedMotion.current
+    val arrow by
+        animateFloatAsState(
+            if (expanded) 180f else 0f,
+            animationSpec = if (reduced) snap() else ColaMotion.fastSpatial(),
+            label = "equipment arrow",
+        )
     val expandLabel = stringResource(R.string.bike_equipment_expand)
     val collapseLabel = stringResource(R.string.bike_equipment_collapse)
     val editDescription = stringResource(R.string.bike_equipment_edit)
     val openState = stringResource(R.string.bike_equipment_expanded)
     val shutState = stringResource(R.string.bike_equipment_collapsed)
-    ColaCard(modifier.fillMaxWidth().testTag("bike:equipment")) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .testTag("bike:equipment")
+            .animateContentSize(if (reduced) snap() else ColaMotion.spatial())
+    ) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(
             Modifier.fillMaxWidth().heightIn(min = HEADER_HEIGHT),
             verticalAlignment = Alignment.CenterVertically,
@@ -330,7 +325,7 @@ internal fun EquipmentCard(
                 Icon(
                     painterResource(ColaIcons.Build),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp),
                 )
                 Text(
@@ -381,7 +376,8 @@ internal fun EquipmentCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painterResource(if (expanded) ColaIcons.ArrowUp else ColaIcons.ArrowDown),
+                    painterResource(ColaIcons.ArrowDown),
+                    modifier = Modifier.graphicsLayer { rotationZ = arrow },
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -425,6 +421,7 @@ internal fun EquipmentCard(
                 }
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 

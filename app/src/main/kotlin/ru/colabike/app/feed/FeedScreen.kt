@@ -269,6 +269,8 @@ private fun FeedGrid(
                 is FeedItem.Bike ->
                     BikeCard(
                         item.bike,
+                        authorFirst = true,
+                        publishedAt = item.publishedAt,
                         onClick = { actions.onOpenBike(item.bike.id) },
                         modifier = Modifier.testTag("bike:${item.bike.id.value}"),
                     )

@@ -1,6 +1,5 @@
 package ru.colabike.core.designsystem.theme
 
-import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -37,12 +36,7 @@ fun ColaBikeTheme(
             darkTheme -> DarkColors
             else -> LightColors
         }
-    val reducedMotion =
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f,
-        ) == 0f
+    val reducedMotion = rememberReducedMotion()
     CompositionLocalProvider(
         LocalColaColors provides if (darkTheme) DarkColaColors else LightColaColors,
         LocalColaTextStyles provides DefaultColaTextStyles,

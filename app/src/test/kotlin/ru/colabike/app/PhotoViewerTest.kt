@@ -4,8 +4,12 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.test.core.app.ApplicationProvider
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
@@ -191,6 +195,60 @@ class PhotoViewerTest {
         until { requests.size > first }
         settle()
         compose.onNodeWithText("Не удалось загрузить фото").assertDoesNotExist()
+    }
+
+    @Test
+    fun `paging works at fit size but zoomed swipes pan until reset`() {
+        var selected = 0
+        var dismissed = false
+        compose.setContent {
+            ColaBikeTheme(darkTheme = true) {
+                PhotoViewer(
+                    listOf(
+                        Photo("p1", "https://colabike.test/api/photos/p1"),
+                        Photo("p2", "https://colabike.test/api/photos/p2"),
+                    ),
+                    0,
+                    onDismiss = { dismissed = true },
+                    onPage = { selected = it },
+                )
+            }
+        }
+        until { shown("Увеличить фото") }
+        compose.onNodeWithText("Увеличить фото").performClick()
+        compose.onNodeWithText("Фото целиком").assertIsDisplayed()
+        compose.onNodeWithTag("gallery:photo:p1").performTouchInput { swipeLeft() }
+        assertThat(selected).isEqualTo(0)
+        compose.onNodeWithText("Фото целиком").performClick()
+        compose.onNodeWithTag("gallery:photo:p1").performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        assertThat(selected).isEqualTo(1)
+        compose.onNodeWithText("Фото 2 из 2").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Закрыть").performClick()
+        assertThat(dismissed).isTrue()
+    }
+
+    @Test
+    fun `closing the gallery returns to the same photo in the bike page`() {
+        compose.setContent {
+            ColaBikeTheme {
+                ru.colabike.app.bikes.BikeGallery(
+                    listOf(
+                        Photo("p1", "https://colabike.test/api/photos/p1?width=1280"),
+                        Photo("p2", "https://colabike.test/api/photos/p2?width=1280"),
+                    ),
+                    1.5f,
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Фото 1 из 2").performClick()
+        until { shown("Увеличить фото") }
+        compose.onNodeWithTag("gallery:photo:p1").performTouchInput { swipeLeft() }
+        compose.onNodeWithText("Фото 2 из 2").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Закрыть").performClick()
+        compose.onNodeWithText("2 / 2").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Фото 2 из 2").performClick()
+        compose.onNodeWithText("Фото 2 из 2").assertIsDisplayed()
     }
 
     private companion object {

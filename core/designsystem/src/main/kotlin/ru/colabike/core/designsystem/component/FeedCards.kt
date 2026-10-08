@@ -48,9 +48,9 @@ fun journalKindLabel(kind: String): String? =
     }
 
 /**
- * A journal entry in a list: kind and (for the owner) draft, the title in the serif voice, the
- * start of the text, then the bike, the day and the mileage, and at the bottom the author and the
- * counts. TalkBack reads one sentence and offers one action.
+ * A journal entry: author and day, editorial title and excerpt, then bike/mileage and reactions.
+ * Unlike a ride it leads with the person's words; no photo is invented when the API has none.
+ * TalkBack reads one sentence and offers one action.
  */
 @Composable
 fun JournalCard(entry: JournalSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -97,12 +97,13 @@ fun JournalCard(entry: JournalSummary, onClick: () -> Unit, modifier: Modifier =
             Modifier.padding(Spacing.l),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
+            PersonByline(entry.author, supporting = day)
             if (kind != null || draft != null) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                     verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
-                    kind?.let { PillBadge(it, icon = ColaIcons.Journal) }
+                    kind?.let { Eyebrow(it) }
                     draft?.let { PillBadge(it) }
                 }
             }
@@ -126,7 +127,6 @@ fun JournalCard(entry: JournalSummary, onClick: () -> Unit, modifier: Modifier =
                 verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
                 Fact(ColaIcons.Bike, entry.bike.name)
-                day?.let { Fact(ColaIcons.Calendar, it) }
                 mileage?.let { Fact(ColaIcons.Route, it) }
             }
             Row(
@@ -134,15 +134,6 @@ fun JournalCard(entry: JournalSummary, onClick: () -> Unit, modifier: Modifier =
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
-                Avatar(entry.author.displayName, entry.author.avatarUrl, size = 24.dp)
-                Text(
-                    entry.author.displayName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
                 Counter(
                     if (entry.liked) ColaIcons.LikeFilled else ColaIcons.Like,
                     entry.likes,

@@ -1,5 +1,7 @@
 package ru.colabike.core.designsystem.component
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,9 +17,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -29,8 +39,13 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
+import coil3.decode.DataSource
+import java.time.Instant
 import ru.colabike.core.designsystem.R
+import ru.colabike.core.designsystem.theme.ColaMotion
 import ru.colabike.core.designsystem.theme.ColaTheme
+import ru.colabike.core.designsystem.theme.LocalReducedMotion
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.BikeSummary
 
@@ -46,14 +61,30 @@ internal const val BikePhotoAspect = 2.4f
  * author and the counters. TalkBack reads one sentence and offers one action.
  */
 @Composable
-fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BikeCard(
+    bike: BikeSummary,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    authorFirst: Boolean = false,
+    publishedAt: Instant? = null,
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val published = publishedAt?.let { date(it, locale) }
     val subtitle = bikeSubtitle(bike.brand, bike.model, bike.year)
     val likes = pluralStringResource(R.plurals.cola_likes, bike.likes, bike.likes)
     val comments = pluralStringResource(R.plurals.cola_comments, bike.comments, bike.comments)
     val author = bike.author?.let { stringResource(R.string.cola_by_author, it.displayName) }
     val former = if (bike.isFormer) stringResource(R.string.cola_former_bike) else null
     val description =
-        listOfNotNull(bike.name, subtitle.ifBlank { null }, former, author, likes, comments)
+        listOfNotNull(
+                bike.name,
+                subtitle.ifBlank { null },
+                former,
+                author,
+                published,
+                likes,
+                comments,
+            )
             .joinToString(", ")
     val openLabel = stringResource(R.string.cola_open)
     ColaCard(
@@ -68,6 +99,14 @@ fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifi
                 }
             },
     ) {
+        if (authorFirst)
+            bike.author?.let {
+                PersonByline(
+                    it,
+                    Modifier.padding(horizontal = Spacing.card, vertical = Spacing.s),
+                    supporting = published,
+                )
+            }
         Box(Modifier.fillMaxWidth().aspectRatio(BikePhotoAspect)) {
             BikePhoto(bike.cover?.url, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             if (former != null) {
@@ -95,17 +134,17 @@ fun BikeCard(bike: BikeSummary, onClick: () -> Unit, modifier: Modifier = Modifi
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
-                bike.author?.let {
-                    Avatar(it.displayName, it.avatarUrl, size = 24.dp)
-                    Text(
-                        it.displayName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                } ?: Box(Modifier.weight(1f))
+                bike.author
+                    ?.takeUnless { authorFirst }
+                    ?.let {
+                        Avatar(it.displayName, it.avatarUrl, size = 24.dp)
+                        Text(
+                            it.displayName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } ?: Box(Modifier.weight(1f))
                 Counter(
                     if (bike.liked) ColaIcons.LikeFilled else ColaIcons.Like,
                     bike.likes,
@@ -135,7 +174,20 @@ fun BikePhoto(
                 model = url,
                 contentDescription = null,
                 contentScale = contentScale,
-                loading = {},
+                loading = { Box(Modifier.fillMaxSize().skeleton(RectangleShape)) },
+                success = { state ->
+                    val cached = state.result.dataSource == DataSource.MEMORY_CACHE
+                    val reduced = LocalReducedMotion.current
+                    var visible by remember(state.result) { mutableStateOf(cached || reduced) }
+                    LaunchedEffect(state.result) { visible = true }
+                    val opacity by
+                        animateFloatAsState(
+                            if (visible) 1f else 0f,
+                            animationSpec = if (reduced || cached) snap() else ColaMotion.effects(),
+                            label = "photo appearance",
+                        )
+                    SubcomposeAsyncImageContent(Modifier.alpha(opacity))
+                },
                 error = { PhotoTile(stringResource(R.string.cola_photo_unavailable)) },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -177,7 +229,7 @@ internal fun Counter(icon: Int, value: Int, liked: Boolean = false) {
             modifier = Modifier.size(18.dp),
         )
         Text(
-            value.toString(),
+            integer(value, LocalConfiguration.current.locales[0]),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
