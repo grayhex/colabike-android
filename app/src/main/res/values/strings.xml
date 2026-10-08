@@ -79,7 +79,6 @@
     <string name="bike_equipment_empty">Комплектация пока не заполнена.</string>
     <string name="bike_equipment_expanded">развёрнута</string>
     <string name="bike_equipment_collapsed">свёрнута</string>
-    <string name="bike_open_author">Профиль: %1$s</string>
     <string name="bike_note_more">Подробнее</string>
     <string name="bike_note_less">Свернуть</string>
     <string name="journal_section">Журнал</string>
