@@ -171,7 +171,8 @@ internal fun MapLibreRoute(
             ready.addOnCameraIdleListener {
                 val position = ready.cameraPosition
                 val target = position.target
-                if (target != null) {
+                // Ignore the SDK startup camera: it is not a saved user position.
+                if (target != null && renderedStyle != null) {
                     camera = doubleArrayOf(target.latitude, target.longitude, position.zoom)
                     // Measure an actual 96 dp span. MapLibre's logical-pixel scale is already
                     // density adjusted; multiplying getMetersPerPixelAtLatitude applies it twice.

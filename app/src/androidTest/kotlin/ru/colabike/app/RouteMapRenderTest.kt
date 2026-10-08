@@ -56,6 +56,12 @@ class RouteMapRenderTest {
         }
         compose.waitUntil(40_000) { probe.routeShown && (probe.scale?.zoom ?: 0.0) > 8.0 }
         val reading = checkNotNull(probe.scale)
+        assertEquals(
+            "opening fits the route before any fit-button tap",
+            55.76,
+            reading.latitude,
+            0.05,
+        )
         // Independent Web Mercator ground resolution for 512 logical pixels per world tile.
         // Allow the small spherical/ellipsoidal difference of Android's geodesic calculation.
         val expected =

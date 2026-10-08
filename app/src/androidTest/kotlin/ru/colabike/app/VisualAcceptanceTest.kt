@@ -171,7 +171,7 @@ class VisualAcceptanceTest {
             .performClick()
         pause()
         compose.onNodeWithTag("ride:map-preview").performClick()
-        compose.waitUntil(60_000) { mapProbe.routeShown }
+        compose.waitUntil(60_000) { mapProbe.routeShown && (mapProbe.scale?.zoom ?: 0.0) > 8.0 }
         pause()
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
@@ -201,7 +201,7 @@ class VisualAcceptanceTest {
             .onNodeWithContentDescription("Вдоль реки к утреннему кофе", substring = true)
             .performClick()
         compose.onNodeWithTag("ride:map-preview").performClick()
-        compose.waitUntil(60_000) { mapProbe.routeShown }
+        compose.waitUntil(60_000) { mapProbe.routeShown && (mapProbe.scale?.zoom ?: 0.0) > 8.0 }
         try {
             shell("svc wifi disable")
             shell("svc data disable")
@@ -212,7 +212,7 @@ class VisualAcceptanceTest {
             back()
             mapProbe.routeShown = false
             compose.onNodeWithTag("ride:map-preview").performClick()
-            compose.waitUntil(60_000) { mapProbe.routeShown }
+            compose.waitUntil(60_000) { mapProbe.routeShown && (mapProbe.scale?.zoom ?: 0.0) > 8.0 }
             compose.onNodeWithText("Весь маршрут").assertIsDisplayed().performClick()
             back()
             compose.onNodeWithTag("ride:map-preview").assertExists()
