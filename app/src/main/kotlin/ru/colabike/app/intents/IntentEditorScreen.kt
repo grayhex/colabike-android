@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -60,6 +61,7 @@ import java.time.format.FormatStyle
 import ru.colabike.app.R
 import ru.colabike.app.rides.map.RouteMaps
 import ru.colabike.app.rides.map.SketchRouteMaps
+import ru.colabike.app.ui.draftZoneLabel
 import ru.colabike.app.ui.resolve
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaFilterChip
@@ -332,7 +334,10 @@ private fun WindowsCard(state: IntentEditorUiState.Editing, actions: IntentEdito
             WindowRow(index, window, form.windows.size > 1, idle, state.problems, actions)
         }
         Text(
-            stringResource(R.string.intent_zone, form.timeZone.id),
+            stringResource(
+                R.string.intent_zone,
+                draftZoneLabel(form.timeZone, form.windows, LocalConfiguration.current.locales[0]),
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.testTag("intent-editor:zone"),
@@ -665,7 +670,7 @@ private fun VisibilityCard(state: IntentEditorUiState.Editing, actions: IntentEd
 private fun Chooser(
     keys: List<String>,
     selected: String?,
-    label: (String) -> Int,
+    label: (String) -> Int?,
     tag: String,
     enabled: Boolean,
     onChoose: (String) -> Unit,
@@ -679,7 +684,7 @@ private fun Chooser(
             ColaFilterChip(
                 selected = key == selected,
                 onClick = { if (enabled) onChoose(key) },
-                label = stringResource(label(key)),
+                label = passportWord(key, label),
                 icon = icon?.invoke(key),
                 modifier = Modifier.testTag("intent-editor:$tag:$key"),
             )

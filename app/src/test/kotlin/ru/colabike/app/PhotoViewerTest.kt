@@ -2,6 +2,7 @@ package ru.colabike.app
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -249,6 +250,31 @@ class PhotoViewerTest {
         compose.onNodeWithText("2 / 2").assertIsDisplayed()
         compose.onNodeWithContentDescription("Фото 2 из 2").performClick()
         compose.onNodeWithText("Фото 2 из 2").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a missing photo cannot enter zoom and block paging`() {
+        server = Server.Gone
+        var selected = 0
+        compose.setContent {
+            ColaBikeTheme {
+                PhotoViewer(
+                    listOf(
+                        Photo("p1", "https://colabike.test/api/photos/p1"),
+                        Photo("p2", "https://colabike.test/api/photos/p2"),
+                    ),
+                    0,
+                    {},
+                    onPage = { selected = it },
+                )
+            }
+        }
+        until { shown("Фото недоступно") }
+        compose.onNodeWithTag("gallery:photo:p1").performTouchInput { doubleClick() }
+        compose.onNodeWithTag("gallery:photo:p1").performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        assertThat(selected).isEqualTo(1)
+        compose.onNodeWithTag("gallery:zoom").assertDoesNotExist()
     }
 
     private companion object {

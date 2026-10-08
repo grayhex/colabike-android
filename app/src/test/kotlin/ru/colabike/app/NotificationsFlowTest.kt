@@ -267,7 +267,7 @@ class NotificationsFlowTest {
             .onNodeWithTag("notification:n1")
             .assertContentDescriptionContains("Покатушка рядом", substring = true)
             .assertContentDescriptionContains(
-                "В вашем районе, Совпадает с вашим намерением",
+                "В вашем районе, Подходит под ваши планы",
                 substring = true,
             )
         // A plan of the circle alone is what the category already says: no reason line.

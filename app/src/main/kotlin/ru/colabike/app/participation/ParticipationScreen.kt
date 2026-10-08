@@ -32,6 +32,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import ru.colabike.app.R
 import ru.colabike.app.ui.resolve
+import ru.colabike.app.ui.zoneLabel
 import ru.colabike.core.designsystem.component.ColaCard
 import ru.colabike.core.designsystem.component.ColaFilterChip
 import ru.colabike.core.designsystem.component.ColaIcons
@@ -404,7 +405,7 @@ private fun momentLine(moment: Instant, zone: ZoneId): String {
     return stringResource(
         R.string.participation_moment,
         formatter.format(moment.atZone(zone)),
-        zone.id,
+        zoneLabel(zone, moment, locale),
     )
 }
 

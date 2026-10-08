@@ -52,6 +52,30 @@ class IntentsFlowTest {
     private fun scrolled(tag: String) = compose.onNodeWithTag(tag).performScrollTo()
 
     @Test
+    fun `unknown passport words survive the card and detail`() {
+        val intent =
+            sampleIntent(1).let {
+                it.copy(
+                    passport =
+                        it.passport.copy(
+                            purpose = "Дальняя прогулка",
+                            pace = "Без гонки",
+                            surface = "Грунт после дождя",
+                        )
+                )
+            }
+        start(FakeIntents(community = listOf(intent)))
+        val card = compose.onNodeWithTag("intent:${intent.id}")
+        for (word in listOf("Дальняя прогулка", "Без гонки", "Грунт после дождя")) {
+            compose.onNodeWithText(word, substring = true).assertExists()
+        }
+        card.performClick()
+        for (word in listOf("Дальняя прогулка", "Без гонки", "Грунт после дождя")) {
+            compose.onNodeWithText(word, substring = true).assertExists()
+        }
+    }
+
+    @Test
     fun `a radius from the website is displayed and saved without truncation`() {
         val original =
             own.copy(
@@ -152,7 +176,7 @@ class IntentsFlowTest {
         openMine()
 
         compose.onNodeWithTag("intents:empty").assertIsDisplayed()
-        compose.onNodeWithText("У вас нет намерений").assertIsDisplayed()
+        compose.onNodeWithText("Пока нет планов").assertIsDisplayed()
     }
 
     @Test
@@ -209,7 +233,8 @@ class IntentsFlowTest {
         assertThat(draft.visibility).isEqualTo(IntentVisibility.Private)
         // The person lands on the page of what was made.
         compose.onNodeWithTag("intent:page").assertIsDisplayed()
-        compose.onNodeWithTag("intent:who").assertTextContains("Ваше намерение")
+        compose.onNodeWithTag("intent:who").assertTextContains("Ваши планы", substring = true)
+        compose.onNodeWithTag("intent:who").assertTextContains("Поеду", substring = true)
     }
 
     @Test
@@ -277,7 +302,7 @@ class IntentsFlowTest {
         compose.onNodeWithTag("intent:author").assertIsDisplayed()
         compose.onNodeWithTag("intent:edit").assertDoesNotExist()
         compose.onNodeWithText("Иду").assertDoesNotExist()
-        compose.onNodeWithText("Это намерение, а не мероприятие", substring = true).assertExists()
+        compose.onNodeWithText("Договоритесь о встрече в чате.", substring = true).assertExists()
     }
 
     @Test
@@ -307,7 +332,7 @@ class IntentsFlowTest {
 
         scrolled("intent:cancel")
         compose.onNodeWithTag("intent:cancel").performClick()
-        compose.onNodeWithText("Отменить намерение?").assertIsDisplayed()
+        compose.onNodeWithText("Отменить планы?").assertIsDisplayed()
         assertThat(intents.cancelled).isEmpty()
         compose.onNodeWithTag("intent:confirm").performClick()
         compose.waitForIdle()
@@ -328,7 +353,7 @@ class IntentsFlowTest {
 
         scrolled("intent:delete")
         compose.onNodeWithTag("intent:delete").performClick()
-        compose.onNodeWithText("Удалить намерение?").assertIsDisplayed()
+        compose.onNodeWithText("Удалить планы?").assertIsDisplayed()
         compose.onNodeWithTag("intent:confirm").performClick()
         compose.waitForIdle()
 
@@ -358,5 +383,24 @@ class IntentsFlowTest {
         assertThat(intents.replaced.single().second.visibility)
             .isEqualTo(IntentVisibility.Community)
         compose.onNodeWithTag("intent:page").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the author distance and speed ranges remain visible when choosing company`() {
+        val original = sampleIntent(1)
+        val offer =
+            original.copy(
+                passport =
+                    original.passport.copy(
+                        distanceKm = ru.colabike.core.model.Range(20.0, 40.0),
+                        speedKmh = ru.colabike.core.model.Range(18.0, 22.0),
+                    )
+            )
+        start(FakeIntents(community = listOf(offer)))
+        compose.onNodeWithText("20–40 км", substring = true).assertExists()
+        compose.onNodeWithTag("intent:${offer.id}").performClick()
+        compose.onNodeWithText("20–40 км", substring = true).assertExists()
+        compose.onNodeWithText("18–22 км/ч", substring = true).assertExists()
+        compose.onNodeWithText("Договоритесь о встрече в чате.").assertExists()
     }
 }

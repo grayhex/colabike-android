@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -44,6 +45,7 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.util.Locale
 import ru.colabike.app.R
 import ru.colabike.app.push.PushAvailability
@@ -430,16 +432,30 @@ private fun QuietHoursCard(
                 )
             }
             val zone = settings.timeZone
+            val locale = LocalConfiguration.current.locales[0]
             Text(
-                if (zone != null) stringResource(R.string.notif_settings_zone, zone.id)
-                else stringResource(R.string.notif_settings_zone_none, state.phoneZone.id),
+                if (zone != null)
+                    stringResource(
+                        R.string.notif_settings_zone,
+                        zone.getDisplayName(TextStyle.FULL, locale),
+                    )
+                else
+                    stringResource(
+                        R.string.notif_settings_zone_none,
+                        state.phoneZone.getDisplayName(TextStyle.FULL, locale),
+                    ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("notif-settings:zone"),
             )
             if (zone != null && zone != state.phoneZone) {
                 TextButton(onClick = actions.onUsePhoneZone, enabled = idle) {
-                    Text(stringResource(R.string.notif_settings_zone_use_phone, state.phoneZone.id))
+                    Text(
+                        stringResource(
+                            R.string.notif_settings_zone_use_phone,
+                            state.phoneZone.getDisplayName(TextStyle.FULL, locale),
+                        )
+                    )
                 }
             }
             ColaSwitchRow(

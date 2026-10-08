@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -31,16 +32,18 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import java.time.ZoneId
 import ru.colabike.app.R
 import ru.colabike.app.messages.WriteState
 import ru.colabike.app.ui.resolve
-import ru.colabike.core.designsystem.component.ColaCard
+import ru.colabike.app.ui.zoneLabel
 import ru.colabike.core.designsystem.component.ColaIcons
 import ru.colabike.core.designsystem.component.ColaTopBar
 import ru.colabike.core.designsystem.component.EmptyState
 import ru.colabike.core.designsystem.component.ErrorState
 import ru.colabike.core.designsystem.component.Eyebrow
 import ru.colabike.core.designsystem.component.LoadingState
+import ru.colabike.core.designsystem.component.PersonByline
 import ru.colabike.core.designsystem.theme.Spacing
 import ru.colabike.core.model.IntentStatus
 import ru.colabike.core.model.IntentVisibility
@@ -109,8 +112,8 @@ private fun Details(state: IntentUiState.Loaded, writing: WriteState, actions: I
                 verticalArrangement = Arrangement.spacedBy(Spacing.l),
             ) {
                 Outcome(state, writing)
-                Summary(intent)
                 Terms(intent)
+                Summary(intent)
                 if (intent.own) OwnActions(state, actions)
                 else OthersActions(intent, writing, actions)
             }
@@ -143,82 +146,96 @@ private fun Outcome(state: IntentUiState.Loaded, writing: WriteState) {
 
 @Composable
 private fun Summary(intent: RideIntent) {
-    val who = intent.author.displayName
-    ColaCard(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.padding(Spacing.l),
-            verticalArrangement = Arrangement.spacedBy(Spacing.s),
-        ) {
-            Text(
-                if (intent.own) stringResource(R.string.intent_yours) else who,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.semantics { heading() }.testTag("intent:who"),
-            )
-            Text(
-                stringResource(intent.readinessLabel()),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            if (intent.status != IntentStatus.Active) {
-                Text(
-                    stringResource(intent.statusLabel()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.testTag("intent:status"),
+    PersonByline(
+        intent.author,
+        Modifier.testTag("intent:who"),
+        supporting =
+            listOfNotNull(
+                    stringResource(R.string.intent_yours).takeIf { intent.own },
+                    stringResource(intent.readinessLabel()),
                 )
-            }
-        }
+                .joinToString(" · "),
+    )
+    if (intent.status != IntentStatus.Active) {
+        Text(
+            stringResource(intent.statusLabel()),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.testTag("intent:status"),
+        )
     }
 }
 
 @Composable
 private fun Terms(intent: RideIntent) {
     val passport = intent.passport
-    ColaCard(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.padding(Spacing.l),
-            verticalArrangement = Arrangement.spacedBy(Spacing.s),
-        ) {
-            Eyebrow(
-                stringResource(R.string.intent_when),
-                modifier = Modifier.semantics { heading() },
-            )
-            intent.windows
-                .sortedBy { it.startsAt }
-                .forEach { window ->
+    Column(
+        Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        Eyebrow(
+            stringResource(R.string.intent_when),
+            modifier = Modifier.semantics { heading() },
+        )
+        intent.windows
+            .sortedBy { it.startsAt }
+            .forEach { window ->
+                Text(
+                    windowsLine(intent.copy(windows = listOf(window)), showZone = false),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                val locale = LocalConfiguration.current.locales[0]
+                val labels =
+                    listOf(window.startsAt, window.endsAt)
+                        .map { zoneLabel(intent.timeZone, it, locale) }
+                        .distinct()
+                Text(
+                    stringResource(R.string.intent_zone, labels.joinToString(" / ")),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val phone = ZoneId.systemDefault()
+                if (
+                    phone.rules.getOffset(window.startsAt) !=
+                        intent.timeZone.rules.getOffset(window.startsAt) ||
+                        phone.rules.getOffset(window.endsAt) !=
+                            intent.timeZone.rules.getOffset(window.endsAt)
+                ) {
                     Text(
-                        windowsLine(intent.copy(windows = listOf(window))),
-                        style = MaterialTheme.typography.bodyLarge,
+                        stringResource(
+                            R.string.intent_phone_window,
+                            windowsLine(intent.copy(timeZone = phone, windows = listOf(window))),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            Text(
-                stringResource(R.string.intent_zone, intent.timeZone.id),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Eyebrow(
-                stringResource(R.string.intent_where),
-                modifier = Modifier.padding(top = Spacing.s).semantics { heading() },
-            )
-            Text(
-                passport.areaLabel ?: stringResource(R.string.intent_area_unknown),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            val kinds =
-                listOfNotNull(
-                    passport.purpose?.let { stringResource(purposeLabel(it)) },
-                    passport.pace?.let { stringResource(paceLabel(it)) },
-                    passport.surface?.let { stringResource(surfaceLabel(it)) },
-                )
-            if (kinds.isNotEmpty()) {
-                Text(kinds.joinToString(" · "), style = MaterialTheme.typography.bodyMedium)
             }
-            if (intent.meetNewPeople == true) {
-                Text(
-                    stringResource(R.string.intent_meet_new),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
+        Eyebrow(
+            stringResource(R.string.intent_where),
+            modifier = Modifier.padding(top = Spacing.s).semantics { heading() },
+        )
+        Text(
+            passport.areaLabel ?: stringResource(R.string.intent_area_unknown),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        val kinds =
+            listOfNotNull(
+                passport.purpose?.let { passportWord(it, ::purposeLabel) },
+                passport.pace?.let { passportWord(it, ::paceLabel) },
+                passport.surface?.let { passportWord(it, ::surfaceLabel) },
+            )
+        if (kinds.isNotEmpty()) {
+            Text(kinds.joinToString(" · "), style = MaterialTheme.typography.bodyMedium)
+        }
+        val ranges = intentRanges(passport)
+        if (ranges.isNotEmpty())
+            Text(ranges.joinToString(" · "), style = MaterialTheme.typography.bodyMedium)
+        if (intent.meetNewPeople == true) {
+            Text(
+                stringResource(R.string.intent_meet_new),
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }
@@ -237,7 +254,7 @@ private fun OthersActions(intent: RideIntent, writing: WriteState, actions: Inte
                 enabled = writing != WriteState.Opening,
                 modifier = Modifier.testTag("intent:write"),
             ) {
-                Text(stringResource(R.string.intent_write, intent.author.displayName))
+                Text(stringResource(R.string.intent_write))
             }
         }
         OutlinedButton(

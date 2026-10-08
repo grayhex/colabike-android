@@ -131,8 +131,8 @@ class BikePageSectionsTest {
         compose.waitForIdle()
 
         // The category is written over the name of each part, as the mockup has it.
-        compose.onNodeWithText("РАМА").performScrollTo().assertIsDisplayed()
-        assertThat(compose.onAllNodesWithText("ТРАНСМИССИЯ").fetchSemanticsNodes()).hasSize(2)
+        compose.onNodeWithText("Рама").performScrollTo().assertIsDisplayed()
+        assertThat(compose.onAllNodesWithText("Трансмиссия").fetchSemanticsNodes()).hasSize(2)
         compose.onNodeWithText("Аксессуары").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Латунный").performScrollTo().assertIsDisplayed()
     }
