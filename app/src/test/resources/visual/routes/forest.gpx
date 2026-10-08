@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="ColaBike visual fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+<metadata><desc>Synthetic QA geometry, CC0. Not a recorded ride or navigation advice. Separate segments represent omitted data.</desc></metadata>
+<trk><name>forest</name>
+<trkseg>
+<trkpt lat="55.7791" lon="37.7392"/>
+<trkpt lat="55.7787" lon="37.7485"/>
+<trkpt lat="55.7802" lon="37.7561"/>
+<trkpt lat="55.7832" lon="37.7627"/>
+<trkpt lat="55.7852" lon="37.7704"/>
+<trkpt lat="55.7821" lon="37.7731"/>
+<trkpt lat="55.7775" lon="37.7689"/>
+<trkpt lat="55.7749" lon="37.7628"/>
+<trkpt lat="55.7712" lon="37.7613"/>
+<trkpt lat="55.7694" lon="37.7543"/>
+<trkpt lat="55.7721" lon="37.7478"/>
+<trkpt lat="55.7755" lon="37.7422"/>
+<trkpt lat="55.7791" lon="37.7392"/>
+</trkseg>
+</trk></gpx>

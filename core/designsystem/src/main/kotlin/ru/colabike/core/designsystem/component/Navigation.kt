@@ -1,41 +1,47 @@
 package ru.colabike.core.designsystem.component
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarDefaults
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.NavigationRailDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Density
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ru.colabike.core.designsystem.theme.ColaMotion
+import ru.colabike.core.designsystem.theme.LocalReducedMotion
 import ru.colabike.core.designsystem.theme.PillShape
 import ru.colabike.core.designsystem.theme.Spacing
 
@@ -45,32 +51,8 @@ data class ColaNavItem(
     val label: String,
     @param:DrawableRes val icon: Int,
     @param:DrawableRes val selectedIcon: Int,
+    val compactLabel: String = label,
 )
-
-/**
- * The section names are short labels under icons, a fifth of the screen wide each: at the largest
- * system font they would be cut. They stop growing at 1.15 times; TalkBack reads them in full
- * whatever the size.
- */
-@Composable
-private fun CappedFontScale(content: @Composable () -> Unit) {
-    val density = LocalDensity.current
-    CompositionLocalProvider(
-        LocalDensity provides
-            Density(density.density, density.fontScale.coerceAtMost(NavFontScale)),
-        content = content,
-    )
-}
-
-private const val NavFontScale = 1.15f
-
-/**
- * "Велосипеды" is the longest section name, and a fifth of a 360 dp phone is 72 dp: at 11 sp it is
- * written whole, at the 12 sp of the other small labels it would be cut.
- */
-@Composable
-private fun navLabelStyle() =
-    MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp)
 
 /**
  * The bottom bar of a phone: embedded in the bottom edge under a hairline, not floating. Every
@@ -93,13 +75,31 @@ fun ColaNavigationBar(
             .windowInsetsPadding(NavigationBarDefaults.windowInsets)
     ) {
         HorizontalDivider(color = scheme.outlineVariant)
-        CappedFontScale {
-            Row(
-                Modifier.fillMaxWidth().selectableGroup(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                items.forEachIndexed { index, item ->
-                    BarItem(item, selected = index == selectedIndex, onClick = { onSelect(index) })
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val density = LocalDensity.current
+            val measurer = rememberTextMeasurer()
+            val style = MaterialTheme.typography.labelSmall
+            val needed =
+                items.maxOfOrNull {
+                    with(density) { measurer.measure(it.compactLabel, style).size.width.toDp() } +
+                        Spacing.s
+                } ?: Spacing.touch
+            val columns =
+                if (needed * items.size <= maxWidth) items.size.coerceAtLeast(1)
+                else ((items.size + 1) / 2).coerceAtLeast(1)
+            Column(Modifier.fillMaxWidth().selectableGroup()) {
+                items.chunked(columns).forEachIndexed { row, group ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        group.forEachIndexed { column, item ->
+                            val index = row * columns + column
+                            BarItem(
+                                item,
+                                selected = index == selectedIndex,
+                                onClick = { onSelect(index) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -107,15 +107,33 @@ fun ColaNavigationBar(
 }
 
 @Composable
-private fun RowScope.BarItem(item: ColaNavItem, selected: Boolean, onClick: () -> Unit) {
+private fun BarItem(item: ColaNavItem, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val scheme = MaterialTheme.colorScheme
-    val label = if (selected) scheme.primary else scheme.onSurfaceVariant
-    val icon = if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant
+    val reduced = LocalReducedMotion.current
+    val label by
+        animateColorAsState(
+            if (selected) scheme.primary else scheme.onSurfaceVariant,
+            if (reduced) snap() else ColaMotion.effects(),
+            label = "navigation label",
+        )
+    val icon by
+        animateColorAsState(
+            if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+            if (reduced) snap() else ColaMotion.effects(),
+            label = "navigation icon",
+        )
+    val plate by
+        animateColorAsState(
+            if (selected) scheme.primaryContainer else Color.Transparent,
+            if (reduced) snap() else ColaMotion.effects(),
+            label = "navigation selection",
+        )
     Column(
         modifier =
-            Modifier.weight(1f)
+            modifier
                 .heightIn(min = 56.dp)
                 .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+                .semantics { contentDescription = item.label }
                 .padding(vertical = Spacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -123,7 +141,7 @@ private fun RowScope.BarItem(item: ColaNavItem, selected: Boolean, onClick: () -
         Box(
             Modifier.size(width = 56.dp, height = 32.dp)
                 .background(
-                    if (selected) scheme.primaryContainer else Color.Transparent,
+                    plate,
                     PillShape,
                 ),
             contentAlignment = Alignment.Center,
@@ -136,11 +154,11 @@ private fun RowScope.BarItem(item: ColaNavItem, selected: Boolean, onClick: () -
             )
         }
         Text(
-            item.label,
-            style = navLabelStyle(),
+            item.compactLabel,
+            style = MaterialTheme.typography.labelSmall,
             color = label,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs),
         )
     }
 }
@@ -157,31 +175,31 @@ fun ColaNavigationRail(
     modifier: Modifier = Modifier,
     header: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    CappedFontScale {
-        NavigationRail(
-            modifier = modifier,
-            containerColor = Color.Transparent,
-            header = header,
-        ) {
-            items.forEachIndexed { index, item ->
-                val selected = index == selectedIndex
-                NavigationRailItem(
-                    selected = selected,
-                    onClick = { onSelect(index) },
-                    icon = { Icon(painterResource(item.icon), contentDescription = null) },
-                    label = { Text(item.label) },
-                    alwaysShowLabel = true,
-                    colors =
-                        NavigationRailItemDefaults.colors(
-                            selectedIconColor = scheme.onPrimaryContainer,
-                            selectedTextColor = scheme.primary,
-                            indicatorColor = scheme.primaryContainer,
-                            unselectedIconColor = scheme.onSurfaceVariant,
-                            unselectedTextColor = scheme.onSurfaceVariant,
-                        ),
-                )
-            }
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelSmall
+    val railWidth =
+        (items.maxOfOrNull {
+                with(density) { measurer.measure(it.label, style).size.width.toDp() } + Spacing.xl
+            } ?: 80.dp)
+            .coerceAtLeast(80.dp)
+    Column(
+        modifier
+            .width(railWidth)
+            .windowInsetsPadding(NavigationRailDefaults.windowInsets)
+            .verticalScroll(rememberScrollState())
+            .selectableGroup(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.s),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        header?.invoke(this)
+        items.forEachIndexed { index, item ->
+            BarItem(
+                item.copy(compactLabel = item.label),
+                index == selectedIndex,
+                onClick = { onSelect(index) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

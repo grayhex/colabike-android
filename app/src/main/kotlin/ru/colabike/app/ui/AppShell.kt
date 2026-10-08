@@ -229,7 +229,21 @@ fun AppShell(dependencies: AppDependencies, modifier: Modifier = Modifier) {
                     it is Destination.IntentEditor
             }
 
-    val items = sections.map { ColaNavItem(stringResource(it.label), it.icon, it.selectedIcon) }
+    val items = sections.map {
+        ColaNavItem(
+            stringResource(it.label),
+            it.icon,
+            it.selectedIcon,
+            compactLabel =
+                stringResource(
+                    when (it) {
+                        TopLevel.Bikes -> R.string.nav_bikes_compact
+                        TopLevel.Rides -> R.string.nav_rides_compact
+                        else -> it.label
+                    }
+                ),
+        )
+    }
     val selectedIndex = sections.indexOfFirst { it.root == state.topLevelRoute }.coerceAtLeast(0)
     val onSelect: (Int) -> Unit = { navigator.select(sections[it].root) }
 

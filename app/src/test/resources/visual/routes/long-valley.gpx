@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="ColaBike visual fixtures" xmlns="http://www.topografix.com/GPX/1/1">
+<metadata><desc>Synthetic QA geometry, CC0. Not a recorded ride or navigation advice. Separate segments represent omitted data.</desc></metadata>
+<trk><name>long-valley</name>
+<trkseg>
+<trkpt lat="46.0731" lon="6.7192"/>
+<trkpt lat="46.0784" lon="6.7244"/>
+<trkpt lat="46.0841" lon="6.7278"/>
+<trkpt lat="46.0904" lon="6.7217"/>
+<trkpt lat="46.0963" lon="6.7211"/>
+<trkpt lat="46.1012" lon="6.7242"/>
+<trkpt lat="46.1073" lon="6.7281"/>
+<trkpt lat="46.1124" lon="6.7321"/>
+<trkpt lat="46.1169" lon="6.7264"/>
+<trkpt lat="46.1232" lon="6.7201"/>
+<trkpt lat="46.1261" lon="6.7126"/>
+<trkpt lat="46.1258" lon="6.7064"/>
+</trkseg>
+<trkseg>
+<trkpt lat="46.1239" lon="6.6981"/>
+<trkpt lat="46.1204" lon="6.6945"/>
+<trkpt lat="46.1158" lon="6.6901"/>
+<trkpt lat="46.1095" lon="6.6854"/>
+<trkpt lat="46.1018" lon="6.6822"/>
+<trkpt lat="46.0927" lon="6.6801"/>
+<trkpt lat="46.0842" lon="6.6771"/>
+<trkpt lat="46.0748" lon="6.6741"/>
+<trkpt lat="46.0631" lon="6.6732"/>
+<trkpt lat="46.0501" lon="6.6745"/>
+</trkseg>
+</trk></gpx>
