@@ -117,6 +117,10 @@ android {
         .resources
         .srcDir(rootProject.file("core/network/src/test/resources/contracts"))
 
+    sourceSets.getByName("test").kotlin.srcDir("src/sharedTest/kotlin")
+    sourceSets.getByName("androidTest").kotlin.srcDir("src/sharedTest/kotlin")
+    sourceSets.getByName("androidTest").assets.srcDir("src/test/resources")
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {

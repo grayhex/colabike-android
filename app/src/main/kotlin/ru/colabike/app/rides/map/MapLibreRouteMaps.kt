@@ -2,6 +2,8 @@ package ru.colabike.app.rides.map
 
 import android.content.ComponentCallbacks2
 import android.content.res.Configuration
+import android.graphics.PointF
+import android.location.Location
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -30,8 +32,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -97,7 +101,10 @@ class MapProbe {
     @Volatile var routeShown: Boolean = false
     @Volatile var mapLoaded: Boolean = false
     @Volatile var failure: String? = null
+    @Volatile internal var scale: MapScaleReading? = null
 }
+
+internal data class MapScaleReading(val metresPerDp: Double, val latitude: Double, val zoom: Double)
 
 private data class MapLook(val background: Int, val halo: Int, val line: Int)
 
@@ -164,10 +171,28 @@ internal fun MapLibreRoute(
             ready.addOnCameraIdleListener {
                 val position = ready.cameraPosition
                 val target = position.target
-                if (target != null) {
+                // Ignore the SDK startup camera: it is not a saved user position.
+                if (target != null && renderedStyle != null) {
                     camera = doubleArrayOf(target.latitude, target.longitude, position.zoom)
-                    metresPerDp =
-                        ready.projection.getMetersPerPixelAtLatitude(target.latitude) * density
+                    // Measure an actual 96 dp span. MapLibre's logical-pixel scale is already
+                    // density adjusted; multiplying getMetersPerPixelAtLatitude applies it twice.
+                    val x = mapView.width / 2f
+                    val y = mapView.height / 2f
+                    if (mapView.width > 0) {
+                        val left = ready.projection.fromScreenLocation(PointF(x - 48 * density, y))
+                        val right = ready.projection.fromScreenLocation(PointF(x + 48 * density, y))
+                        val distance = FloatArray(1)
+                        Location.distanceBetween(
+                            left.latitude,
+                            left.longitude,
+                            right.latitude,
+                            right.longitude,
+                            distance,
+                        )
+                        val measured = distance[0] / 96.0
+                        metresPerDp = measured
+                        probe?.scale = MapScaleReading(measured, target.latitude, position.zoom)
+                    }
                 }
             }
             ready.addOnMapClickListener { point ->
@@ -286,12 +311,26 @@ internal fun MapLibreRoute(
             factory = { mapView },
             modifier = Modifier.fillMaxSize().semantics { contentDescription = description },
         )
-        if (onPick == null)
+        if (onPick == null && renderedStyle == null) {
+            RouteSketch(route, Modifier.fillMaxSize())
+            Text(
+                stringResource(R.string.route_preview_loading),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier =
+                    Modifier.align(Alignment.BottomStart)
+                        .padding(Spacing.m)
+                        .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small)
+                        .padding(Spacing.s)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        if (onPick == null && renderedStyle != null)
             MapControls(metresPerDp, maxOf(60.dp, (captionHeight / density).dp + Spacing.s)) {
                 map?.let { fit(it, route, (FIT_PADDING_DP * density).toInt()) }
             }
         BasemapCaption(
-            attributionShown = style?.builtIn == true && !remoteFailed,
+            attributionShown = renderedStyle != null && style?.builtIn == true && !remoteFailed,
             failed = remoteFailed,
             onRetry = { remoteFailed = false },
             modifier =

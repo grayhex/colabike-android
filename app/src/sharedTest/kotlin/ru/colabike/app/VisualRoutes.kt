@@ -7,11 +7,14 @@ import ru.colabike.core.model.RideRoute
 
 /** Trusted local synthetic GPX; preserve each trkseg rather than inventing a connecting line. */
 object VisualRoutes {
-    fun load(name: String): RideRoute {
+    fun load(name: String): RideRoute =
+        checkNotNull(javaClass.getResourceAsStream("/visual/routes/$name.gpx")).use(::parse)
+
+    fun parse(input: java.io.InputStream): RideRoute {
         val lines = mutableListOf<List<GeoPoint>>()
         var segment = mutableListOf<GeoPoint>()
         val parser = Xml.newPullParser()
-        checkNotNull(javaClass.getResourceAsStream("/visual/routes/$name.gpx")).use { input ->
+        run {
             parser.setInput(input, "UTF-8")
             while (parser.next() != XmlPullParser.END_DOCUMENT) {
                 when {

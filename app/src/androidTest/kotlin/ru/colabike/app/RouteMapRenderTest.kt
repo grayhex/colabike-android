@@ -8,6 +8,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlin.math.cos
+import kotlin.math.pow
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -44,6 +47,32 @@ class RouteMapRenderTest {
 
     private fun waitForRoute(probe: MapProbe) =
         compose.waitUntil(40_000) { probe.routeShown || probe.failure != null }
+
+    @Test
+    fun theScaleMatchesGroundDistanceAtTheDeviceDensity() {
+        val probe = MapProbe()
+        compose.setContent {
+            ColaBikeTheme { MapLibreRoute(route, null, Modifier.fillMaxSize(), probe) }
+        }
+        compose.waitUntil(40_000) { probe.routeShown && (probe.scale?.zoom ?: 0.0) > 8.0 }
+        val reading = checkNotNull(probe.scale)
+        assertEquals(
+            "opening fits the route before any fit-button tap",
+            55.76,
+            reading.latitude,
+            0.05,
+        )
+        // Independent Web Mercator ground resolution for 512 logical pixels per world tile.
+        // Allow the small spherical/ellipsoidal difference of Android's geodesic calculation.
+        val expected =
+            40075016.686 * cos(Math.toRadians(reading.latitude)) / (512 * 2.0.pow(reading.zoom))
+        assertEquals(
+            "the scale must not multiply density a second time",
+            expected,
+            reading.metresPerDp,
+            expected * 0.02,
+        )
+    }
 
     @Test fun theRouteIsOnTheMapInTheLightTheme() = render(dark = false)
 
